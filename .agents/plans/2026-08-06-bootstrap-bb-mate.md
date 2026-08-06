@@ -12,7 +12,7 @@ Create one Bun monorepo for the browser workbench and independently publishable 
 - `apps/workbench` is a browser-only fake-state studio and does not require a running bb app.
 - `plugins/*` packages each own a bb plugin manifest and release version.
 - Shared packages will be introduced only when real duplication appears.
-- The existing `galligan/bb-plugins` repository remains untouched until explicitly archived or deleted.
+- The empty `galligan/bb-plugins` repository was deleted after explicit approval; its local checkout was moved to the macOS Trash.
 
 ## Acceptance checks
 
