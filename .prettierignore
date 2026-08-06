@@ -1,3 +1,4 @@
 bun.lock
 dist/
 node_modules/
+plugins/*/types/*.d.ts

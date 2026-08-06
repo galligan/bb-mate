@@ -1,23 +1,28 @@
 export type ThreadState = "idle" | "running" | "waiting";
 
-export interface ThreadFixture {
+export interface SidebarThreadModel {
   id: string;
   title: string;
   detail: string;
   state: ThreadState;
 }
 
-export interface Scenario {
+export interface SidebarListModel {
+  project: string;
+  threads: readonly SidebarThreadModel[];
+}
+
+export interface Scenario extends SidebarListModel {
   id: string;
   name: string;
   description: string;
-  threads: ThreadFixture[];
 }
 
 export const scenarios: Scenario[] = [
   {
     id: "agents",
     name: "Agent focus",
+    project: "grid",
     description: "A compact view of active, waiting, and quiet agent work.",
     threads: [
       {
@@ -43,6 +48,7 @@ export const scenarios: Scenario[] = [
   {
     id: "gitbutler",
     name: "GitButler repo",
+    project: "bb",
     description: "Repository state without the misleading mega-diff treatment.",
     threads: [
       {
@@ -62,6 +68,7 @@ export const scenarios: Scenario[] = [
   {
     id: "quiet",
     name: "Quiet workspace",
+    project: "bb-mate",
     description: "The resting state should feel useful without feeling empty.",
     threads: [
       {

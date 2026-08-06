@@ -12,7 +12,7 @@
     "dev": "bun --filter @bb-mate/workbench dev",
     "build": "bun --filter '*' build",
     "check": "bun --filter '*' check",
-    "test": "bun test",
+    "test": "bun --filter '*' test",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
