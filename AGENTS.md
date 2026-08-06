@@ -1,0 +1,51 @@
+# AGENTS.md
+
+BB Mate is the private workspace for browser-based bb interface experiments and independently shippable bb plugins.
+
+## Boundaries
+
+- `apps/workbench` is a browser-only design studio. It uses deterministic fixtures and must run without a bb server.
+- `plugins/<name>` contains real bb plugins. Every plugin is an independent package with its own `package.json`, `bb` manifest, tests, and version.
+- `../bb` is the canonical upstream source checkout. Read it for contracts and patterns, but do not edit it unless the task explicitly targets upstream bb.
+- Do not import bb application internals into the workbench or plugins. Plugins use the public `@bb/plugin-sdk` contracts.
+- Plugin frontend bundles run inside bb. Keep reusable visual components host-neutral and put bb-specific hooks behind thin adapters.
+
+## Working style
+
+- Start non-trivial work with a plan under `.agents/plans/` and keep it current.
+- Prefer a thin end-to-end slice over speculative infrastructure.
+- Preserve deterministic fake states so visual changes are reproducible.
+- Add shared packages only after two real consumers need the same code.
+- Treat plugins as full-trust local code. Document filesystem, network, secret, and external-service access.
+- Use Bun for workspace management, scripts, tests, and installs.
+
+## Commands
+
+```sh
+bun install
+bun run dev
+bun run check
+bun run test
+bun run build
+bun run format:check
+```
+
+Run the smallest relevant check while iterating and all checks before pushing.
+
+## Plugin development
+
+Create plugins beneath `plugins/` and keep their package names in the `bb-plugin-*` namespace. During development, install a plugin by path:
+
+```sh
+bb plugin install ./plugins/<name> --yes
+cd plugins/<name>
+bb plugin dev
+```
+
+Each plugin must declare honest `engines.bb` and `engines.bbPluginSdk` ranges. Managed npm or Git installs refuse incompatible ranges.
+
+## Documentation
+
+- Architecture and durable decisions belong in `docs/`.
+- Active implementation plans belong in `.agents/plans/`.
+- Keep screenshots and generated design artifacts out of source directories; place durable assets in a purpose-named directory and temporary QA artifacts in thread storage.
