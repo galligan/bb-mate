@@ -19,6 +19,12 @@ and Geist fonts, color scheme, reduced motion, viewports, fixture data, and
 animation/caret state. Playwright names each baseline with its platform because
 browser text rasterization differs between macOS and Linux.
 
+The CI visual job itself runs inside the exact pinned Playwright Linux image
+used to produce the Linux baselines. Its isolated install skips workspace
+install scripts because this Fixture-only gate neither builds nor executes the
+native plugin; the ordinary verification job still performs the complete
+workspace install and build.
+
 The Mate screenshots use a dedicated deterministic component harness. They do
 not call `/bb-mate-session.json`, inspect the checkout, or invoke native bb.
 Playwright refuses to reuse occupied ports so a stale or unrelated local server

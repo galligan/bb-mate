@@ -122,6 +122,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: OS-632 is ready for its draft PR and hosted CI/review loop.
 - Next: Commit, create the draft PR, verify hosted checks and threads, mark ready, merge, verify main CI, and move OS-632 to Done.
 - Blockers: None.
+
+2026-08-07 - OS-632 hosted runner drift exposed
+- Changed: Split the visual gate into the exact pinned Playwright container already used for Linux baseline generation; the ordinary verification job retains the full workspace install, checks, tests, and build.
+- Verified: Hosted run 31225221650 passed every nonvisual gate, then correctly failed three screenshots at stable one-percent text-layout differences on the ambient GitHub runner. Uploaded expected/actual/diff artifacts showed Linux font-metric wrapping rather than a product-state change; the same baselines pass 14/14 in the pinned image.
+- Result: CI now compares against the environment that owns the Linux baselines instead of weakening pixel tolerances or accepting runner-specific reflows.
+- Next: Amend the PR snapshot, rerun both hosted jobs, and recheck reviews before readiness.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -159,6 +166,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 1         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-1.json`  | 2/5        | changes requested | 3          | Matrix/panel axe gaps and shallow traversal          |
 | 2         | OS-632 standing    | `tmp/reviews/standing/os-632-round-2.json` | 5/5        | clean             | 0          | Determinism, portal/traversal, stale-port recheck    |
 | 2         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-2.json`  | 5/5        | clean             | 0          | Full matrix, portal, and keyboard recheck            |
+| 3         | OS-632 standing    | `tmp/reviews/standing/os-632-round-3.json` | 5/5        | clean             | 0          | Pinned CI container and 14-test shape recheck        |
+| 3         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-3.json`  | 5/5        | clean             | 0          | Coverage, script boundary, and workflow recheck      |
 
 ## Verification Log
 
@@ -186,6 +195,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Intentional 22% pixel drift                                                     | OS-632 diff proof    | expected failure     | named actual, expected, diff, trace artifacts emitted      |
 | `bun run format:check && bun run check && bun run test && bun run build`        | OS-632 candidate     | pass                 | 167 unit tests; workbench/plugin/Ladle builds green        |
 | Standing isolated Playwright/axe rerun (14 tests)                               | OS-632 final review  | pass                 | 15.6 seconds after occupied-port refusal proof             |
+| Hosted CI 31225221650                                                           | OS-632 runner probe  | expected failure     | three stable one-percent Linux font-metric diffs uploaded  |
+| CI-shaped pinned container without host IPC (14 tests)                          | OS-632 CI correction | pass                 | standing reviewer independently passed in 14.2 seconds     |
 
 ## Prompt / Goal Alignment
 
