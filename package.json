@@ -6,9 +6,11 @@
   "packageManager": "bun@1.3.14",
   "workspaces": [
     "apps/*",
+    "packages/*",
     "plugins/*"
   ],
   "scripts": {
+    "bb-mate": "bun apps/cli/src/bin.ts",
     "dev": "bun --filter @bb-mate/workbench dev",
     "build": "bun --filter '*' build",
     "check": "bun --filter '*' check",
