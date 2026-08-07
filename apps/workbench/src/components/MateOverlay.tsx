@@ -27,6 +27,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { scenarios } from "@/scenarios";
 import { usePluginInspection } from "@/usePluginInspection";
+import type { PluginInspection } from "@bb-mate/inspection";
 
 const scenarioItems = scenarios.map((scenario) => ({
   label: scenario.name,
@@ -40,16 +41,144 @@ interface MateOverlayProps {
   onScenarioChange: (scenarioId: string) => void;
 }
 
+const actionableStatuses = new Set(["warning", "fail", "unavailable"]);
+
+export function PluginInspectionCard({
+  inspection,
+  error,
+}: {
+  inspection: PluginInspection | null;
+  error: string | null;
+}) {
+  const target = inspection?.target;
+  const harness = inspection?.modes.harness;
+  const live = inspection?.modes.live;
+  const actionableChecks =
+    inspection?.checks.filter((check) =>
+      actionableStatuses.has(check.status),
+    ) ?? [];
+
+  return (
+    <div className="mate-plugin-card" aria-live="polite">
+      <div className="mate-field-heading">
+        <span>Plugin target</span>
+        <span className="mate-plugin-kind">
+          {target?.appEntry ? "frontend" : target ? "headless" : "inspect"}
+        </span>
+      </div>
+      {error ? <p className="mate-plugin-error">{error}</p> : null}
+      {target ? (
+        <>
+          <div className="mate-plugin-title-row">
+            <strong>{target.displayName}</strong>
+            <span>v{target.version}</span>
+          </div>
+          <code className="mate-plugin-path">{target.displayPath}</code>
+          <div className="mate-plugin-statuses">
+            <span data-outcome={inspection?.outcome}>
+              Report {inspection?.outcome}
+            </span>
+            <span data-available={Boolean(harness?.available)}>
+              Harness {harness?.available ? "ready" : "unavailable"}
+            </span>
+            <span>
+              Source {inspection?.provenance?.kind ?? "not installed"}
+            </span>
+            <span data-available={Boolean(live?.available)}>
+              Live
+              {live?.available ? ` ${live.status ?? "ready"}` : " unavailable"}
+            </span>
+          </div>
+          {target.appEntry && harness?.publication === "missing" ? (
+            <a
+              className="mate-live-link"
+              href={pluginSdkPublicationIssue}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Track SDK publication
+              <ExternalLink aria-hidden="true" />
+            </a>
+          ) : null}
+          {live?.url ? (
+            <a
+              className="mate-live-link"
+              href={live.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open native bb
+              <ExternalLink aria-hidden="true" />
+            </a>
+          ) : (
+            <p className="mate-plugin-detail">{live?.detail}</p>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="mate-plugin-detail">
+            {inspection?.message ?? "Inspecting workspace plugins…"}
+          </p>
+          {inspection && inspection.candidates.length > 0 ? (
+            <ul className="mate-plugin-candidates">
+              {inspection.candidates.map((candidate) => (
+                <li key={candidate}>
+                  <code>{candidate}</code>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      )}
+      {inspection ? (
+        <>
+          <div className="mate-report" aria-label="Compatibility report">
+            <div className="mate-report-heading">
+              <span>Compatibility</span>
+              <span>{actionableChecks.length} actions</span>
+            </div>
+            {actionableChecks.length > 0 ? (
+              <ul>
+                {actionableChecks.map((check) => (
+                  <li key={check.id} data-status={check.status}>
+                    <strong>{check.summary}</strong>
+                    {check.detail ? <span>{check.detail}</span> : null}
+                    {check.nextAction ? (
+                      <span>Next: {check.nextAction}</span>
+                    ) : null}
+                    {check.nativeError ? (
+                      <code>
+                        Native exit {check.nativeError.exitCode}:{" "}
+                        {check.nativeError.stderr ||
+                          check.nativeError.stdout ||
+                          "no output"}
+                      </code>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>All compatibility checks passed.</p>
+            )}
+          </div>
+          <p className="mate-trust-disclosure">
+            Full-trust local code. {inspection.trust.detail}
+          </p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function MateOverlay({
   scenarioId,
   onScenarioChange,
 }: MateOverlayProps) {
   const [open, setOpen] = useState(true);
   const { inspection, error } = usePluginInspection();
-  const target = inspection?.target;
   const harness = inspection?.modes.harness;
-  const live = inspection?.modes.live;
-  const build = target?.build.app ?? target?.build.server;
+  const build =
+    inspection?.target?.build.app ?? inspection?.target?.build.server;
 
   return (
     <div className="dark mate-overlay">
@@ -127,65 +256,7 @@ export function MateOverlay({
             </p>
           </div>
 
-          <div className="mate-plugin-card" aria-live="polite">
-            <div className="mate-field-heading">
-              <span>Plugin target</span>
-              <span className="mate-plugin-kind">
-                {target?.appEntry
-                  ? "frontend"
-                  : target
-                    ? "headless"
-                    : "inspect"}
-              </span>
-            </div>
-            {error ? (
-              <p className="mate-plugin-error">{error}</p>
-            ) : target ? (
-              <>
-                <div className="mate-plugin-title-row">
-                  <strong>{target.displayName}</strong>
-                  <span>v{target.version}</span>
-                </div>
-                <code className="mate-plugin-path">{target.displayPath}</code>
-                <div className="mate-plugin-statuses">
-                  <span data-available={Boolean(harness?.available)}>
-                    Harness {harness?.available ? "ready" : "unavailable"}
-                  </span>
-                  <span data-available={Boolean(live?.available)}>
-                    Live {live?.status ?? "not linked"}
-                  </span>
-                </div>
-                {target.appEntry && harness && !harness.available ? (
-                  <a
-                    className="mate-live-link"
-                    href={pluginSdkPublicationIssue}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Track SDK publication
-                    <ExternalLink aria-hidden="true" />
-                  </a>
-                ) : null}
-                {live?.url ? (
-                  <a
-                    className="mate-live-link"
-                    href={live.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open native bb
-                    <ExternalLink aria-hidden="true" />
-                  </a>
-                ) : (
-                  <p className="mate-plugin-detail">{live?.detail}</p>
-                )}
-              </>
-            ) : (
-              <p className="mate-plugin-detail">
-                {inspection?.message ?? "Inspecting workspace plugins…"}
-              </p>
-            )}
-          </div>
+          <PluginInspectionCard inspection={inspection} error={error} />
 
           <div className="mate-field">
             <label className="mate-field-heading" htmlFor="mate-scenario">

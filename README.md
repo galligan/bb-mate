@@ -18,6 +18,7 @@ bun run build
 
 ```text
 apps/workbench/  Browser-only design studio with deterministic fake bb state
+packages/        Shared authoring contracts with at least two real consumers
 plugins/         Independently installable and publishable bb plugin packages
 docs/            Architecture, product notes, and release guidance
 .agents/plans/   Durable implementation plans and decision records
@@ -64,6 +65,25 @@ JSON output. Discovery never imports or executes plugin code. Harness mode only
 activates when the selected plugin can resolve the officially distributed
 `@bb/plugin-sdk/testing` and `@bb/plugin-sdk/testing/app` packages; BB Mate does
 not copy them or import them from `../bb`.
+
+## Compatibility report
+
+The workbench exposes the selected plugin's passive report at
+`/bb-mate-plugin.json`. The JSON contract is versioned with `schemaVersion: 1`
+and keeps Fixture, Harness, and Live capability claims separate. It checks
+manifests, native build metadata, declared bb and SDK engine ranges, native
+plugin state, npm SDK publication, and native provenance. Registry publication
+is reported separately from selected-plugin dependency resolution, so a missing
+official package is not confused with a broken local install. Actionable checks
+include a concrete next action; failed native checks retain their command, exit
+status, and bounded stdout/stderr evidence.
+
+The same shared package provides a concise terminal formatter for the bb-mate
+CLI. Reports always disclose that plugins are full-trust local code. They only
+summarize settings, capabilities, services, skills, themes, and entrypoints
+that supported metadata actually exposes; general filesystem, network, secret,
+and external-service access remains explicitly undisclosed rather than inferred
+from source.
 
 Current upstream dependencies:
 

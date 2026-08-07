@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { CommandResult, HarnessResolution } from "@bb-mate/inspection";
 import { inspectPlugin } from "../plugin-inspection-server";
 
 const temporaryRoots: string[] = [];
@@ -24,8 +25,26 @@ async function writePlugin(
     path.join(pluginRoot, "package.json"),
     `${JSON.stringify(packageJson, null, 2)}\n`,
   );
+  const bb = packageJson.bb as Record<string, unknown> | undefined;
+  for (const entry of [bb?.server, bb?.app]) {
+    if (typeof entry !== "string" || !entry.startsWith("./")) continue;
+    const entryPath = path.resolve(pluginRoot, entry);
+    if (!entryPath.startsWith(`${pluginRoot}${path.sep}`)) continue;
+    await fs.mkdir(path.dirname(entryPath), { recursive: true });
+    await fs.writeFile(entryPath, "export {};\n");
+  }
   return pluginRoot;
 }
+
+function command(stdout: string): CommandResult {
+  return { stdout, stderr: "", exitCode: 0 };
+}
+
+const unavailableHarness: HarnessResolution = {
+  state: "package-not-declared",
+  version: null,
+  detail: "The selected plugin does not declare @bb/plugin-sdk.",
+};
 
 afterEach(async () => {
   await Promise.all(
@@ -42,33 +61,57 @@ describe("plugin inspection", () => {
       name: "bb-plugin-linear",
       version: "0.1.0",
       engines: { bb: ">=0.35", bbPluginSdk: "^0.4.1" },
-      bb: { name: "Linear", server: "./server.ts" },
+      bb: {
+        name: "Linear",
+        description: "Linear test plugin",
+        branding: { icon: "Check" },
+        server: "./server.ts",
+      },
     });
     await fs.mkdir(path.join(pluginRoot, "dist"));
     await fs.writeFile(
       path.join(pluginRoot, "dist", "server.meta.json"),
       JSON.stringify({
+        artifactFormatVersion: 1,
+        sdkMajor: 0,
         sdkVersion: "0.4.1",
         pluginId: "linear",
         pluginVersion: "0.1.0",
-        builtWith: { bbVersion: "0.35.1" },
+        builtWith: {
+          bbVersion: "0.35.1",
+          pluginSdkVersion: "0.4.1",
+        },
       }),
     );
 
     const inspection = await inspectPlugin({
       workspaceRoot,
-      resolveHarness: async () => null,
+      resolveHarness: async () => unavailableHarness,
       runBb: async (args) => {
-        if (args[0] === "--version") return "0.35.1";
+        if (args[0] === "--version") return command("0.35.1");
         if (args[0] === "connect") {
-          return JSON.stringify({ url: "https://example.getbb.app" });
+          return command(JSON.stringify({ url: "https://example.getbb.app" }));
         }
         if (args[1] === "source") {
-          return JSON.stringify({ resolved: `path:${pluginRoot}` });
+          return command(
+            JSON.stringify({
+              requested: `path:${pluginRoot}`,
+              resolved: `path:${pluginRoot}`,
+            }),
+          );
         }
-        return JSON.stringify({
-          plugins: [{ id: "linear", rootDir: pluginRoot, status: "running" }],
-        });
+        return command(
+          JSON.stringify({
+            plugins: [
+              {
+                id: "linear",
+                rootDir: pluginRoot,
+                source: `path:${pluginRoot}`,
+                status: "running",
+              },
+            ],
+          }),
+        );
       },
     });
 
@@ -87,6 +130,8 @@ describe("plugin inspection", () => {
       version: "1.2.3",
       bb: {
         name: "Notes",
+        description: "Notes test plugin",
+        branding: { icon: "Notebook" },
         server: "./server.ts",
         app: "./app.tsx",
       },
@@ -95,18 +140,50 @@ describe("plugin inspection", () => {
     const inspection = await inspectPlugin({
       workspaceRoot,
       targetPath: pluginRoot,
-      resolveHarness: async () => "0.4.1",
+      resolveHarness: async () => ({
+        state: "available",
+        version: "0.4.1",
+        detail: "The official selected-plugin testing subpaths resolved.",
+      }),
+      resolveSdkPublication: async () => ({
+        state: "published",
+        version: "0.4.1",
+        detail: "Published on npm.",
+      }),
       runBb: async (args) => {
-        if (args[0] === "--version") return "0.35.1";
+        if (args[0] === "--version") return command("0.35.1");
         if (args[0] === "connect") {
-          return JSON.stringify({ url: "https://example.getbb.app" });
+          return command(JSON.stringify({ url: "https://example.getbb.app" }));
         }
         if (args[1] === "source") {
-          return JSON.stringify({ resolved: `path:${pluginRoot}` });
+          return command(
+            JSON.stringify({
+              requested: `path:${pluginRoot}`,
+              resolved: `path:${pluginRoot}`,
+            }),
+          );
         }
-        return JSON.stringify({
-          plugins: [{ id: "notes", rootDir: pluginRoot, status: "running" }],
-        });
+        return command(
+          JSON.stringify({
+            plugins: [
+              {
+                id: "notes",
+                rootDir: pluginRoot,
+                source: `path:${pluginRoot}`,
+                status: "running",
+                enabled: true,
+                app: {
+                  hasApp: true,
+                  bundle: {
+                    compatible: true,
+                    sdkMajor: 0,
+                    sdkVersion: "0.4.1",
+                  },
+                },
+              },
+            ],
+          }),
+        );
       },
     });
 
@@ -127,11 +204,24 @@ describe("plugin inspection", () => {
     const workspaceRoot = await createWorkspace();
     await writePlugin(workspaceRoot, "one", {
       name: "bb-plugin-one",
-      bb: { server: "./server.ts" },
+      version: "1.0.0",
+      bb: {
+        name: "One",
+        description: "One test plugin",
+        branding: { icon: "Puzzle" },
+        server: "./server.ts",
+      },
     });
     await writePlugin(workspaceRoot, "two", {
       name: "bb-plugin-two",
-      bb: { app: "./app.tsx" },
+      version: "1.0.0",
+      bb: {
+        name: "Two",
+        description: "Two test plugin",
+        branding: { icon: "Puzzle" },
+        server: "./server.ts",
+        app: "./app.tsx",
+      },
     });
 
     const inspection = await inspectPlugin({ workspaceRoot });
