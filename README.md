@@ -14,6 +14,25 @@ bun run test
 bun run build
 ```
 
+## Surface story lab
+
+The workbench includes one linkable Ladle story group for every public plugin
+surface in the catalog. It runs entirely from deterministic fixtures: no bb
+server, Connect process, plugin entrypoint, sibling checkout, or secret is
+required.
+
+```sh
+bun --filter @bb-mate/workbench stories
+bun --filter @bb-mate/workbench stories:build
+bun --filter @bb-mate/workbench stories:preview
+```
+
+The static lab is emitted under `apps/workbench/dist/ladle`. Plugin-owned
+components are rendered as fixture approximations; bb-owned actions show their
+declared inputs and expected outcomes without imitating host chrome. Content
+script stories remain inert and never mount plugin code. Live bb remains the
+visual authority.
+
 ## Native plugin loop
 
 The private `bb-mate` CLI keeps fixture work and compatibility guidance in this

@@ -22,6 +22,13 @@ model from `experimental_useSidebarThreads` and related public action hooks,
 while bb continues to render the actual New Thread, search, navigation, and
 footer chrome around the slot.
 
+The Ladle surface lab is a second browser entrypoint over the same catalog and
+fixtures. Each catalog surface has one static story group with bounded fixture,
+theme, and viewport controls. Plugin components render through local fixture
+adapters; host-rendered actions are input/outcome contracts, and content-script
+lifecycle stories are inert. Ladle uses its own Vite configuration so ordinary
+story discovery cannot activate the workbench inspection middleware.
+
 ## Upstream alignment
 
 Exactness has two levels:

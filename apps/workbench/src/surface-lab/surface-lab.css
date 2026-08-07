@@ -1,0 +1,494 @@
+.surface-lab-theme {
+  min-height: 100dvh;
+  color: var(--foreground);
+  background: var(--background);
+}
+
+.surface-lab-theme.dark {
+  --background: oklch(18% 0.012 260);
+  --foreground: oklch(94% 0.006 260);
+  --card: oklch(22% 0.014 260);
+  --border: oklch(35% 0.018 260);
+  --muted-foreground: oklch(72% 0.018 260);
+  --bb-sidebar: oklch(20% 0.012 260);
+  --bb-sidebar-foreground: oklch(94% 0.006 260);
+  --bb-sidebar-accent: oklch(27% 0.018 260);
+  --bb-sidebar-border: oklch(32% 0.018 260);
+  --bb-subtle-foreground: oklch(70% 0.018 260);
+  color-scheme: dark;
+}
+
+.surface-lab-frame {
+  width: min(100%, 1120px);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 36px;
+}
+
+.surface-lab-frame[data-viewport="compact"] {
+  width: min(100%, 440px);
+  padding: 20px;
+}
+
+.surface-lab-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.surface-lab-heading > div:last-child {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.surface-lab-heading span,
+.surface-demo-eyebrow,
+.surface-lab-host-contract > span,
+.surface-lab-lifecycle > span,
+.surface-demo-homepage > span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.surface-lab-heading h1 {
+  margin: 8px 0 5px;
+  font-size: clamp(24px, 4vw, 38px);
+  font-weight: 590;
+  letter-spacing: -0.035em;
+}
+
+.surface-lab-heading p,
+.surface-demo-card p,
+.surface-lab-host-contract p,
+.surface-lab-mixed-contract p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.surface-lab-heading code,
+.surface-lab-heading strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}
+
+.surface-lab-heading code {
+  color: var(--muted-foreground);
+}
+
+.surface-lab-heading strong {
+  color: oklch(62% 0.13 150);
+}
+
+.surface-lab-canvas {
+  display: grid;
+  gap: 20px;
+  padding-top: 28px;
+}
+
+.surface-lab-preview {
+  display: grid;
+  min-height: 320px;
+  place-items: center;
+  padding: clamp(20px, 6vw, 64px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      circle at 15% 0%,
+      oklch(72% 0.08 255 / 0.1),
+      transparent 34%
+    ),
+    var(--card);
+}
+
+.surface-demo-card,
+.surface-lab-host-contract,
+.surface-lab-lifecycle,
+.surface-demo-file,
+.surface-demo-composer {
+  width: min(100%, 580px);
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--background);
+  box-shadow: 0 14px 36px oklch(0% 0 0 / 0.08);
+}
+
+.surface-demo-card h2,
+.surface-lab-host-contract h2,
+.surface-lab-lifecycle h2 {
+  margin: 7px 0 7px;
+  font-size: 20px;
+  font-weight: 590;
+  letter-spacing: -0.02em;
+}
+
+.surface-demo-homepage {
+  padding: 34px;
+}
+
+.surface-demo-setting,
+.surface-demo-inline,
+.surface-demo-composer footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.surface-demo-setting h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.surface-demo-setting [role="switch"] {
+  display: flex;
+  width: 36px;
+  padding: 3px;
+  justify-content: flex-start;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.surface-demo-setting [role="switch"][aria-checked="true"] {
+  justify-content: flex-end;
+  background: oklch(62% 0.13 150);
+}
+
+.surface-demo-setting [role="switch"] i {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: white;
+}
+
+.surface-demo-card nav,
+.surface-demo-options,
+.surface-lab-interaction-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.surface-demo-card nav a,
+.surface-demo-options span,
+.surface-lab-interaction-buttons button,
+.surface-demo-inline button,
+.surface-demo-composer button {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: inherit;
+  background: var(--card);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.surface-demo-meter {
+  height: 8px;
+  margin: 22px 0 10px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--border);
+}
+
+.surface-demo-meter span {
+  display: block;
+  height: 100%;
+  background: oklch(62% 0.13 150);
+}
+
+.surface-demo-panel small {
+  color: var(--muted-foreground);
+}
+
+.surface-demo-inline {
+  width: min(100%, 440px);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+}
+
+.surface-demo-file {
+  padding: 0;
+  overflow: hidden;
+}
+
+.surface-demo-file header {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.surface-demo-file pre {
+  min-height: 180px;
+  margin: 0;
+  padding: 22px;
+  overflow: auto;
+  color: inherit;
+  font:
+    12px/1.7 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.surface-demo-artifact code,
+.surface-lab-interactions output {
+  display: block;
+  margin-top: 16px;
+  color: var(--muted-foreground);
+  font:
+    11px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.surface-demo-composer > div {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  background: var(--card);
+  font-size: 11px;
+}
+
+.surface-demo-composer > p {
+  min-height: 54px;
+  margin: 18px 0;
+}
+
+.surface-demo-composer footer span {
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.surface-lab-contract {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+}
+
+.surface-lab-contract > div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.surface-lab-contract dt,
+.surface-lab-contract dd {
+  font-size: 11px;
+}
+
+.surface-lab-contract dt {
+  color: var(--muted-foreground);
+}
+
+.surface-lab-contract dd {
+  margin: 0;
+}
+
+.surface-lab-host-evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.surface-lab-host-evidence > div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.surface-lab-host-evidence strong {
+  font-size: 11px;
+}
+
+.surface-lab-host-evidence pre,
+.surface-lab-host-evidence li {
+  color: var(--muted-foreground);
+  font:
+    10px/1.5 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+
+.surface-lab-host-evidence pre {
+  max-height: 150px;
+  margin: 10px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.surface-lab-host-evidence ul {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.surface-lab-lifecycle ol {
+  display: grid;
+  gap: 8px;
+  margin: 22px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.surface-lab-lifecycle li {
+  padding: 10px 12px;
+  border-left: 3px solid var(--border);
+  background: var(--card);
+  font-size: 12px;
+}
+
+.surface-lab-lifecycle li[data-active="true"] {
+  border-left-color: oklch(62% 0.13 150);
+}
+
+.surface-lab-mixed-contract,
+.surface-lab-interactions {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.surface-lab-interactions > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.surface-lab-interactions strong,
+.surface-lab-interactions span,
+.surface-lab-interactions p {
+  font-size: 11px;
+}
+
+.surface-lab-interactions span,
+.surface-lab-interactions p {
+  color: var(--muted-foreground);
+}
+
+.surface-lab-interaction-buttons button {
+  cursor: pointer;
+}
+
+.surface-lab-thread-controls {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 10;
+  width: min(430px, calc(100vw - 36px));
+  border-radius: 12px;
+  background: color-mix(in oklch, var(--background) 92%, transparent);
+  box-shadow: 0 18px 48px oklch(0% 0 0 / 0.16);
+  backdrop-filter: blur(16px);
+}
+
+.surface-lab-thread-fidelity {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: var(--background);
+  font-size: 10px;
+}
+
+.surface-lab-thread-fidelity span {
+  color: var(--muted-foreground);
+}
+
+.surface-lab-thread-controls .surface-lab-interactions {
+  border-radius: 0 0 12px 12px;
+}
+
+.surface-lab-thread-story[data-viewport="compact"] {
+  position: relative;
+  width: min(390px, 100%);
+  min-height: 844px;
+  margin: 20px auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px oklch(0% 0 0 / 0.14);
+}
+
+.surface-lab-thread-story[data-viewport="compact"] .bb-app {
+  height: 844px;
+}
+
+.surface-lab-thread-story[data-viewport="compact"] .bb-sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  transform: translateX(-100%);
+}
+
+.surface-lab-thread-story[data-viewport="compact"] .bb-sidebar.mobile-open {
+  transform: translateX(0);
+}
+
+.surface-lab-thread-story[data-viewport="compact"] .bb-mobile-sidebar-button {
+  display: grid;
+}
+
+.surface-lab-thread-story[data-viewport="compact"] .bb-compose-wrap {
+  width: calc(100% - 32px);
+}
+
+.surface-lab-thread-story[data-viewport="compact"]
+  .surface-lab-thread-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: calc(100% - 24px);
+}
+
+.surface-lab-thread-story[data-viewport="compact"]
+  .surface-lab-thread-fidelity {
+  flex-direction: column;
+}
+
+.surface-lab-thread-story[data-viewport="compact"] .surface-lab-interactions {
+  max-height: 320px;
+  overflow: auto;
+}
+
+@media (max-width: 640px) {
+  .surface-lab-heading {
+    flex-direction: column;
+  }
+
+  .surface-lab-heading > div:last-child {
+    justify-items: start;
+  }
+
+  .surface-lab-preview {
+    min-height: 260px;
+    padding: 16px;
+  }
+
+  .surface-lab-host-evidence {
+    grid-template-columns: 1fr;
+  }
+}

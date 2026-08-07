@@ -8,8 +8,15 @@ export const homepageFixtures = [
     state: { projectId: "project-bb-mate", content: "project-overview" },
     interactions: [{ id: "render", outcome: "plugin-section-visible" }],
   },
+  {
+    id: "no-project",
+    name: "No project",
+    description: "Homepage content without an active project.",
+    state: { projectId: null, content: "empty-project" },
+    interactions: [{ id: "render", outcome: "plugin-section-visible" }],
+  },
 ] as const satisfies readonly ProductFixture<
-  { projectId: string | null; content: "project-overview" },
+  { projectId: string | null; content: "project-overview" | "empty-project" },
   { id: "render"; outcome: "plugin-section-visible" }
 >[];
 
@@ -27,6 +34,13 @@ export const settingsFixtures = [
       },
     ],
   },
+  {
+    id: "saving",
+    name: "Saving",
+    description: "Plugin settings while a deterministic update is pending.",
+    state: { values: { enabled: false }, isSaving: true },
+    interactions: [],
+  },
 ] as const satisfies readonly ProductFixture<
   { values: { enabled: boolean }; isSaving: boolean },
   { id: "toggle-enabled"; enabled: boolean; outcome: "plugin-updates-setting" }
@@ -42,6 +56,19 @@ export const navigationPanelFixtures = [
       {
         id: "navigate",
         subPath: "work/today.md",
+        outcome: "host-updates-route",
+      },
+    ],
+  },
+  {
+    id: "root-route",
+    name: "Root route",
+    description: "Plugin route content at its registered root.",
+    state: { subPath: "", title: "Workspace" },
+    interactions: [
+      {
+        id: "navigate",
+        subPath: "work/ideas.md",
         outcome: "host-updates-route",
       },
     ],
@@ -69,6 +96,18 @@ export const threadPanelFixtures = [
         outcome: "host-opens-plugin-panel",
       },
     ],
+  },
+  {
+    id: "panel-open",
+    name: "Panel open",
+    description: "Plugin panel content after the host launcher activates.",
+    state: {
+      threadId: "thread-release",
+      params: { view: "summary" },
+      launcher: "available",
+      panel: "open",
+    },
+    interactions: [],
   },
 ] as const satisfies readonly ProductFixture<
   {
@@ -105,6 +144,23 @@ export const pendingInteractionFixtures = [
       { id: "cancel", outcome: "host-cancels-request" },
     ],
   },
+  {
+    id: "submitted",
+    name: "Submitted",
+    description: "The deterministic request after the host accepts a value.",
+    state: {
+      interaction: {
+        id: "interaction-release",
+        threadId: "thread-release",
+        title: "Choose a release channel",
+        payload: { channels: ["alpha", "beta"] },
+        createdAt: 1786111200000,
+        expiresAt: null,
+      },
+      status: "submitted",
+    },
+    interactions: [],
+  },
 ] as const satisfies readonly ProductFixture<
   {
     interaction: {
@@ -115,7 +171,7 @@ export const pendingInteractionFixtures = [
       createdAt: number;
       expiresAt: number | null;
     };
-    status: "pending";
+    status: "pending" | "submitted";
   },
   | { id: "submit"; value: string; outcome: "host-submits-value" }
   | { id: "cancel"; outcome: "host-cancels-request" }
@@ -132,8 +188,15 @@ export const sidebarFooterFixtures = [
       { id: "open-settings", outcome: "host-opens-plugin-settings" },
     ],
   },
+  {
+    id: "unavailable",
+    name: "Unavailable",
+    description: "The host action is declared but currently unavailable.",
+    state: { availability: "unavailable", settings: "closed" },
+    interactions: [],
+  },
 ] as const satisfies readonly ProductFixture<
-  { availability: "enabled"; settings: "closed" },
+  { availability: "enabled" | "unavailable"; settings: "closed" },
   {
     id: "activate" | "open-settings";
     outcome: "host-invokes-plugin-callback" | "host-opens-plugin-settings";
@@ -149,6 +212,18 @@ export const threadHeaderFixtures = [
       threadId: "thread-release",
       projectId: "project-bb-mate",
       isCompactViewport: false,
+      controlState: "idle",
+    },
+    interactions: [{ id: "activate", outcome: "plugin-control-activates" }],
+  },
+  {
+    id: "compact-thread",
+    name: "Compact thread",
+    description: "The same control contract at a compact viewport.",
+    state: {
+      threadId: "thread-release",
+      projectId: "project-bb-mate",
+      isCompactViewport: true,
       controlState: "idle",
     },
     interactions: [{ id: "activate", outcome: "plugin-control-activates" }],
@@ -177,6 +252,22 @@ export const fileOpenerFixtures = [
         projectId: "project-bb-mate",
       },
       mode: "preview",
+    },
+    interactions: [{ id: "save", outcome: "plugin-requests-save" }],
+  },
+  {
+    id: "workspace-edit",
+    name: "Workspace edit",
+    description: "The same deterministic path in plugin edit mode.",
+    state: {
+      path: "docs/architecture.md",
+      source: {
+        kind: "workspace",
+        threadId: "thread-release",
+        environmentId: "environment-local",
+        projectId: "project-bb-mate",
+      },
+      mode: "edit",
     },
     interactions: [{ id: "save", outcome: "plugin-requests-save" }],
   },
@@ -218,6 +309,23 @@ export const messageDirectiveFixtures = [
       },
     ],
   },
+  {
+    id: "artifact-unavailable",
+    name: "Artifact unavailable",
+    description: "Directive content when the workspace path is unavailable.",
+    state: {
+      attributes: { file: "artifacts/missing.html" },
+      source: '::artifact{file="artifacts/missing.html"}',
+      message: {
+        id: "message-report",
+        threadId: "thread-release",
+        turnId: "turn-report",
+        projectId: "project-bb-mate",
+      },
+      workspaceFileAvailable: false,
+    },
+    interactions: [],
+  },
 ] as const satisfies readonly ProductFixture<
   {
     attributes: Readonly<Record<string, string>>;
@@ -258,6 +366,23 @@ export const messageActionFixtures = [
       { id: "activate", outcome: "host-invokes-plugin-callback" },
       { id: "open-panel", outcome: "host-opens-plugin-panel" },
     ],
+  },
+  {
+    id: "no-selection",
+    name: "No selection",
+    description: "Host action input without selected message text.",
+    state: {
+      threadId: "thread-release",
+      message: {
+        id: "message-report",
+        threadId: "thread-release",
+        role: "assistant",
+        text: "The release summary is ready.",
+        sourceSeqEnd: 42,
+      },
+      panel: "closed",
+    },
+    interactions: [{ id: "activate", outcome: "host-invokes-plugin-callback" }],
   },
 ] as const satisfies readonly ProductFixture<
   {
@@ -306,6 +431,26 @@ export const composerFixtures = [
       { id: "match-rich-text", outcome: "plugin-returns-paint-ranges" },
     ],
   },
+  {
+    id: "compact-running",
+    name: "Compact running",
+    description: "Compact composer inputs while a run is active.",
+    state: {
+      view: {
+        scope: { kind: "new-thread", projectId: "project-bb-mate" },
+        layout: "compact",
+        draft: { text: "", isEmpty: true, attachmentCount: 0 },
+        run: { isRunning: true, isSubmitting: false },
+      },
+      registrations: {
+        actions: ["summarize"],
+        banners: ["release-context"],
+        plusMenu: ["attach-context"],
+        richTextEffects: ["mention-release"],
+      },
+    },
+    interactions: [],
+  },
 ] as const satisfies readonly ProductFixture<
   {
     view: {
@@ -338,6 +483,21 @@ export const contentScriptFixtures = [
       pluginId: "example",
       generation: 0,
       aborted: false,
+    },
+    interactions: [
+      { id: "describe-lifecycle", outcome: "no-code-mounted" },
+      { id: "replace-generation", outcome: "host-aborts-then-disposes" },
+    ],
+  },
+  {
+    id: "replacement-contract",
+    name: "Replacement contract",
+    description: "An inert description of abort-before-dispose ordering.",
+    state: {
+      phase: "unmounted",
+      pluginId: "example",
+      generation: 1,
+      aborted: true,
     },
     interactions: [
       { id: "describe-lifecycle", outcome: "no-code-mounted" },

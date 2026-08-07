@@ -1,0 +1,22 @@
+@import "../src/styles.css";
+
+@source "../src";
+@source ".";
+
+html,
+body,
+#root {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+
+.ladle-main {
+  padding: 0;
+}
+
+.ladle-story-root {
+  min-height: 100dvh;
+  color: var(--foreground);
+  background: var(--background);
+}
