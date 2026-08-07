@@ -19,3 +19,26 @@ jobs:
       - run: bun run check
       - run: bun run test
       - run: bun run build
+
+  visual:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Bun setup prerequisite
+        run: apt-get update && apt-get install --yes --no-install-recommends unzip
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run visual:test
+      - name: Upload visual regression artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report
+          path: |
+            apps/workbench/dist/playwright/report
+            apps/workbench/dist/playwright/results
+          if-no-files-found: ignore

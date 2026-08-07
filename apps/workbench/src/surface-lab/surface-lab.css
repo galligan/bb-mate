@@ -1,10 +1,12 @@
 .surface-lab-theme {
+  --surface-fixture-label: oklch(44% 0.12 150);
   min-height: 100dvh;
   color: var(--foreground);
   background: var(--background);
 }
 
 .surface-lab-theme.dark {
+  --surface-fixture-label: oklch(76% 0.12 150);
   --background: oklch(18% 0.012 260);
   --foreground: oklch(94% 0.006 260);
   --card: oklch(22% 0.014 260);
@@ -85,7 +87,7 @@
 }
 
 .surface-lab-heading strong {
-  color: oklch(62% 0.13 150);
+  color: var(--surface-fixture-label);
 }
 
 .surface-lab-canvas {

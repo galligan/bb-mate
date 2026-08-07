@@ -27,7 +27,7 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Verification blockers: none in preparation.
 - Tracker blockers: dependency graph recorded in the goal.
 - Authority blockers: public license/release and OS-638 merge remain owner gates.
-- Next action: implement OS-634 and preserve execution evidence here.
+- Next action: implement OS-632 and preserve execution evidence here.
 
 ## Goal Amendments
 
@@ -94,6 +94,48 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: All round-one and round-two findings are fixed and regression-tested; the branch is ready for the hosted PR loop.
 - Next: Commit, create draft PR, verify hosted CI/review threads, mark ready, merge, verify main CI, and move OS-634 to Done.
 - Blockers: None.
+
+2026-08-07 - OS-634 landed and OS-632 started
+- Changed: Merged OS-634 in PR #8 and reconciled the GitButler workspace before opening the Linear-recommended OS-632 branch and plan.
+- Verified: PR #8 CI and GitGuardian green with no review threads; merge commit f14afd3; post-merge main CI 31222879164 green; clean lane-free workspace; OS-634 Linear Done.
+- Result: The completed launcher is now the stable baseline for the bounded visual/accessibility matrix.
+- Next: Add deterministic Playwright/axe coverage, checked-in baselines, measured geometry, and the explicit live-comparison/update workflow for OS-632.
+- Blockers: None.
+
+2026-08-07 - OS-632 implementation aggregate-green
+- Changed: Added exact Playwright/axe dependencies, a bounded four-fixture plus open/minimized Mate screenshot matrix, platform baselines, zero-violation axe gates, keyboard/focus and reduced-motion checks, measured sidebar/composer geometry, explicit update commands, CI diff artifacts, and a manual Live-bb comparison runbook. Corrected the composer placeholder contrast defect axe exposed.
+- Verified: 14/14 browser tests pass on macOS and in `mcr.microsoft.com/playwright:v1.62.1-noble`; Linux baselines generated and re-verified without update mode. A temporary 22% pixel drift failed with named actual/expected/diff artifacts, then was removed. Final aggregate check/167 unit tests/build/14 browser tests/diff check is green; documentation formatting is rerun after each evidence update.
+- Result: Normal PR CI now catches bounded visual drift and serious accessibility regressions without authenticated host access, while exactness claims remain Fixture-only.
+- Next: Run standing and fresh targeted reviews, fix findings, then complete the hosted PR/merge/main-CI/Linear loop.
+- Blockers: None.
+
+2026-08-07 - OS-632 round-one review corrections
+- Changed: Expanded zero-violation axe coverage to every visual state and the portaled Mate panel; traversed multiple labeled/focus-visible controls; corrected dark shell, fixture label, and Mate status contrast; replaced ambient inspection screenshots with a deterministic component harness; and disabled local server reuse.
+- Verified: All eight accessibility tests pass after reproducing the reviewer contrast and portal gaps. A deliberate occupied-port probe now fails immediately instead of accepting a stale server. Updated macOS and Linux baselines both pass the complete 14-test matrix.
+- Result: All three standing and all three targeted round-one P1/P2 findings have implemented regression paths; round-two review remains.
+- Next: Final aggregate and Linux no-update proof, then standing and targeted round-two review.
+- Blockers: None.
+
+2026-08-07 - OS-632 local and review gates complete
+- Changed: Closed all six round-one findings with explicit regression paths and sent the final snapshot through standing and fresh targeted round-two review.
+- Verified: Both reviewers scored the final tree 5/5 with no open P0-P3 findings. The pinned Linux container passed 14/14 without updating baselines; macOS and independent reviewer browser runs passed 14/14; the final format/check/167-unit-test/build/browser/diff aggregate is green. The standing reviewer independently confirmed a valid occupied port is rejected before an isolated 14/14 rerun.
+- Result: OS-632 is ready for its draft PR and hosted CI/review loop.
+- Next: Commit, create the draft PR, verify hosted checks and threads, mark ready, merge, verify main CI, and move OS-632 to Done.
+- Blockers: None.
+
+2026-08-07 - OS-632 hosted runner drift exposed
+- Changed: Split the visual gate into the exact pinned Playwright container already used for Linux baseline generation; the ordinary verification job retains the full workspace install, checks, tests, and build.
+- Verified: Hosted run 31225221650 passed every nonvisual gate, then correctly failed three screenshots at stable one-percent text-layout differences on the ambient GitHub runner. Uploaded expected/actual/diff artifacts showed Linux font-metric wrapping rather than a product-state change; the same baselines pass 14/14 in the pinned image.
+- Result: CI now compares against the environment that owns the Linux baselines instead of weakening pixel tolerances or accepting runner-specific reflows.
+- Next: Amend the PR snapshot, rerun both hosted jobs, and recheck reviews before readiness.
+- Blockers: None.
+
+2026-08-07 - OS-632 pinned-container bootstrap correction
+- Changed: Added the sole missing image prerequisite, `unzip`, before the pinned Bun setup action in the visual container and documented that boundary.
+- Verified: Hosted run 31225715348 reached the new visual job and failed before install/tests only because setup-bun could not find `unzip`; the parallel normal verification job continued independently. Workflow behavior remained fail-closed and uploaded no misleading screenshot diffs.
+- Result: The next hosted run can execute the already-reviewed exact-image test shape without changing visual acceptance thresholds or baselines.
+- Next: Lint, review, commit, push, and follow both hosted jobs to green.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -127,6 +169,14 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 1         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-1.json`  | 2/5        | changes requested | 5          | Stale links, Live truth, redaction, test gaps        |
 | 2         | OS-634 standing    | `tmp/reviews/standing/os-634-round-2.json` | 5/5        | clean             | 0          | All findings plus final handoff/privacy recheck      |
 | 2         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-2.json`  | 5/5        | clean             | 0          | Acceptance matrix and full final-tree verification   |
+| 1         | OS-632 standing    | `tmp/reviews/standing/os-632-round-1.json` | 2/5        | changes requested | 3          | Ambient Mate state, portal/traversal, stale servers  |
+| 1         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-1.json`  | 2/5        | changes requested | 3          | Matrix/panel axe gaps and shallow traversal          |
+| 2         | OS-632 standing    | `tmp/reviews/standing/os-632-round-2.json` | 5/5        | clean             | 0          | Determinism, portal/traversal, stale-port recheck    |
+| 2         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-2.json`  | 5/5        | clean             | 0          | Full matrix, portal, and keyboard recheck            |
+| 3         | OS-632 standing    | `tmp/reviews/standing/os-632-round-3.json` | 5/5        | clean             | 0          | Pinned CI container and 14-test shape recheck        |
+| 3         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-3.json`  | 5/5        | clean             | 0          | Coverage, script boundary, and workflow recheck      |
+| 4         | OS-632 standing    | `tmp/reviews/standing/os-632-round-4.json` | 5/5        | clean             | 0          | Fresh-image unzip prerequisite proof                 |
+| 4         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-4.json`  | 5/5        | clean             | 0          | Minimal bootstrap and unchanged-policy recheck       |
 
 ## Verification Log
 
@@ -149,6 +199,15 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | `bun --filter @bb-mate/workbench check && bun --filter @bb-mate/workbench test` | OS-634 corrections   | pass                 | 53 tests; 518 assertions across 12 files                   |
 | `bun run format:check && bun run check && bun run test && bun run build`        | OS-634 candidate     | pass                 | 167 tests; all compatibility and build gates green         |
 | Local workbench browser smoke                                                   | OS-634 runtime       | pass                 | stale recovery, history, Live truth, redaction, focus      |
+| macOS Playwright/axe matrix (14 tests)                                          | OS-632 browser       | pass                 | four fixture states, Mate open/FAB, a11y, geometry         |
+| Pinned Playwright 1.62.1 Linux container (14 tests)                             | OS-632 CI parity     | pass                 | checked-in Linux baselines re-verified without updates     |
+| Intentional 22% pixel drift                                                     | OS-632 diff proof    | expected failure     | named actual, expected, diff, trace artifacts emitted      |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-632 candidate     | pass                 | 167 unit tests; workbench/plugin/Ladle builds green        |
+| Standing isolated Playwright/axe rerun (14 tests)                               | OS-632 final review  | pass                 | 15.6 seconds after occupied-port refusal proof             |
+| Hosted CI 31225221650                                                           | OS-632 runner probe  | expected failure     | three stable one-percent Linux font-metric diffs uploaded  |
+| CI-shaped pinned container without host IPC (14 tests)                          | OS-632 CI correction | pass                 | standing reviewer independently passed in 14.2 seconds     |
+| Hosted CI 31225715348                                                           | OS-632 split jobs    | expected failure     | verify green; visual stopped before tests on missing unzip |
+| Fresh pinned-image unzip probe                                                  | OS-632 bootstrap     | pass                 | exact apt step installed `/usr/bin/unzip`                  |
 
 ## Prompt / Goal Alignment
 
@@ -166,8 +225,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-627 | In Progress | Parent epic                                            |
 | OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green   |
 | OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green   |
-| OS-634 | In Progress | Full Mate overlay launcher                             |
-| OS-632 | Todo        | Blocked by OS-633; sequenced after OS-634              |
+| OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green   |
+| OS-632 | In Progress | Deterministic visual and accessibility regression      |
 | OS-635 | Todo        | Blocked by OS-633                                      |
 | OS-636 | Todo        | Unblocked; finalized after artifact commands stabilize |
 | OS-637 | Todo        | Blocked by OS-632/634/635/636                          |

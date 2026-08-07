@@ -53,7 +53,7 @@ or state-changing handoff explicit.
 - [x] Cover mounted interactions, history, async races, responsive layout, and
       focus behavior with tests and browser QA.
 - [x] Complete aggregate gates and standing/fresh-targeted review at 5/5.
-- [ ] Land the draft PR, verify main CI, and move OS-634 to Done.
+- [x] Land PR #8, verify main CI 31222879164, and move OS-634 to Done.
 
 ## Completion
 
