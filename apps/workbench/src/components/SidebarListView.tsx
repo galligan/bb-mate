@@ -18,6 +18,24 @@ interface SidebarListViewProps {
  * bb supplies the real surrounding sidebar.
  */
 export function SidebarListView({ model }: SidebarListViewProps) {
+  if (model.status === "loading") {
+    return (
+      <div className="bb-sidebar-scroll">
+        <section
+          className="bb-project-section"
+          aria-labelledby="thread-list-status"
+        >
+          <div className="bb-section-heading">
+            <span id="thread-list-status">Threads</span>
+          </div>
+          <div className="bb-empty-row" role="status">
+            Loading threads…
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="bb-sidebar-scroll">
       <section className="bb-project-section" aria-labelledby="project-name">
