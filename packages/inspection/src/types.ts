@@ -35,6 +35,30 @@ export interface NativeBuildMetadata {
   pluginSdkVersion: string | null;
 }
 
+export interface NativeConnectShare {
+  hostId?: string;
+  hostName: string;
+  port: number;
+  url: string;
+  available?: boolean;
+  unavailableReason?: string | null;
+}
+
+export interface NativeConnectHost {
+  id: string;
+  name: string;
+  isServer: boolean;
+}
+
+export interface NativeConnectStatus {
+  state: string | null;
+  paired: boolean | null;
+  baseUrl: string | null;
+  shares: NativeConnectShare[];
+  localHost?: NativeConnectHost;
+  localShares?: NativeConnectShare[];
+}
+
 export interface PluginTarget {
   rootPath: string;
   displayPath: string;
@@ -128,6 +152,7 @@ export interface PluginInspection {
   native: {
     bbVersion: string | null;
     connectUrl: string | null;
+    connect?: NativeConnectStatus;
   };
   provenance: ProvenanceReport | null;
   trust: TrustReport;

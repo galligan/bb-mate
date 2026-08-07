@@ -90,7 +90,21 @@ describe("plugin inspection", () => {
       runBb: async (args) => {
         if (args[0] === "--version") return command("0.35.1");
         if (args[0] === "connect") {
-          return command(JSON.stringify({ url: "https://example.getbb.app" }));
+          return command(
+            JSON.stringify(
+              args[1] === "shares"
+                ? {
+                    host: { id: "host_test", name: "test", isServer: true },
+                    shares: [],
+                  }
+                : {
+                    state: "connected",
+                    paired: true,
+                    url: "https://example.getbb.app",
+                    shares: [],
+                  },
+            ),
+          );
         }
         if (args[1] === "source") {
           return command(
@@ -153,7 +167,21 @@ describe("plugin inspection", () => {
       runBb: async (args) => {
         if (args[0] === "--version") return command("0.35.1");
         if (args[0] === "connect") {
-          return command(JSON.stringify({ url: "https://example.getbb.app" }));
+          return command(
+            JSON.stringify(
+              args[1] === "shares"
+                ? {
+                    host: { id: "host_test", name: "test", isServer: true },
+                    shares: [],
+                  }
+                : {
+                    state: "connected",
+                    paired: true,
+                    url: "https://example.getbb.app",
+                    shares: [],
+                  },
+            ),
+          );
         }
         if (args[1] === "source") {
           return command(

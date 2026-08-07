@@ -10,6 +10,7 @@
     "plugins/*"
   ],
   "scripts": {
+    "bb-mate": "bun apps/cli/src/bin.ts",
     "dev": "bun --filter @bb-mate/workbench dev",
     "build": "bun --filter '*' build",
     "check": "bun --filter '*' check",

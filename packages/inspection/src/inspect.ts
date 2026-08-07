@@ -433,6 +433,7 @@ export async function inspectPlugin(
     native: {
       bbVersion: native.bbVersion,
       connectUrl: native.connectUrl,
+      ...(native.connect ? { connect: native.connect } : {}),
     },
     provenance,
     trust,

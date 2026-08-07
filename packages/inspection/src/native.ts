@@ -6,6 +6,9 @@ import type {
   CommandResult,
   InspectPluginOptions,
   InspectionCheck,
+  NativeConnectHost,
+  NativeConnectShare,
+  NativeConnectStatus,
   NativeErrorEvidence,
 } from "./types.ts";
 
@@ -26,6 +29,7 @@ export interface InstalledPlugin {
 export interface NativeState {
   bbVersion: string | null;
   connectUrl: string | null;
+  connect: NativeConnectStatus | null;
   installed: InstalledPlugin | null;
   source: Record<string, unknown> | null;
   checks: InspectionCheck[];
@@ -41,6 +45,98 @@ function recordOrNull(value: unknown): Record<string, unknown> | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function connectShares(value: unknown): NativeConnectShare[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Connect shares must be an array when present.");
+  }
+  return value.map((entry: unknown, index: number) => {
+    const share = recordOrNull(entry);
+    const hostId = stringOrNull(share?.hostId);
+    const hostName = stringOrNull(share?.hostName);
+    const port = share?.port;
+    if (typeof share?.url !== "string") {
+      throw new Error(`Connect shares.${index}.url must be a string.`);
+    }
+    const url = share.url.trim();
+    const unavailableReason =
+      share.unavailableReason === undefined
+        ? null
+        : stringOrNull(share.unavailableReason);
+    if (
+      !hostName ||
+      (share?.hostId !== undefined && !hostId) ||
+      !Number.isInteger(port) ||
+      (port as number) < 1 ||
+      (port as number) > 65_535 ||
+      (!url && !unavailableReason) ||
+      (url && unavailableReason)
+    ) {
+      throw new Error(
+        `Connect shares.${index} must provide hostName, port, and either url or unavailableReason.`,
+      );
+    }
+    return {
+      ...(hostId ? { hostId } : {}),
+      hostName,
+      port: port as number,
+      url,
+      available: Boolean(url),
+      unavailableReason,
+    };
+  });
+}
+
+function connectStatus(value: Record<string, unknown>): NativeConnectStatus {
+  if (value.state !== undefined && stringOrNull(value.state) === null) {
+    throw new Error("Connect state must be a non-empty string when present.");
+  }
+  if (value.paired !== undefined && typeof value.paired !== "boolean") {
+    throw new Error("Connect paired must be a boolean when present.");
+  }
+  if (
+    value.url !== undefined &&
+    value.url !== null &&
+    stringOrNull(value.url) === null
+  ) {
+    throw new Error("Connect URL must be a non-empty string when present.");
+  }
+
+  return {
+    state: stringOrNull(value.state),
+    paired: typeof value.paired === "boolean" ? value.paired : null,
+    baseUrl: stringOrNull(value.url),
+    shares: connectShares(value.shares ?? []),
+  };
+}
+
+function localConnectShares(value: Record<string, unknown>): {
+  host: NativeConnectHost;
+  shares: NativeConnectShare[];
+} {
+  const rawHost = recordOrNull(value.host);
+  const id = stringOrNull(rawHost?.id);
+  const name = stringOrNull(rawHost?.name);
+  const isServer = rawHost?.isServer;
+  if (!id || !name || typeof isServer !== "boolean") {
+    throw new Error("Connect local host must provide id, name, and isServer.");
+  }
+  if (!Array.isArray(value.shares)) {
+    throw new Error("Connect local shares must be an array.");
+  }
+  for (const [index, entry] of value.shares.entries()) {
+    const share = recordOrNull(entry);
+    if (stringOrNull(share?.hostId) !== id) {
+      throw new Error(
+        `Connect local shares.${index}.hostId does not match the host.`,
+      );
+    }
+  }
+  return {
+    host: { id, name, isServer },
+    shares: connectShares(value.shares),
+  };
 }
 
 async function defaultRunBb(args: readonly string[]): Promise<CommandResult> {
@@ -124,11 +220,14 @@ export async function readNativeState(
   const versionArgs = ["--version"] as const;
   const listArgs = ["plugin", "list", "--json"] as const;
   const connectArgs = ["connect", "status", "--json"] as const;
-  const [versionResult, listResult, connectResult] = await Promise.all([
-    runSafely(runner, versionArgs),
-    runSafely(runner, listArgs),
-    runSafely(runner, connectArgs),
-  ]);
+  const connectSharesArgs = ["connect", "shares", "--json"] as const;
+  const [versionResult, listResult, connectResult, connectSharesResult] =
+    await Promise.all([
+      runSafely(runner, versionArgs),
+      runSafely(runner, listArgs),
+      runSafely(runner, connectArgs),
+      runSafely(runner, connectSharesArgs),
+    ]);
   const checks: InspectionCheck[] = [];
 
   let bbVersion: string | null = null;
@@ -246,6 +345,7 @@ export async function readNativeState(
   }
 
   let connectUrl: string | null = null;
+  let connect: NativeConnectStatus | null = null;
   if (connectResult.exitCode !== 0) {
     checks.push({
       id: "native.connect",
@@ -258,7 +358,8 @@ export async function readNativeState(
     try {
       const parsed = recordOrNull(JSON.parse(connectResult.stdout));
       if (!parsed) throw new Error("Expected a JSON object.");
-      connectUrl = stringOrNull(parsed.url);
+      connect = connectStatus(parsed);
+      connectUrl = connect.baseUrl;
       checks.push({
         id: "native.connect",
         status: "pass",
@@ -278,5 +379,35 @@ export async function readNativeState(
     }
   }
 
-  return { bbVersion, connectUrl, installed, source, checks };
+  if (connectSharesResult.exitCode !== 0) {
+    checks.push({
+      id: "native.connect-shares",
+      status: "info",
+      summary: "Local-host Connect shares are unavailable.",
+      nativeError: nativeEvidence(connectSharesArgs, connectSharesResult),
+    });
+  } else {
+    try {
+      const parsed = recordOrNull(JSON.parse(connectSharesResult.stdout));
+      if (!parsed) throw new Error("Expected a JSON object.");
+      const local = localConnectShares(parsed);
+      if (connect) {
+        connect = {
+          ...connect,
+          localHost: local.host,
+          localShares: local.shares,
+        };
+      }
+    } catch (error) {
+      checks.push({
+        id: "native.connect-shares",
+        status: "info",
+        summary: "Local-host Connect shares JSON is malformed.",
+        detail: error instanceof Error ? error.message : String(error),
+        nativeError: nativeEvidence(connectSharesArgs, connectSharesResult),
+      });
+    }
+  }
+
+  return { bbVersion, connectUrl, connect, installed, source, checks };
 }

@@ -14,6 +14,34 @@ bun run test
 bun run build
 ```
 
+## Native plugin loop
+
+The private `bb-mate` CLI keeps fixture work and compatibility guidance in this
+repository while delegating build, install, reload, and live runtime behavior
+to native bb:
+
+```sh
+bun run bb-mate --help
+bun run bb-mate inspect plugins/linear
+bun run bb-mate check plugins/linear
+bun run bb-mate plugins/linear
+bun run bb-mate live plugins/linear
+```
+
+The bare form aliases `dev` and launches the existing workbench on
+`127.0.0.1:5173` with strict port binding. `--host` and `--port` can make that
+fixture server reachable beyond localhost; BB Mate only reports the existing
+Connect status and never exposes or pairs Connect on your behalf. A remote URL
+is shown only when `bb connect status --json` already reports a share for the
+selected workbench port on the invoking host; the account's base Connect URL
+and another host's same-port share are not workbench exposure.
+
+`check` runs the compatibility report, delegates exactly `bb plugin build .`,
+then refreshes the report. `live` delegates `bb plugin dev .` only when native
+bb reports the selected real path as installed. Otherwise it prints the exact
+path-install command without running it. Set `BB_CLI` to select a specific bb
+executable; an executable on `PATH` is used as the fallback.
+
 ## Layout
 
 ```text
@@ -77,6 +105,12 @@ is reported separately from selected-plugin dependency resolution, so a missing
 official package is not confused with a broken local install. Actionable checks
 include a concrete next action; failed native checks retain their command, exit
 status, and bounded stdout/stderr evidence.
+
+Passive Connect metadata keeps the account base URL and global status shares
+separate from the invoking host returned by `bb connect shares --json`. Typed
+shares retain `hostId`, `hostName`, `port`, `url`, availability, and any
+unavailable reason. Consumers can report whether a specific local port is
+already usable without calling expose, unexpose, or pair.
 
 The same shared package provides a concise terminal formatter for the bb-mate
 CLI. Reports always disclose that plugins are full-trust local code. They only

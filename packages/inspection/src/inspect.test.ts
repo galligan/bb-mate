@@ -82,7 +82,21 @@ function nativeRunner(pluginRoot: string) {
   return async (args: readonly string[]): Promise<CommandResult> => {
     if (args[0] === "--version") return command("0.35.1\n");
     if (args[0] === "connect") {
-      return command(JSON.stringify({ url: "https://example.getbb.app" }));
+      return command(
+        JSON.stringify(
+          args[1] === "shares"
+            ? {
+                host: { id: "host_test", name: "test", isServer: true },
+                shares: [],
+              }
+            : {
+                state: "connected",
+                paired: true,
+                url: "https://example.getbb.app",
+                shares: [],
+              },
+        ),
+      );
     }
     if (args[1] === "source") {
       return command(
