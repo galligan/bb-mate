@@ -24,8 +24,10 @@
   },
   "include": [
     ".ladle",
+    "e2e",
     "src",
     "scripts",
+    "playwright.config.ts",
     "plugin-inspection-server.ts",
     "vite.config.ts"
   ]

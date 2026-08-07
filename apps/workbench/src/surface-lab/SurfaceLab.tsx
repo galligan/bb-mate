@@ -391,7 +391,7 @@ export function SurfaceLab({
         data-fixture-id={selection.fixture.id}
         data-viewport={viewport}
       >
-        <BbShell selection={selection} />
+        <BbShell selection={selection} theme={theme} />
         <div className="surface-lab-thread-controls">
           <div className="surface-lab-thread-fidelity">
             <strong>{selection.fixture.name}</strong>

@@ -33,6 +33,12 @@ declared inputs and expected outcomes without imitating host chrome. Content
 script stories remain inert and never mount plugin code. Live bb remains the
 visual authority.
 
+The bounded [visual regression and accessibility workflow](docs/visual-regression.md)
+runs deterministic Chromium screenshots, axe, keyboard/focus, reduced-motion,
+and measured sidebar/composer checks. Baseline updates use the explicit
+`bun run visual:update` command; Fixture screenshots never replace manual Live
+bb comparison.
+
 ## Native plugin loop
 
 The private `bb-mate` CLI keeps fixture work and compatibility guidance in this

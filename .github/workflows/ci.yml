@@ -19,3 +19,15 @@ jobs:
       - run: bun run check
       - run: bun run test
       - run: bun run build
+      - run: bunx playwright install --with-deps chromium
+        working-directory: apps/workbench
+      - run: bun run visual:test
+      - name: Upload visual regression artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-report
+          path: |
+            apps/workbench/dist/playwright/report
+            apps/workbench/dist/playwright/results
+          if-no-files-found: ignore

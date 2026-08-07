@@ -16,6 +16,8 @@
     "check": "bun --filter '*' check && tsc -p scripts/tsconfig.json && bun run compatibility:check",
     "compatibility:check": "bun scripts/compatibility-check.ts",
     "test": "bun --filter '*' test && bun test scripts",
+    "visual:test": "bun --filter @bb-mate/workbench visual:test",
+    "visual:update": "bun --filter @bb-mate/workbench visual:update",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },
