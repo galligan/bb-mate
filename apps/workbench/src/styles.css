@@ -419,6 +419,65 @@ button {
   padding: 0 14px;
 }
 
+.bb-surface-contract {
+  width: min(calc(100% - 80px), 720px);
+  align-self: flex-start;
+  margin-top: 70px;
+  padding: 28px;
+  border: 1px solid color-mix(in oklch, var(--foreground) 12%, white);
+  border-radius: 14px;
+  background: var(--background);
+  box-shadow: 0 1px 5px oklch(0% 0 0 / 0.05);
+}
+
+.bb-surface-contract > span {
+  color: var(--bb-subtle-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bb-surface-contract h1 {
+  margin: 8px 0 6px;
+  font-size: 22px;
+  font-weight: 560;
+}
+
+.bb-surface-contract p {
+  margin: 0;
+  color: var(--bb-subtle-foreground);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.bb-surface-contract dl {
+  display: grid;
+  gap: 10px;
+  margin: 24px 0;
+}
+
+.bb-surface-contract dl > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.bb-surface-contract dt {
+  color: var(--bb-subtle-foreground);
+  font-size: 12px;
+}
+
+.bb-surface-contract dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.bb-surface-contract-note {
+  padding-top: 16px;
+  border-top: 1px solid var(--bb-sidebar-border);
+}
+
 /* Mate is intentionally a separate, always-dark dev instrument. These
    semantic overrides keep its shadcn/Base UI primitives independent of bb. */
 .mate-overlay,
