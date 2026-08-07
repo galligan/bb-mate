@@ -61,6 +61,33 @@ Do not proxy, scrape, or iframe an authenticated bb Connect session to simulate
 live state. Even when a client can be displayed, cross-origin content is not a
 state/action contract and cannot safely drive plugin behavior.
 
+### Plugin inspection
+
+The workbench dev server may inspect one explicit plugin directory. Inspection
+is data-only: it reads the ordinary package manifest, native
+`dist/server.meta.json` and `dist/app.meta.json`, and the JSON output of native
+bb commands. It must not evaluate the plugin entrypoint, mount a content script,
+or introduce a BB Mate manifest.
+
+The official SDK frontend collector currently exposes these registration
+groups, which define the eventual surface inventory:
+
+- homepage and settings sections
+- navigation panels and thread-panel actions
+- composer customizations and pending interactions
+- sidebar footer actions and thread-list replacements
+- thread-header actions and file openers
+- message directives and message actions
+- trusted content scripts
+
+Component registrations can receive deterministic behavior through
+`loadPluginApp` and `renderSlot`. Content scripts require the explicit
+`mountPluginContentScripts` lifecycle and must never be mounted during ordinary
+discovery. Host-rendered actions still require live bb for their real chrome.
+
+Until `@bb/plugin-sdk` is publicly installable, the workbench exposes Harness as
+an unavailable capability. The sibling checkout is not a fallback dependency.
+
 ## Plugins
 
 Each directory under `plugins/` is an independent package. A plugin owns its manifest, backend entry, optional frontend entry, tests, assets, and version. Local development uses path installation so bb loads the package in place.

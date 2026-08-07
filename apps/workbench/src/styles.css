@@ -621,6 +621,107 @@ button {
   font-family: "Geist Variable", Geist, sans-serif;
 }
 
+.mate-plugin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: oklch(13% 0.01 260 / 0.58);
+}
+
+.mate-plugin-kind {
+  color: oklch(64% 0.035 255);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.mate-plugin-title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mate-plugin-title-row strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 570;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mate-plugin-title-row span,
+.mate-plugin-path,
+.mate-plugin-statuses,
+.mate-live-link {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+}
+
+.mate-plugin-title-row span,
+.mate-plugin-path {
+  color: oklch(57% 0.018 260);
+}
+
+.mate-plugin-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mate-plugin-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mate-plugin-statuses span {
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: oklch(61% 0.018 260);
+  background: oklch(24% 0.014 260);
+}
+
+.mate-plugin-statuses span[data-available="true"] {
+  color: oklch(78% 0.09 158);
+  background: oklch(26% 0.04 158 / 0.7);
+}
+
+.mate-plugin-detail,
+.mate-plugin-error {
+  margin: 0;
+  color: oklch(62% 0.015 260);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.mate-plugin-error {
+  color: oklch(74% 0.1 30);
+}
+
+.mate-live-link {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 4px;
+  color: oklch(76% 0.1 255);
+  text-decoration: none;
+}
+
+.mate-live-link:hover {
+  color: oklch(86% 0.08 255);
+}
+
+.mate-live-link svg {
+  width: 11px;
+  height: 11px;
+}
+
 .mate-runtime-line {
   display: flex;
   align-items: center;

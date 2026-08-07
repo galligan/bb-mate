@@ -9,6 +9,9 @@ BB Mate is the private workspace for browser-based bb interface experiments and 
 - `../bb` is the canonical upstream source checkout. Read it for contracts and patterns, but do not edit it unless the task explicitly targets upstream bb.
 - Do not import bb application internals into the workbench or plugins. Plugins use the public `@bb/plugin-sdk` contracts.
 - Plugin frontend bundles run inside bb. Keep reusable visual components host-neutral and put bb-specific hooks behind thin adapters.
+- Native bb owns scaffolding, declaration refresh, build, install, dev/reload, and live runtime. BB Mate may orchestrate those commands and explain their output, but must not reimplement them.
+- Use the official `@bb/plugin-sdk/testing` and `@bb/plugin-sdk/testing/app` harnesses for contract tests. If they are unavailable from the selected plugin's installed dependencies, report Harness mode as unavailable; do not copy the harness or import it from `../bb`.
+- Keep preview claims explicit: Fixture is a deterministic approximation, Harness validates public behavior, and Live bb is the visual authority.
 
 ## Working style
 
