@@ -1,0 +1,132 @@
+{
+  "$schema": "./bb-target.schema.json",
+  "schemaVersion": 1,
+  "acceptedDecision": null,
+  "target": {
+    "bbVersion": "0.35.1",
+    "pluginSdkVersion": "0.4.1",
+    "pluginSdkEngineRange": "^0.4.1",
+    "upstreamRef": "desktop-v0.35.1"
+  },
+  "publicArtifacts": {
+    "appPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/apps/app/package.json",
+    "pluginSdkPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/packages/plugin-sdk/package.json",
+    "themeCssUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/apps/app/src/components/ui/theme.css",
+    "registry": {
+      "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/packages/plugin-registry/r/index.json",
+      "sha256": "ae65ae093d2435540e445707529337598cfa9f3446a8535986affef0939fe1e2",
+      "items": [
+        "accordion",
+        "alert",
+        "alert-dialog",
+        "aspect-ratio",
+        "avatar",
+        "badge",
+        "breadcrumb",
+        "button",
+        "calendar",
+        "card",
+        "carousel",
+        "chart",
+        "checkbox",
+        "coarse-pointer-sizing",
+        "collapsible",
+        "command",
+        "context-menu",
+        "dialog",
+        "drawer",
+        "dropdown-menu",
+        "form",
+        "hover-card",
+        "icon",
+        "input",
+        "input-otp",
+        "label",
+        "menu-item-hover",
+        "menubar",
+        "motion",
+        "navigation-menu",
+        "overlay-trigger",
+        "pagination",
+        "popover",
+        "portal-scope",
+        "progress",
+        "radio-group",
+        "resizable",
+        "responsive-overlay",
+        "scroll-area",
+        "select",
+        "separator",
+        "sheet",
+        "skeleton",
+        "slider",
+        "switch",
+        "table",
+        "tabs",
+        "textarea",
+        "toggle",
+        "toggle-group",
+        "tooltip",
+        "use-browser-dimming-modal",
+        "use-compact-viewport",
+        "use-media-query",
+        "use-pointer-coarse",
+        "utils"
+      ]
+    }
+  },
+  "dependencies": [
+    {
+      "id": "hugeicons-core",
+      "package": "@hugeicons/core-free-icons",
+      "localRange": "^4.1.3",
+      "upstreamRange": "^4.1.3"
+    },
+    {
+      "id": "hugeicons-react",
+      "package": "@hugeicons/react",
+      "localRange": "^1.1.6",
+      "upstreamRange": "^1.1.6"
+    },
+    {
+      "id": "inter",
+      "package": "@fontsource-variable/inter",
+      "localRange": "^5.3.0",
+      "upstreamRange": "^5.2.8"
+    }
+  ],
+  "measuredTokens": [
+    {
+      "name": "--bb-sidebar-width",
+      "localValue": "320px",
+      "source": "manual-live-measurement"
+    },
+    {
+      "name": "--bb-sidebar-row-height",
+      "localValue": "1.75rem",
+      "upstreamValue": "1.75rem",
+      "source": "public-theme-css"
+    },
+    {
+      "name": "--bb-sidebar-row-height-coarse",
+      "localValue": "2.5rem",
+      "upstreamValue": "2.5rem",
+      "source": "public-theme-css"
+    }
+  ],
+  "registrationPaths": [
+    "slots.homepageSection",
+    "slots.settingsSection",
+    "slots.navPanel",
+    "slots.threadPanelAction",
+    "slots.pendingInteraction",
+    "slots.sidebarFooterAction",
+    "slots.experimental_threadList",
+    "slots.experimental_threadHeaderAction",
+    "slots.fileOpener",
+    "slots.messageDirective",
+    "slots.messageAction",
+    "composer.customize",
+    "contentScripts.register"
+  ]
+}

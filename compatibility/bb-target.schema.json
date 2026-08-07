@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bb-mate.local/compatibility/bb-target.schema.json",
+  "title": "BB Mate compatibility target",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "acceptedDecision",
+    "target",
+    "publicArtifacts",
+    "dependencies",
+    "measuredTokens",
+    "registrationPaths"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "acceptedDecision": {
+      "type": ["string", "null"],
+      "pattern": "^compatibility/decisions/[A-Za-z0-9._-]+\\.md$"
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "bbVersion",
+        "pluginSdkVersion",
+        "pluginSdkEngineRange",
+        "upstreamRef"
+      ]
+    },
+    "publicArtifacts": {
+      "type": "object",
+      "required": [
+        "appPackageUrl",
+        "pluginSdkPackageUrl",
+        "themeCssUrl",
+        "registry"
+      ]
+    },
+    "dependencies": { "type": "array", "minItems": 1 },
+    "measuredTokens": { "type": "array", "minItems": 1 },
+    "registrationPaths": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

@@ -119,6 +119,12 @@ that supported metadata actually exposes; general filesystem, network, secret,
 and external-service access remains explicitly undisclosed rather than inferred
 from source.
 
+The broader native/version target is recorded in
+`compatibility/bb-target.json`. Run `bun run compatibility:check` for an
+actionable human report or add `--json` for the machine report. The manual live
+verification and update workflow is documented in
+[`docs/compatibility-target.md`](docs/compatibility-target.md).
+
 Current upstream dependencies:
 
 - [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) tracks the missing
