@@ -6,6 +6,8 @@ export interface SidebarThreadModel {
   id: string;
   title: string;
   detail: string;
+  environment: string;
+  branch: string;
   state: ThreadState;
   isPinned: boolean;
   isUnread: boolean;
@@ -114,6 +116,8 @@ export const threadListFixtures = [
           id: "patch",
           title: "@Patch [primary]",
           detail: "Coordinating the board",
+          environment: "local macOS",
+          branch: "main",
           state: "running",
           isPinned: true,
           isUnread: false,
@@ -123,6 +127,8 @@ export const threadListFixtures = [
           id: "rez",
           title: "@Rez [plugin build]",
           detail: "Waiting for review",
+          environment: "local macOS",
+          branch: "os-633/ladle",
           state: "waiting",
           isPinned: false,
           isUnread: true,
@@ -132,6 +138,8 @@ export const threadListFixtures = [
           id: "index",
           title: "@Index [research]",
           detail: "Idle 12m",
+          environment: "research",
+          branch: "main",
           state: "idle",
           isPinned: false,
           isUnread: false,
@@ -215,6 +223,8 @@ export const threadListFixtures = [
           id: "worktree",
           title: "bb-mate",
           detail: "2 branches · 4 changed files",
+          environment: "GitButler workspace",
+          branch: "os-633/ladle",
           state: "running",
           isPinned: false,
           isUnread: true,
@@ -224,6 +234,8 @@ export const threadListFixtures = [
           id: "upstream",
           title: "get-bb/bb",
           detail: "main · clean",
+          environment: "read-only sibling",
+          branch: "main",
           state: "idle",
           isPinned: false,
           isUnread: false,
@@ -262,6 +274,8 @@ export const threadListFixtures = [
           id: "notes",
           title: "Sidebar notes",
           detail: "Idle 1h",
+          environment: "local macOS",
+          branch: "main",
           state: "idle",
           isPinned: false,
           isUnread: false,

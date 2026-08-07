@@ -27,7 +27,7 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Verification blockers: none in preparation.
 - Tracker blockers: dependency graph recorded in the goal.
 - Authority blockers: public license/release and OS-638 merge remain owner gates.
-- Next action: start OS-629 and preserve execution evidence here.
+- Next action: implement OS-633 and preserve execution evidence here.
 
 ## Goal Amendments
 
@@ -52,6 +52,20 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: Standing and targeted round-two reviews are clean at 5/5 after five P1/P2 findings were regression-tested and fixed.
 - Next: Commit OS-629, open its draft PR, and follow hosted CI/review through merge.
 - Blockers: Hosted CI and review state remain pending.
+
+2026-08-07 - OS-633 implementation browser-green
+- Changed: Added a pinned, isolated Ladle lab with 13 static surface groups, bounded fixture/theme/viewport controls, catalog-backed fixture adapters, edge states, documentation, and completeness tests.
+- Verified: 5 focused tests across every fixture; Ladle static build and 13-entry `meta.json`; browser navigation, linkable fixture controls, host-action contract rendering, and realistic thread-list replacement.
+- Result: The lab runs without bb, Connect, plugin execution, sibling imports, secrets, or inspection middleware; content-script fixtures remain unmounted.
+- Next: Run aggregate gates, standing/targeted review, and the hosted PR loop.
+- Blockers: None.
+
+2026-08-07 - OS-633 correction loop review-clean
+- Changed: Made host-action context/outcomes visible, made compact thread-list controls change the bounded shell, added visible environment/branch context, and expanded the forbidden-dependency guard across the complete story/provider boundary.
+- Verified: 9 focused tests with 294 assertions; standing and targeted final reviews both 5/5; final aggregate format/check/test/build with 135 tests; both workbench and Ladle outputs present with 13 metadata entries.
+- Result: All standing P1/P2 and targeted P1/P2/P3 findings are resolved and regression-tested.
+- Next: Commit OS-633 and complete the hosted PR/merge/main-CI/Linear loop.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -76,6 +90,11 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 1         | OS-629 targeted    | `tmp/reviews/targeted-os629/round-1.json`  | 2/5        | changes requested | 2          | Decision and release-ref coherence                   |
 | 2         | OS-629 standing    | `tmp/reviews/standing/os-629-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                 |
 | 2         | OS-629 targeted    | `tmp/reviews/targeted-os629/round-2.json`  | 5/5        | clean             | 0          | Negative probes and full gate pass                   |
+| 1         | OS-633 standing    | `tmp/reviews/standing/os-633-round-1.json` | 3/5        | changes requested | 2          | Sidebar scenario and viewport gaps                   |
+| 1         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-1.json`  | 3/5        | changes requested | 2          | Host-action evidence and inert viewport              |
+| 2         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-2.json`  | 4/5        | changes requested | 0          | One reasonable P3 isolation-test gap                 |
+| 2         | OS-633 standing    | `tmp/reviews/standing/os-633-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                 |
+| 3         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-3.json`  | 5/5        | clean             | 0          | Full boundary and correction recheck                 |
 
 ## Verification Log
 
@@ -91,6 +110,10 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Sanitized-PATH `bun run compatibility:check`                             | OS-629 clean CI      | pass                 | workspace-pinned bb-app 0.35.1 fallback                    |
 | `bun run compatibility:check`                                            | OS-629 public probes | pass                 | 18 target/version/registry/dependency/token/catalog checks |
 | `bun run format:check && bun run check && bun run test && bun run build` | OS-629               | pass                 | 127 tests and all builds green                             |
+| `bun test apps/workbench/src/surface-lab/surface-lab.test.tsx`           | OS-633 focused       | pass                 | 5 tests; 13 stories and every fixture rendered             |
+| `bun --filter @bb-mate/workbench stories:build`                          | OS-633 static lab    | pass                 | 13-entry metadata and portable static assets               |
+| Local Ladle browser smoke                                                | OS-633 runtime       | pass                 | discovery, controls, host contract, sidebar replacement    |
+| `bun run format:check && bun run check && bun run test && bun run build` | OS-633 final         | pass                 | 135 tests; workbench and 13-story Ladle outputs green      |
 
 ## Prompt / Goal Alignment
 
@@ -106,8 +129,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Item   | State       | Notes                                                  |
 | ------ | ----------- | ------------------------------------------------------ |
 | OS-627 | In Progress | Parent epic                                            |
-| OS-629 | In Progress | Aggregate-green and locally review-clean; PR pending   |
-| OS-633 | Todo        | Unblocked; blocks OS-632/635                           |
+| OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green   |
+| OS-633 | In Progress | Critical-path Ladle surface lab                        |
 | OS-634 | Todo        | Unblocked; sequenced after OS-633                      |
 | OS-632 | Todo        | Blocked by OS-633; sequenced after OS-634              |
 | OS-635 | Todo        | Blocked by OS-633                                      |

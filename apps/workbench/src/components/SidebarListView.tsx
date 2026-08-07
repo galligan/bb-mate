@@ -36,12 +36,22 @@ export function SidebarListView({ model }: SidebarListViewProps) {
     );
   }
 
+  const activeThread = model.threads.find(
+    ({ id }) => id === model.activeThreadId,
+  );
+
   return (
     <div className="bb-sidebar-scroll">
       <section className="bb-project-section" aria-labelledby="project-name">
         <div className="bb-section-heading">
           <span id="project-name">{model.project}</span>
         </div>
+        {activeThread ? (
+          <div className="bb-thread-context" aria-label="Active thread context">
+            <span>{activeThread.environment}</span>
+            <code>{activeThread.branch}</code>
+          </div>
+        ) : null}
         <div className="bb-thread-list">
           {model.threads.map((thread) => (
             <button className="bb-thread-row" key={thread.id} type="button">

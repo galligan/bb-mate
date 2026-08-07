@@ -16,4 +16,19 @@ describe("SidebarListView", () => {
     expect(markup).toContain("Loading threads…");
     expect(markup).not.toContain("No threads");
   });
+
+  test("shows the active environment and branch alongside agent activity", () => {
+    const fixture = threadListFixtures.find(({ id }) => id === "agents");
+
+    expect(fixture).toBeDefined();
+    const markup = renderToStaticMarkup(
+      <SidebarListView model={fixture!.state} />,
+    );
+
+    expect(markup).toContain('aria-label="Active thread context"');
+    expect(markup).toContain("local macOS");
+    expect(markup).toContain("main");
+    expect(markup).toContain("@Patch [primary]");
+    expect(markup).toContain("Running: Coordinating the board");
+  });
 });
