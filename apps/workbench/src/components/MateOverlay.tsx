@@ -25,20 +25,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { scenarios } from "@/scenarios";
+import type { CatalogSelection } from "@/surface-catalog";
+import { surfaceCatalog } from "@/surface-catalog";
 import { usePluginInspection } from "@/usePluginInspection";
 import type { PluginInspection } from "@bb-mate/inspection";
 
-const scenarioItems = scenarios.map((scenario) => ({
-  label: scenario.name,
-  value: scenario.id,
+const surfaceItems = surfaceCatalog.map((surface) => ({
+  label: surface.name,
+  value: surface.id,
 }));
 
 const pluginSdkPublicationIssue = "https://github.com/get-bb/bb/issues/1134";
 
 interface MateOverlayProps {
-  scenarioId: string;
-  onScenarioChange: (scenarioId: string) => void;
+  selection: CatalogSelection;
+  onSurfaceChange: (surfaceId: string) => void;
+  onFixtureChange: (fixtureId: string) => void;
 }
 
 const actionableStatuses = new Set(["warning", "fail", "unavailable"]);
@@ -171,14 +173,19 @@ export function PluginInspectionCard({
 }
 
 export function MateOverlay({
-  scenarioId,
-  onScenarioChange,
+  selection,
+  onSurfaceChange,
+  onFixtureChange,
 }: MateOverlayProps) {
   const [open, setOpen] = useState(true);
   const { inspection, error } = usePluginInspection();
   const harness = inspection?.modes.harness;
   const build =
     inspection?.target?.build.app ?? inspection?.target?.build.server;
+  const fixtureItems = selection.surface.fixtures.map((fixture) => ({
+    label: fixture.name,
+    value: fixture.id,
+  }));
 
   return (
     <div className="dark mate-overlay">
@@ -259,18 +266,18 @@ export function MateOverlay({
           <PluginInspectionCard inspection={inspection} error={error} />
 
           <div className="mate-field">
-            <label className="mate-field-heading" htmlFor="mate-scenario">
-              Scenario
+            <label className="mate-field-heading" htmlFor="mate-surface">
+              Surface
             </label>
             <Select
-              items={scenarioItems}
-              value={scenarioId}
+              items={surfaceItems}
+              value={selection.surface.id}
               onValueChange={(value) => {
-                if (value) onScenarioChange(value);
+                if (value) onSurfaceChange(value);
               }}
             >
-              <SelectTrigger id="mate-scenario" className="mate-select-trigger">
-                <SelectValue placeholder="Choose a scenario" />
+              <SelectTrigger id="mate-surface" className="mate-select-trigger">
+                <SelectValue placeholder="Choose a surface" />
               </SelectTrigger>
               <SelectContent
                 align="end"
@@ -278,7 +285,37 @@ export function MateOverlay({
                 className="dark mate-select-content"
               >
                 <SelectGroup>
-                  {scenarioItems.map((item) => (
+                  {surfaceItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mate-field">
+            <label className="mate-field-heading" htmlFor="mate-fixture">
+              Fixture
+            </label>
+            <Select
+              items={fixtureItems}
+              value={selection.fixture.id}
+              onValueChange={(value) => {
+                if (value) onFixtureChange(value);
+              }}
+            >
+              <SelectTrigger id="mate-fixture" className="mate-select-trigger">
+                <SelectValue placeholder="Choose a fixture" />
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                alignItemWithTrigger={false}
+                className="dark mate-select-content"
+              >
+                <SelectGroup>
+                  {fixtureItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       {item.label}
                     </SelectItem>

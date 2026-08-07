@@ -17,12 +17,54 @@ import {
   ToolboxIcon,
 } from "@hugeicons/core-free-icons";
 import { useState } from "react";
-import type { Scenario } from "@/scenarios";
+import type { CatalogSelection } from "@/surface-catalog";
+import { isThreadListSelection } from "@/surface-catalog";
 import { BbIcon } from "./BbIcon";
 import { SidebarListView } from "./SidebarListView";
 
 interface BbShellProps {
-  scenario: Scenario;
+  selection: CatalogSelection;
+}
+
+function BuiltInThreadListPlaceholder() {
+  return (
+    <div className="bb-sidebar-scroll">
+      <section className="bb-project-section">
+        <div className="bb-section-heading">Built-in thread list</div>
+        <div className="bb-empty-row">Owned and rendered by bb</div>
+      </section>
+    </div>
+  );
+}
+
+function SurfaceContractPreview({ selection }: BbShellProps) {
+  return (
+    <article className="bb-surface-contract">
+      <span>{selection.surface.classification.replaceAll("-", " ")}</span>
+      <h1>{selection.surface.name}</h1>
+      <p>{selection.surface.description}</p>
+      <dl>
+        <div>
+          <dt>Registration</dt>
+          <dd>
+            <code>{selection.surface.registrationPath}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Fixture</dt>
+          <dd>{selection.fixture.name}</dd>
+        </div>
+        <div>
+          <dt>Fidelity</dt>
+          <dd>Deterministic approximation · live bb is visual authority</dd>
+        </div>
+      </dl>
+      <p className="bb-surface-contract-note">
+        This catalog fixture models public inputs and outcomes. It does not
+        reproduce bb-owned host chrome.
+      </p>
+    </article>
+  );
 }
 
 function OpenAiIcon() {
@@ -57,8 +99,11 @@ function SidebarAction({
   );
 }
 
-export function BbShell({ scenario }: BbShellProps) {
+export function BbShell({ selection }: BbShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const threadListSelection = isThreadListSelection(selection)
+    ? selection
+    : null;
 
   return (
     <main className="bb-app" aria-label="BB Mate workbench">
@@ -73,7 +118,7 @@ export function BbShell({ scenario }: BbShellProps) {
       <aside
         id="bb-workbench-sidebar"
         className={`bb-sidebar${mobileSidebarOpen ? " mobile-open" : ""}`}
-        aria-label={`${scenario.name} preview`}
+        aria-label={`${selection.fixture.name} preview`}
       >
         <header className="bb-sidebar-chrome">
           <button
@@ -116,7 +161,12 @@ export function BbShell({ scenario }: BbShellProps) {
           <SidebarAction icon={TimeScheduleIcon} label="Automations" />
         </div>
 
-        <SidebarListView model={scenario} />
+        {threadListSelection?.fixture.state.provider.outcome ===
+        "plugin-list" ? (
+          <SidebarListView model={threadListSelection.fixture.state} />
+        ) : (
+          <BuiltInThreadListPlaceholder />
+        )}
 
         <footer className="bb-sidebar-footer">
           <button
@@ -162,55 +212,59 @@ export function BbShell({ scenario }: BbShellProps) {
           <BbIcon icon={SidebarRightIcon} />
         </button>
 
-        <div className="bb-compose-wrap">
-          <div className="bb-composer">
-            <div className="bb-composer-editor">
-              <p className="bb-placeholder">Ask anything.</p>
+        {threadListSelection ? (
+          <div className="bb-compose-wrap">
+            <div className="bb-composer">
+              <div className="bb-composer-editor">
+                <p className="bb-placeholder">Ask anything.</p>
+              </div>
+              <div className="bb-composer-toolbar">
+                <button
+                  className="bb-compose-icon"
+                  type="button"
+                  aria-label="Prompt actions"
+                >
+                  <BbIcon icon={PlusSignIcon} />
+                </button>
+                <button className="bb-model-button" type="button">
+                  <OpenAiIcon />
+                  <span>5.5 Medium</span>
+                  <BbIcon icon={ArrowDown01Icon} size={14} />
+                </button>
+                <span className="bb-compose-spacer" />
+                <button
+                  className="bb-compose-icon"
+                  type="button"
+                  aria-label="Start voice input"
+                >
+                  <BbIcon icon={Mic02Icon} />
+                </button>
+                <button
+                  className="bb-submit-button"
+                  type="button"
+                  aria-label="Submit"
+                  disabled
+                >
+                  <BbIcon icon={ArrowUp02Icon} />
+                </button>
+              </div>
             </div>
-            <div className="bb-composer-toolbar">
-              <button
-                className="bb-compose-icon"
-                type="button"
-                aria-label="Prompt actions"
-              >
-                <BbIcon icon={PlusSignIcon} />
-              </button>
-              <button className="bb-model-button" type="button">
-                <OpenAiIcon />
-                <span>5.5 Medium</span>
+
+            <div className="bb-compose-options">
+              <button type="button">
+                <BbIcon icon={FolderAddIcon} size={14} />
+                <span>Work in a project</span>
                 <BbIcon icon={ArrowDown01Icon} size={14} />
               </button>
-              <span className="bb-compose-spacer" />
-              <button
-                className="bb-compose-icon"
-                type="button"
-                aria-label="Start voice input"
-              >
-                <BbIcon icon={Mic02Icon} />
-              </button>
-              <button
-                className="bb-submit-button"
-                type="button"
-                aria-label="Submit"
-                disabled
-              >
-                <BbIcon icon={ArrowUp02Icon} />
+              <button type="button">
+                <span>Approve for me</span>
+                <BbIcon icon={ArrowDown01Icon} size={14} />
               </button>
             </div>
           </div>
-
-          <div className="bb-compose-options">
-            <button type="button">
-              <BbIcon icon={FolderAddIcon} size={14} />
-              <span>Work in a project</span>
-              <BbIcon icon={ArrowDown01Icon} size={14} />
-            </button>
-            <button type="button">
-              <span>Approve for me</span>
-              <BbIcon icon={ArrowDown01Icon} size={14} />
-            </button>
-          </div>
-        </div>
+        ) : (
+          <SurfaceContractPreview selection={selection} />
+        )}
       </section>
     </main>
   );

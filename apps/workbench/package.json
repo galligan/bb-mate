@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit",
+    "check:surface-catalog": "bun scripts/plugin-surface-declarations.ts",
     "test": "bun test src"
   },
   "dependencies": {

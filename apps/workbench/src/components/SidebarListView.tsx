@@ -1,4 +1,4 @@
-import type { SidebarListModel, ThreadState } from "@/scenarios";
+import type { SidebarListModel, ThreadState } from "@/thread-list-fixtures";
 import { BubbleChatIcon } from "@hugeicons/core-free-icons";
 import { BbIcon } from "./BbIcon";
 
