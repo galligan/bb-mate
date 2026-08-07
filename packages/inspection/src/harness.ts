@@ -63,33 +63,61 @@ export async function resolveHarness(
   const requireFromPlugin = createRequire(
     path.join(pluginRoot, "package.json"),
   );
-  let appRuntime: string;
+  const resolveRequiredSubpath = (specifier: string) => {
+    try {
+      return { file: requireFromPlugin.resolve(specifier), error: null };
+    } catch (error) {
+      return { file: null, error };
+    }
+  };
+  const frontendHarness = resolveRequiredSubpath("@bb/plugin-sdk/testing/app");
+  const serverHarness = resolveRequiredSubpath("@bb/plugin-sdk/testing");
+  if (frontendHarness.file && serverHarness.file) {
+    return {
+      state: "available",
+      version:
+        (await packageVersionFromResolvedFile(frontendHarness.file)) ??
+        (await packageVersionFromResolvedFile(serverHarness.file)),
+      detail: "The official selected-plugin testing subpaths resolved.",
+    };
+  }
+
+  const resolvedHarness = frontendHarness.file ?? serverHarness.file;
+  if (resolvedHarness) {
+    return {
+      state: "testing-subpath-unavailable",
+      version: await packageVersionFromResolvedFile(resolvedHarness),
+      detail: `@bb/plugin-sdk resolves locally, but both testing subpaths do not: ${[
+        frontendHarness.error,
+        serverHarness.error,
+      ]
+        .filter((error) => error !== null)
+        .map((error) =>
+          error instanceof Error ? error.message : String(error),
+        )
+        .join("; ")}`,
+    };
+  }
+
   try {
-    appRuntime = requireFromPlugin.resolve("@bb/plugin-sdk/app");
+    const sdkRuntime = requireFromPlugin.resolve("@bb/plugin-sdk");
+    return {
+      state: "testing-subpath-unavailable",
+      version: await packageVersionFromResolvedFile(sdkRuntime),
+      detail: `@bb/plugin-sdk resolves locally, but its testing subpaths do not: ${[
+        frontendHarness.error,
+        serverHarness.error,
+      ]
+        .map((error) =>
+          error instanceof Error ? error.message : String(error),
+        )
+        .join("; ")}`,
+    };
   } catch (error) {
     return {
       state: "dependency-unresolved",
       version: null,
       detail: `@bb/plugin-sdk is declared but cannot be resolved locally: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-  try {
-    const frontendHarness = requireFromPlugin.resolve(
-      "@bb/plugin-sdk/testing/app",
-    );
-    requireFromPlugin.resolve("@bb/plugin-sdk/testing");
-    return {
-      state: "available",
-      version:
-        (await packageVersionFromResolvedFile(frontendHarness)) ??
-        (await packageVersionFromResolvedFile(appRuntime)),
-      detail: "The official selected-plugin testing subpaths resolved.",
-    };
-  } catch (error) {
-    return {
-      state: "testing-subpath-unavailable",
-      version: await packageVersionFromResolvedFile(appRuntime),
-      detail: `@bb/plugin-sdk resolves locally, but its testing subpaths do not: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }

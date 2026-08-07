@@ -8,6 +8,8 @@ import {
   type CommandResult,
   type HarnessResolution,
 } from "./index.ts";
+import { resolveHarness } from "./harness.ts";
+import type { PluginPackageJson } from "./manifest.ts";
 
 const temporaryRoots: string[] = [];
 
@@ -131,6 +133,39 @@ afterEach(async () => {
 });
 
 describe("actionable plugin inspection", () => {
+  test("resolves the required harness exports without requiring the app runtime", async () => {
+    const workspaceRoot = await createWorkspace();
+    const packageJson = validPluginPackage("harness", {
+      dependencies: { "@bb/plugin-sdk": "^0.5.0" },
+    }) as PluginPackageJson;
+    const pluginRoot = await writePlugin(workspaceRoot, "harness", packageJson);
+    const sdkRoot = path.join(pluginRoot, "node_modules", "@bb", "plugin-sdk");
+    await fs.mkdir(sdkRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(sdkRoot, "package.json"),
+      `${JSON.stringify({
+        name: "@bb/plugin-sdk",
+        version: "0.5.0",
+        exports: {
+          ".": "./index.js",
+          "./testing": "./testing.js",
+          "./testing/app": "./testing-app.js",
+        },
+      })}\n`,
+    );
+    await Promise.all(
+      ["index.js", "testing.js", "testing-app.js"].map((file) =>
+        fs.writeFile(path.join(sdkRoot, file), "export {};\n"),
+      ),
+    );
+
+    await expect(resolveHarness(pluginRoot, packageJson)).resolves.toEqual({
+      state: "available",
+      version: "0.5.0",
+      detail: "The official selected-plugin testing subpaths resolved.",
+    });
+  });
+
   test("emits a versioned report with compatibility, provenance, and trust facts", async () => {
     const workspaceRoot = await createWorkspace();
     const pluginRoot = await writePlugin(
