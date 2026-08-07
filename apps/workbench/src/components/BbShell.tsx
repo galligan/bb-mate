@@ -19,11 +19,14 @@ import {
 import { useState } from "react";
 import type { CatalogSelection } from "@/surface-catalog";
 import { isThreadListSelection } from "@/surface-catalog";
+import type { PreviewTheme, PreviewViewport } from "@/workbench-state";
 import { BbIcon } from "./BbIcon";
 import { SidebarListView } from "./SidebarListView";
 
 interface BbShellProps {
   selection: CatalogSelection;
+  theme?: PreviewTheme;
+  viewport?: PreviewViewport;
 }
 
 function BuiltInThreadListPlaceholder() {
@@ -99,14 +102,22 @@ function SidebarAction({
   );
 }
 
-export function BbShell({ selection }: BbShellProps) {
+export function BbShell({
+  selection,
+  theme = "light",
+  viewport = "desktop",
+}: BbShellProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const threadListSelection = isThreadListSelection(selection)
     ? selection
     : null;
 
   return (
-    <main className="bb-app" aria-label="BB Mate workbench">
+    <main
+      className={`bb-app bb-theme-${theme}`}
+      data-viewport={viewport}
+      aria-label="BB Mate workbench"
+    >
       {mobileSidebarOpen ? (
         <button
           className="bb-mobile-sidebar-backdrop"

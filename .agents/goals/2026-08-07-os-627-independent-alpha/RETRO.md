@@ -27,7 +27,7 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Verification blockers: none in preparation.
 - Tracker blockers: dependency graph recorded in the goal.
 - Authority blockers: public license/release and OS-638 merge remain owner gates.
-- Next action: implement OS-633 and preserve execution evidence here.
+- Next action: implement OS-634 and preserve execution evidence here.
 
 ## Goal Amendments
 
@@ -66,6 +66,34 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: All standing P1/P2 and targeted P1/P2/P3 findings are resolved and regression-tested.
 - Next: Commit OS-633 and complete the hosted PR/merge/main-CI/Linear loop.
 - Blockers: None.
+
+2026-08-07 - OS-633 landed and OS-634 implementation focused-green
+- Changed: Landed OS-633 in PR #7, then added reload-stable launcher state, allowlisted multi-plugin selection, bounded theme/viewport controls, exact mode prerequisites, and explicit copy-only CLI handoffs for OS-634.
+- Verified: OS-633 main CI 31218687904 green; OS-634 focused URL, server-selection, overlay/action, and CLI tests plus workbench/CLI type checks.
+- Result: Browser query values cannot become filesystem paths or native commands; build/live remain explicit terminal actions with inherited native output, and Harness remains capability-gated.
+- Next: Complete aggregate verification, browser QA, review, and the hosted OS-634 loop.
+- Blockers: None.
+
+2026-08-07 - OS-634 review correction pass focused-green
+- Changed: Split low-level Harness contract resolution from launcher availability; replaced false Live fixture rendering with a native handoff canvas; made plugin select values collision-free; recovered stale plugin links through the server allowlist; and redacted missing-target, symlink-realpath, provenance, and incidental native paths.
+- Verified: 53 workbench tests now cover overlay keyboard/control interactions, single-entry history writes, stale async response suppression, stale allowlisted selection recovery, reserved-looking plugin keys, mode honesty, Live non-embedding, and path redaction. Workbench type-check is green.
+- Result: All standing and targeted round-one P1/P2 findings have an implemented regression path; aggregate/browser/review rechecks remain.
+- Next: Run aggregate gates and browser smoke, then request standing and fresh targeted round-two review.
+- Blockers: None.
+
+2026-08-07 - OS-634 correction pass aggregate and browser green
+- Changed: Added a deterministic ignored Live-ready workspace only for browser QA; it does not alter product code or normal bb state.
+- Verified: CI-equivalent format/check/test/build is green with 167 total tests; compatibility probes and workbench, plugin, and 13-story Ladle builds pass. Browser QA proved stale-link canonicalization, one history entry per interaction with Back/Forward restoration, Live handoff-only rendering with zero iframes/Connect requests, browser-session path redaction, 320x568 scrolling, and minimize/Escape focus return.
+- Result: Every round-one standing and targeted finding has automated regression coverage plus runtime evidence where visual or focus behavior matters.
+- Next: Standing and fresh targeted round-two review, then hosted PR/CI/review/merge/main-CI/Linear closeout.
+- Blockers: None.
+
+2026-08-07 - OS-634 round-two review clean
+- Changed: Replaced the assumed global binary with the repo-proven `bun run bb-mate` handoff, withheld cross-workspace commands rather than serializing reconstructable directory hierarchy, and extended native-output redaction to punctuation-adjacent paths, file URLs, and UNC paths while preserving HTTPS URLs.
+- Verified: Standing and fresh targeted round-two reviews are both 5/5 with no open P0-P3 findings. The final post-review aggregate passes 167 tests plus format, type, compatibility, plugin, workbench, and 13-story Ladle build gates.
+- Result: All round-one and round-two findings are fixed and regression-tested; the branch is ready for the hosted PR loop.
+- Next: Commit, create draft PR, verify hosted CI/review threads, mark ready, merge, verify main CI, and move OS-634 to Done.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -95,25 +123,32 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 2         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-2.json`  | 4/5        | changes requested | 0          | One reasonable P3 isolation-test gap                 |
 | 2         | OS-633 standing    | `tmp/reviews/standing/os-633-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                 |
 | 3         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-3.json`  | 5/5        | clean             | 0          | Full boundary and correction recheck                 |
+| 1         | OS-634 standing    | `tmp/reviews/standing/os-634-round-1.json` | 2/5        | changes requested | 4          | Mode honesty, sentinel, redaction, interactions      |
+| 1         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-1.json`  | 2/5        | changes requested | 5          | Stale links, Live truth, redaction, test gaps        |
+| 2         | OS-634 standing    | `tmp/reviews/standing/os-634-round-2.json` | 5/5        | clean             | 0          | All findings plus final handoff/privacy recheck      |
+| 2         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-2.json`  | 5/5        | clean             | 0          | Acceptance matrix and full final-tree verification   |
 
 ## Verification Log
 
-| Check                                                                    | Scope                | Result               | Notes                                                      |
-| ------------------------------------------------------------------------ | -------------------- | -------------------- | ---------------------------------------------------------- |
-| `but status --json`                                                      | baseline             | pass                 | no uncommitted files, stacks, or branches                  |
-| Main CI run 31206636916                                                  | baseline             | pass                 | green at `a637aa0`                                         |
-| `bb --version`                                                           | native capability    | pass                 | 0.35.1                                                     |
-| `npm view @bb/plugin-sdk version --json`                                 | Harness capability   | expected unavailable | npm E404; no fallback allowed                              |
-| `check-goal-prompt --no-placeholders`                                    | packet               | pass                 | 3,604/4,000; no placeholders                               |
-| `goal-loop-doctor`                                                       | packet               | pass                 | required files and sections ready                          |
-| `bun test scripts/compatibility-check.test.ts`                           | OS-629               | pass                 | 19 tests; all drift families and fail-closed paths         |
-| Sanitized-PATH `bun run compatibility:check`                             | OS-629 clean CI      | pass                 | workspace-pinned bb-app 0.35.1 fallback                    |
-| `bun run compatibility:check`                                            | OS-629 public probes | pass                 | 18 target/version/registry/dependency/token/catalog checks |
-| `bun run format:check && bun run check && bun run test && bun run build` | OS-629               | pass                 | 127 tests and all builds green                             |
-| `bun test apps/workbench/src/surface-lab/surface-lab.test.tsx`           | OS-633 focused       | pass                 | 5 tests; 13 stories and every fixture rendered             |
-| `bun --filter @bb-mate/workbench stories:build`                          | OS-633 static lab    | pass                 | 13-entry metadata and portable static assets               |
-| Local Ladle browser smoke                                                | OS-633 runtime       | pass                 | discovery, controls, host contract, sidebar replacement    |
-| `bun run format:check && bun run check && bun run test && bun run build` | OS-633 final         | pass                 | 135 tests; workbench and 13-story Ladle outputs green      |
+| Check                                                                           | Scope                | Result               | Notes                                                      |
+| ------------------------------------------------------------------------------- | -------------------- | -------------------- | ---------------------------------------------------------- |
+| `but status --json`                                                             | baseline             | pass                 | no uncommitted files, stacks, or branches                  |
+| Main CI run 31206636916                                                         | baseline             | pass                 | green at `a637aa0`                                         |
+| `bb --version`                                                                  | native capability    | pass                 | 0.35.1                                                     |
+| `npm view @bb/plugin-sdk version --json`                                        | Harness capability   | expected unavailable | npm E404; no fallback allowed                              |
+| `check-goal-prompt --no-placeholders`                                           | packet               | pass                 | 3,604/4,000; no placeholders                               |
+| `goal-loop-doctor`                                                              | packet               | pass                 | required files and sections ready                          |
+| `bun test scripts/compatibility-check.test.ts`                                  | OS-629               | pass                 | 19 tests; all drift families and fail-closed paths         |
+| Sanitized-PATH `bun run compatibility:check`                                    | OS-629 clean CI      | pass                 | workspace-pinned bb-app 0.35.1 fallback                    |
+| `bun run compatibility:check`                                                   | OS-629 public probes | pass                 | 18 target/version/registry/dependency/token/catalog checks |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-629               | pass                 | 127 tests and all builds green                             |
+| `bun test apps/workbench/src/surface-lab/surface-lab.test.tsx`                  | OS-633 focused       | pass                 | 5 tests; 13 stories and every fixture rendered             |
+| `bun --filter @bb-mate/workbench stories:build`                                 | OS-633 static lab    | pass                 | 13-entry metadata and portable static assets               |
+| Local Ladle browser smoke                                                       | OS-633 runtime       | pass                 | discovery, controls, host contract, sidebar replacement    |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-633 final         | pass                 | 135 tests; workbench and 13-story Ladle outputs green      |
+| `bun --filter @bb-mate/workbench check && bun --filter @bb-mate/workbench test` | OS-634 corrections   | pass                 | 53 tests; 518 assertions across 12 files                   |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-634 candidate     | pass                 | 167 tests; all compatibility and build gates green         |
+| Local workbench browser smoke                                                   | OS-634 runtime       | pass                 | stale recovery, history, Live truth, redaction, focus      |
 
 ## Prompt / Goal Alignment
 
@@ -130,8 +165,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | ------ | ----------- | ------------------------------------------------------ |
 | OS-627 | In Progress | Parent epic                                            |
 | OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green   |
-| OS-633 | In Progress | Critical-path Ladle surface lab                        |
-| OS-634 | Todo        | Unblocked; sequenced after OS-633                      |
+| OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green   |
+| OS-634 | In Progress | Full Mate overlay launcher                             |
 | OS-632 | Todo        | Blocked by OS-633; sequenced after OS-634              |
 | OS-635 | Todo        | Blocked by OS-633                                      |
 | OS-636 | Todo        | Unblocked; finalized after artifact commands stabilize |

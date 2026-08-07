@@ -101,23 +101,40 @@ BB Mate names three different levels of confidence:
   authority.
 
 The workbench discovers the only plugin under `plugins/` automatically. When a
-workspace contains more than one plugin, choose one explicitly:
+workspace contains more than one plugin, `bun run bb-mate dev` still opens the Fixture
+lab and the overlay requires an explicit selection. Plugin, surface, scenario,
+mode, theme, and viewport are stored in the URL, so a selected lab state is
+reload-stable and shareable without a BB Mate manifest. An explicit CLI target
+remains available:
 
 ```sh
 BB_MATE_PLUGIN=plugins/<name> bun run dev
 ```
 
 The overlay reads `package.json`, native `dist/*.meta.json`, and native bb CLI
-JSON output. Discovery never imports or executes plugin code. Harness mode only
-activates when the selected plugin can resolve the officially distributed
-`@bb/plugin-sdk/testing` and `@bb/plugin-sdk/testing/app` packages; BB Mate does
-not copy them or import them from `../bb`.
+JSON output. Discovery never imports or executes plugin code. Inspection reports
+whether the selected plugin can resolve the official
+`@bb/plugin-sdk/testing` and `@bb/plugin-sdk/testing/app` contracts, but the
+launcher keeps Harness disabled until BB Mate has an upstream-backed adapter.
+BB Mate does not copy the harness or import it from `../bb`. Selecting Live bb
+shows a handoff-only canvas and exact native command; it never relabels Fixture
+output as Live or embeds Connect.
 
 ## Compatibility report
 
-The workbench exposes the selected plugin's passive report at
-`/bb-mate-plugin.json`. The JSON contract is versioned with `schemaVersion: 1`
-and keeps Fixture, Harness, and Live capability claims separate. It checks
+The workbench exposes a browser-safe passive session at
+`/bb-mate-session.json`. The server maps opaque candidate keys to discovered
+plugin roots; browser query values are never resolved as filesystem paths. The
+session redacts absolute target, realpath, provenance, and native-diagnostic
+paths, includes exact copyable `bun run bb-mate` launch, build/check, and live
+commands,
+and keeps Fixture, Harness-contract, launcher, and Live capability claims
+separate. Native actions run only after the developer pastes a command into a
+terminal, preserving native output and making artifact/runtime mutation
+explicit. Repo-local commands use the proven `bun run bb-mate` entrypoint. If
+the inspected workspace is outside this repository, the browser withholds
+copyable handoffs instead of exposing local path hierarchy or claiming that an
+uninstalled global binary exists. The compatibility report checks
 manifests, native build metadata, declared bb and SDK engine ranges, native
 plugin state, npm SDK publication, and native provenance. Registry publication
 is reported separately from selected-plugin dependency resolution, so a missing
