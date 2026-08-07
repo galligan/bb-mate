@@ -129,6 +129,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: CI now compares against the environment that owns the Linux baselines instead of weakening pixel tolerances or accepting runner-specific reflows.
 - Next: Amend the PR snapshot, rerun both hosted jobs, and recheck reviews before readiness.
 - Blockers: None.
+
+2026-08-07 - OS-632 pinned-container bootstrap correction
+- Changed: Added the sole missing image prerequisite, `unzip`, before the pinned Bun setup action in the visual container and documented that boundary.
+- Verified: Hosted run 31225715348 reached the new visual job and failed before install/tests only because setup-bun could not find `unzip`; the parallel normal verification job continued independently. Workflow behavior remained fail-closed and uploaded no misleading screenshot diffs.
+- Result: The next hosted run can execute the already-reviewed exact-image test shape without changing visual acceptance thresholds or baselines.
+- Next: Lint, review, commit, push, and follow both hosted jobs to green.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -168,6 +175,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 2         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-2.json`  | 5/5        | clean             | 0          | Full matrix, portal, and keyboard recheck            |
 | 3         | OS-632 standing    | `tmp/reviews/standing/os-632-round-3.json` | 5/5        | clean             | 0          | Pinned CI container and 14-test shape recheck        |
 | 3         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-3.json`  | 5/5        | clean             | 0          | Coverage, script boundary, and workflow recheck      |
+| 4         | OS-632 standing    | `tmp/reviews/standing/os-632-round-4.json` | 5/5        | clean             | 0          | Fresh-image unzip prerequisite proof                 |
+| 4         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-4.json`  | 5/5        | clean             | 0          | Minimal bootstrap and unchanged-policy recheck       |
 
 ## Verification Log
 
@@ -197,6 +206,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Standing isolated Playwright/axe rerun (14 tests)                               | OS-632 final review  | pass                 | 15.6 seconds after occupied-port refusal proof             |
 | Hosted CI 31225221650                                                           | OS-632 runner probe  | expected failure     | three stable one-percent Linux font-metric diffs uploaded  |
 | CI-shaped pinned container without host IPC (14 tests)                          | OS-632 CI correction | pass                 | standing reviewer independently passed in 14.2 seconds     |
+| Hosted CI 31225715348                                                           | OS-632 split jobs    | expected failure     | verify green; visual stopped before tests on missing unzip |
+| Fresh pinned-image unzip probe                                                  | OS-632 bootstrap     | pass                 | exact apt step installed `/usr/bin/unzip`                  |
 
 ## Prompt / Goal Alignment
 

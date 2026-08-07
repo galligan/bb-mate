@@ -23,7 +23,8 @@ The CI visual job itself runs inside the exact pinned Playwright Linux image
 used to produce the Linux baselines. Its isolated install skips workspace
 install scripts because this Fixture-only gate neither builds nor executes the
 native plugin; the ordinary verification job still performs the complete
-workspace install and build.
+workspace install and build. CI installs only the `unzip` utility missing from
+the base image before the pinned Bun setup action runs.
 
 The Mate screenshots use a dedicated deterministic component harness. They do
 not call `/bb-mate-session.json`, inspect the checkout, or invoke native bb.

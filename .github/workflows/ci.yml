@@ -26,6 +26,8 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.62.1-noble
     steps:
       - uses: actions/checkout@v5
+      - name: Install Bun setup prerequisite
+        run: apt-get update && apt-get install --yes --no-install-recommends unzip
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
