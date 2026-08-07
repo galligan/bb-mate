@@ -1,7 +1,9 @@
-import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
-import { promisify } from "node:util";
 import { valid } from "semver";
+import {
+  runCapturedCommand,
+  type CapturedCommandOptions,
+} from "./captured-command.ts";
 import type {
   CommandResult,
   InspectPluginOptions,
@@ -11,8 +13,6 @@ import type {
   NativeConnectStatus,
   NativeErrorEvidence,
 } from "./types.ts";
-
-const execFileAsync = promisify(execFile);
 
 export interface InstalledPlugin {
   id?: unknown;
@@ -139,25 +139,12 @@ function localConnectShares(value: Record<string, unknown>): {
   };
 }
 
-async function defaultRunBb(args: readonly string[]): Promise<CommandResult> {
-  try {
-    const { stdout, stderr } = await execFileAsync("bb", [...args], {
-      timeout: 5_000,
-      maxBuffer: 4 * 1024 * 1024,
-    });
-    return { stdout, stderr, exitCode: 0 };
-  } catch (error) {
-    const native = error as Error & {
-      stdout?: string;
-      stderr?: string;
-      code?: number | string;
-    };
-    return {
-      stdout: native.stdout ?? "",
-      stderr: native.stderr ?? native.message,
-      exitCode: typeof native.code === "number" ? native.code : 1,
-    };
-  }
+export function defaultRunBb(
+  args: readonly string[],
+  options: CapturedCommandOptions = {},
+): Promise<CommandResult> {
+  const executable = process.env.BB_CLI?.trim() || "bb";
+  return runCapturedCommand(executable, args, process.cwd(), options);
 }
 
 function boundUtf8(value: string): string {

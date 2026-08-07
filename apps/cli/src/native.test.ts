@@ -81,6 +81,93 @@ describe("native command boundary", () => {
     ).toEqual({ exitCode: null, signal: "SIGTERM" });
   });
 
+  test("bounds passive captured commands and terminates an unresponsive child", async () => {
+    const stalled = await executable(
+      "stalled",
+      "#!/bin/sh\ntrap '' TERM\nwhile :; do :; done\n",
+    );
+    const startedAt = performance.now();
+
+    const result = await runCapturedCommand(stalled.file, [], stalled.root, {
+      timeoutMs: 20,
+    });
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    expect(result).toMatchObject({
+      exitCode: 124,
+      stderr: expect.stringContaining("timed out after 20ms"),
+    });
+  });
+
+  test("does not wait for a descendant that inherited capture pipes", async () => {
+    const stalled = await executable(
+      "stalled-tree",
+      "#!/bin/sh\ntrap '' TERM\nsleep 2\n",
+    );
+    const startedAt = performance.now();
+
+    const result = await runCapturedCommand(stalled.file, [], stalled.root, {
+      timeoutMs: 20,
+    });
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    expect(result).toMatchObject({
+      exitCode: 124,
+      stderr: expect.stringContaining("timed out after 20ms"),
+    });
+  });
+
+  test("force-kills a TERM-ignoring descendant before settling", async () => {
+    if (process.platform === "win32") return;
+    const fixture = await executable("unused");
+    const descendantPidFile = path.join(fixture.root, "descendant.pid");
+    const stalled = await executable(
+      "stubborn-tree",
+      [
+        "#!/bin/sh",
+        "sh -c 'trap \"\" TERM; while :; do :; done' &",
+        "descendant=$!",
+        `printf '%s' \"$descendant\" > ${JSON.stringify(descendantPidFile)}`,
+        'wait "$descendant"',
+        "",
+      ].join("\n"),
+    );
+
+    const result = await runCapturedCommand(stalled.file, [], stalled.root, {
+      timeoutMs: 20,
+    });
+    const descendantPid = Number(await fs.readFile(descendantPidFile, "utf8"));
+
+    expect(result.exitCode).toBe(124);
+    expect(() => process.kill(descendantPid, 0)).toThrow();
+  });
+
+  test("terminates passive capture when combined output exceeds its bound", async () => {
+    const fixture = await executable("unused");
+    const noisy = path.join(fixture.root, "noisy.ts");
+    await fs.writeFile(
+      noisy,
+      'process.stdout.write("x".repeat(4096)); setInterval(() => {}, 1_000);\n',
+    );
+    const startedAt = performance.now();
+
+    const result = await runCapturedCommand(
+      process.execPath,
+      [noisy],
+      fixture.root,
+      { timeoutMs: 5_000, maxOutputBytes: 1_024 },
+    );
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    expect(
+      Buffer.byteLength(result.stdout) + Buffer.byteLength(result.stderr),
+    ).toBeLessThan(1_100);
+    expect(result).toMatchObject({
+      exitCode: 125,
+      stderr: expect.stringContaining("output exceeded 1024 bytes"),
+    });
+  });
+
   test("inherits literal argv, cwd, env, output, and a nonzero exit without a shell", async () => {
     const fixture = await executable("unused");
     const sideEffect = path.join(fixture.root, "must-not-exist");

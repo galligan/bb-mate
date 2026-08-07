@@ -224,7 +224,10 @@ describe("bb-mate CLI", () => {
         ],
         options: {
           cwd: "/workspace/bb-mate",
-          env: { BB_MATE_PLUGIN: pluginRoot },
+          env: {
+            BB_CLI: "/fake/bin/bb",
+            BB_MATE_PLUGIN: pluginRoot,
+          },
         },
       },
     ]);

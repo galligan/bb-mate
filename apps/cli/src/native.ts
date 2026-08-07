@@ -2,8 +2,9 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { CommandResult } from "@bb-mate/inspection";
 import type { ProcessExit } from "./commands.ts";
+
+export { runCapturedCommand } from "@bb-mate/inspection";
 
 async function executablePath(candidate: string): Promise<string | null> {
   try {
@@ -40,36 +41,6 @@ export async function resolveBbExecutable(options: {
     if (executable) return executable;
   }
   return searchPath("bb", options.env.PATH);
-}
-
-export function runCapturedCommand(
-  executable: string,
-  args: readonly string[],
-  cwd: string,
-): Promise<CommandResult> {
-  return new Promise((resolve) => {
-    const child = spawn(executable, [...args], {
-      cwd,
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-    let spawnError: Error | null = null;
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
-    child.on("error", (error) => {
-      spawnError = error;
-    });
-    child.on("close", (exitCode) => {
-      resolve({
-        stdout: Buffer.concat(stdout).toString("utf8"),
-        stderr:
-          Buffer.concat(stderr).toString("utf8") || spawnError?.message || "",
-        exitCode: exitCode ?? 1,
-      });
-    });
-  });
 }
 
 export function runInheritedCommand(

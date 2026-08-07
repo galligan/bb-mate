@@ -1,6 +1,22 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import type { CommandResult } from "./types.ts";
-import { readNativeState } from "./native.ts";
+import { defaultRunBb, readNativeState } from "./native.ts";
+
+const temporaryRoots: string[] = [];
+const originalBbCli = process.env.BB_CLI;
+
+afterEach(async () => {
+  if (originalBbCli === undefined) delete process.env.BB_CLI;
+  else process.env.BB_CLI = originalBbCli;
+  await Promise.all(
+    temporaryRoots
+      .splice(0)
+      .map((root) => fs.rm(root, { recursive: true, force: true })),
+  );
+});
 
 function command(
   stdout: string,
@@ -26,6 +42,58 @@ function runner(
 }
 
 describe("passive native Connect status", () => {
+  test("uses the selected BB_CLI executable for default inspection", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-bb-cli-"));
+    temporaryRoots.push(root);
+    const executable = path.join(root, "selected-bb");
+    await fs.writeFile(
+      executable,
+      `#!/bin/sh
+case "$1 $2" in
+  "--version ") printf '9.9.9\\n' ;;
+  "connect status") printf '{"state":"disconnected","paired":false,"url":null,"shares":[]}' ;;
+  "connect shares") printf '{"host":{"id":"host_test","name":"test","isServer":true},"shares":[]}' ;;
+  "plugin list") printf '{"plugins":[]}' ;;
+  "plugin source") printf '{}' ;;
+  *) exit 2 ;;
+esac
+`,
+      { mode: 0o755 },
+    );
+    process.env.BB_CLI = executable;
+
+    const native = await readNativeState("/workspace/plugins/notes");
+
+    expect(native.bbVersion).toBe("9.9.9");
+    expect(native.connect).toMatchObject({
+      state: "disconnected",
+      paired: false,
+    });
+  });
+
+  test("force-terminates a selected BB_CLI that ignores the passive deadline", async () => {
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-mate-bb-timeout-"),
+    );
+    temporaryRoots.push(root);
+    const executable = path.join(root, "selected-bb");
+    await fs.writeFile(
+      executable,
+      "#!/bin/sh\ntrap '' TERM\nwhile :; do :; done\n",
+      { mode: 0o755 },
+    );
+    process.env.BB_CLI = executable;
+    const startedAt = performance.now();
+
+    const result = await defaultRunBb(["--version"], { timeoutMs: 20 });
+
+    expect(performance.now() - startedAt).toBeLessThan(1_000);
+    expect(result).toMatchObject({
+      exitCode: 124,
+      stderr: expect.stringContaining("timed out after 20ms"),
+    });
+  });
+
   test("keeps the base URL distinct from typed port shares", async () => {
     const native = await readNativeState(
       "/workspace/plugins/notes",

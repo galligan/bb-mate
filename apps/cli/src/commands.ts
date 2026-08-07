@@ -222,7 +222,11 @@ export async function runCli(
       }),
       {
         cwd: runtime.workspaceRoot,
-        env: { ...runtime.env, BB_MATE_PLUGIN: pluginRoot },
+        env: {
+          ...runtime.env,
+          BB_MATE_PLUGIN: pluginRoot,
+          ...(context.bbExecutable ? { BB_CLI: context.bbExecutable } : {}),
+        },
       },
     );
   }
