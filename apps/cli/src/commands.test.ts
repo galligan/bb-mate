@@ -227,6 +227,7 @@ describe("bb-mate CLI", () => {
           env: {
             BB_CLI: "/fake/bin/bb",
             BB_MATE_PLUGIN: pluginRoot,
+            BB_MATE_WORKSPACE: root,
           },
         },
       },
@@ -509,5 +510,31 @@ describe("bb-mate CLI", () => {
     );
     expect(testRuntime.stdout.join("")).toContain("plugins/notes");
     expect(testRuntime.stdout.join("")).toContain("plugins/second");
+  });
+
+  test("launches ambiguous discovery for explicit selection in the overlay", async () => {
+    const { root, pluginRoot } = await createPlugin({ workspace: true });
+    const second = path.join(root, "plugins", "second");
+    await fs.cp(pluginRoot, second, { recursive: true });
+    const launches: Array<{
+      args: readonly string[];
+      env: NodeJS.ProcessEnv;
+    }> = [];
+    const testRuntime = runtime(root, nativeOutput(pluginRoot), {
+      runInherited: async (_executable, args, options) => {
+        launches.push({ args, env: options.env });
+        return { exitCode: 0, signal: null };
+      },
+    });
+
+    const result = await runCli(["dev"], testRuntime.value);
+
+    expect(result).toEqual({ exitCode: 0, signal: null });
+    expect(launches).toHaveLength(1);
+    expect(launches[0]?.env.BB_MATE_WORKSPACE).toBe(root);
+    expect(launches[0]?.env.BB_MATE_PLUGIN).toBeUndefined();
+    expect(testRuntime.stdout.join("")).toContain(
+      "Plugin selection is ambiguous",
+    );
   });
 });

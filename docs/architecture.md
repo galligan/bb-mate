@@ -14,7 +14,9 @@ The workbench puts the bb surface directly in the viewport. Workbench controls
 belong in the collapsible Mate overlay, not in a permanent wrapper around the
 prototype. The overlay uses vendored shadcn/Base UI source and has its own dark
 theme; bb-facing views use bb's typography, icon family, and measured semantic
-tokens.
+tokens. The URL is the complete launcher-state contract for plugin, surface,
+scenario, mode, theme, and viewport. The overlay emits copyable CLI handoffs;
+it never owns a browser-triggered native command runner.
 
 `SidebarListView` is the current host-neutral seam. The workbench supplies its
 model from deterministic scenarios. A future plugin adapter can supply the same
@@ -61,8 +63,12 @@ The source control in the Mate overlay represents adapters, not a browser data
 fetch:
 
 - **Fixtures** are always available in `apps/workbench`.
-- **Live bb** becomes available when the view is mounted by a bb plugin and the
-  public SDK adapter is present.
+- **Harness** remains unavailable in the launcher until an upstream-backed
+  public testing adapter exists, even when inspection can resolve the official
+  contract.
+- **Live bb** becomes selectable only when native inspection proves the selected
+  frontend plugin is installed and runnable. The browser then renders a
+  handoff-only canvas; native bb remains the visual authority.
 
 Do not proxy, scrape, or iframe an authenticated bb Connect session to simulate
 live state. Even when a client can be displayed, cross-origin content is not a
@@ -70,11 +76,24 @@ state/action contract and cannot safely drive plugin behavior.
 
 ### Plugin inspection
 
-The workbench dev server may inspect one explicit plugin directory. Inspection
-is data-only: it reads the ordinary package manifest, native
+The workbench dev server may inspect one explicit plugin directory or require a
+choice from its discovered workspace candidates. Candidate keys are mapped to
+trusted roots server-side and never interpreted as browser-provided paths. The
+browser projection redacts lexical roots, symlink realpaths, path provenance,
+and incidental absolute paths in native diagnostics. Inspection is data-only: it reads
+the ordinary package manifest, native
 `dist/server.meta.json` and `dist/app.meta.json`, and the JSON output of native
 bb commands. It must not evaluate the plugin entrypoint, mount a content script,
 or introduce a BB Mate manifest.
+
+Build/check and Live handoffs use the repository-proven `bun run bb-mate`
+entrypoint and are copied under an explicit user gesture. Targets are expressed
+relative to the BB Mate command workspace. If inspection started in an external
+workspace, copyable handoffs are unavailable: serializing a cross-root command
+would disclose local path hierarchy, while a bare `bb-mate` binary is not part
+of the proven private-workspace installation. Available commands execute only
+in the developer's terminal, where the CLI delegates to native bb with inherited
+output. There is no HTTP action endpoint and no Connect fetch, proxy, or iframe.
 
 The official SDK frontend collector currently exposes these registration
 groups, which define the eventual surface inventory:
@@ -92,8 +111,10 @@ Component registrations can receive deterministic behavior through
 `mountPluginContentScripts` lifecycle and must never be mounted during ordinary
 discovery. Host-rendered actions still require live bb for their real chrome.
 
-Until `@bb/plugin-sdk` is publicly installable, the workbench exposes Harness as
-an unavailable capability. The sibling checkout is not a fallback dependency.
+Until an official testing package and upstream-backed adapter are both usable,
+the launcher exposes Harness as unavailable. Inspection may independently say
+that the official contract resolves; that is contract readiness, not a rendered
+Harness preview. The sibling checkout is not a fallback dependency.
 [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) is the upstream
 publication tracker.
 

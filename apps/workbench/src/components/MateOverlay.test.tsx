@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { PluginInspection } from "@bb-mate/inspection";
-import { PluginInspectionCard } from "./MateOverlay";
+import {
+  candidateSelectionValue,
+  PluginInspectionCard,
+  pluginKeyFromSelection,
+} from "./MateOverlay";
 
 function report(overrides: Partial<PluginInspection> = {}): PluginInspection {
   return {
@@ -129,5 +133,20 @@ describe("PluginInspectionCard", () => {
         <PluginInspectionCard inspection={missingPublication} error={null} />,
       ),
     ).toContain("Track SDK publication");
+  });
+});
+
+describe("MateOverlay plugin selection values", () => {
+  test("keeps reserved-looking plugin keys distinct from workspace control state", () => {
+    expect(candidateSelectionValue("workspace")).toBe("candidate:workspace");
+    expect(pluginKeyFromSelection("candidate:workspace")).toBe("workspace");
+    expect(pluginKeyFromSelection("candidate:selected-plugin")).toBe(
+      "selected-plugin",
+    );
+    expect(pluginKeyFromSelection("control:workspace")).toBeNull();
+  });
+
+  test("does not pass unknown UI values through as server candidate keys", () => {
+    expect(pluginKeyFromSelection("../plugin")).toBeNull();
   });
 });

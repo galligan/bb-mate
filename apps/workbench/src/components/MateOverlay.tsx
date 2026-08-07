@@ -7,7 +7,9 @@ import {
   Radio,
   SlidersHorizontal,
 } from "lucide-react";
+import { MateLauncherActions } from "@/components/MateLauncherActions";
 import { Button } from "@/components/ui/button";
+import { previewModeCapabilities } from "@/preview-mode";
 import {
   Popover,
   PopoverContent,
@@ -27,7 +29,13 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { CatalogSelection } from "@/surface-catalog";
 import { surfaceCatalog } from "@/surface-catalog";
-import { usePluginInspection } from "@/usePluginInspection";
+import type { PluginCandidate, PluginHandoffs } from "@/usePluginInspection";
+import type {
+  PreviewMode,
+  PreviewTheme,
+  PreviewViewport,
+  WorkbenchState,
+} from "@/workbench-state";
 import type { PluginInspection } from "@bb-mate/inspection";
 
 const surfaceItems = surfaceCatalog.map((surface) => ({
@@ -39,11 +47,37 @@ const pluginSdkPublicationIssue = "https://github.com/get-bb/bb/issues/1134";
 
 interface MateOverlayProps {
   selection: CatalogSelection;
+  state: WorkbenchState;
+  inspection: PluginInspection | null;
+  inspectionError: string | null;
+  selectionError: string | null;
+  workspaceLabel: string | null;
+  candidates: PluginCandidate[];
+  selectedKey: string | null;
+  handoffs: PluginHandoffs;
+  onRefreshInspection: () => void;
+  onPluginChange: (plugin: string | null) => void;
   onSurfaceChange: (surfaceId: string) => void;
   onFixtureChange: (fixtureId: string) => void;
+  onModeChange: (mode: PreviewMode) => void;
+  onThemeChange: (theme: PreviewTheme) => void;
+  onViewportChange: (viewport: PreviewViewport) => void;
 }
 
 const actionableStatuses = new Set(["warning", "fail", "unavailable"]);
+const workspaceSelectionValue = "control:workspace";
+
+export function candidateSelectionValue(key: string): string {
+  return `candidate:${key}`;
+}
+
+export function pluginKeyFromSelection(value: string): string | null {
+  return value === workspaceSelectionValue
+    ? null
+    : value.startsWith("candidate:")
+      ? value.slice("candidate:".length)
+      : null;
+}
 
 export function PluginInspectionCard({
   inspection,
@@ -81,7 +115,7 @@ export function PluginInspectionCard({
               Report {inspection?.outcome}
             </span>
             <span data-available={Boolean(harness?.available)}>
-              Harness {harness?.available ? "ready" : "unavailable"}
+              Harness contract {harness?.available ? "ready" : "unavailable"}
             </span>
             <span>
               Source {inspection?.provenance?.kind ?? "not installed"}
@@ -174,14 +208,38 @@ export function PluginInspectionCard({
 
 export function MateOverlay({
   selection,
+  state,
+  inspection,
+  inspectionError,
+  selectionError,
+  workspaceLabel,
+  candidates,
+  selectedKey,
+  handoffs,
+  onRefreshInspection,
+  onPluginChange,
   onSurfaceChange,
   onFixtureChange,
+  onModeChange,
+  onThemeChange,
+  onViewportChange,
 }: MateOverlayProps) {
   const [open, setOpen] = useState(true);
-  const { inspection, error } = usePluginInspection();
   const harness = inspection?.modes.harness;
+  const live = inspection?.modes.live;
+  const modeCapabilities = previewModeCapabilities(inspection);
   const build =
     inspection?.target?.build.app ?? inspection?.target?.build.server;
+  const pluginItems = [
+    {
+      label: `Discover in ${workspaceLabel ?? "workspace"}`,
+      value: workspaceSelectionValue,
+    },
+    ...candidates.map(({ key, label }) => ({
+      label,
+      value: candidateSelectionValue(key),
+    })),
+  ];
   const fixtureItems = selection.surface.fixtures.map((fixture) => ({
     label: fixture.name,
     value: fixture.id,
@@ -232,38 +290,97 @@ export function MateOverlay({
           <div className="mate-divider" />
 
           <div className="mate-field">
+            <label className="mate-field-heading" htmlFor="mate-plugin">
+              Plugin / workspace
+            </label>
+            <Select
+              items={pluginItems}
+              value={
+                state.plugin || selectedKey
+                  ? candidateSelectionValue(state.plugin ?? selectedKey ?? "")
+                  : workspaceSelectionValue
+              }
+              onValueChange={(value) => {
+                if (value) onPluginChange(pluginKeyFromSelection(value));
+              }}
+            >
+              <SelectTrigger id="mate-plugin" className="mate-select-trigger">
+                <SelectValue placeholder="Choose a discovered plugin" />
+              </SelectTrigger>
+              <SelectContent
+                align="end"
+                alignItemWithTrigger={false}
+                className="dark mate-select-content"
+              >
+                <SelectGroup>
+                  {pluginItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {candidates.length > 1 && !selectedKey ? (
+              <p className="mate-help" role="status">
+                Multiple plugins were discovered. Choose one explicitly before
+                using native handoffs.
+              </p>
+            ) : null}
+            {selectionError ? (
+              <p className="mate-help" role="status">
+                {selectionError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mate-field">
             <div className="mate-field-heading">
               <span>Source</span>
               <span className="mate-source-status">
-                <i aria-hidden="true" /> fixture
+                <i aria-hidden="true" /> {state.mode}
               </span>
             </div>
             <ToggleGroup
               aria-label="State source"
               className="mate-source-toggle"
               spacing={0}
-              value={["fixtures"]}
+              value={[state.mode]}
+              onValueChange={(values) => {
+                const mode = values[0] as PreviewMode | undefined;
+                if (mode) onModeChange(mode);
+              }}
             >
-              <ToggleGroupItem value="fixtures">
+              <ToggleGroupItem value="fixture">
                 <Database data-icon="inline-start" />
                 Fixtures
               </ToggleGroupItem>
-              <ToggleGroupItem value="harness" disabled={!harness?.available}>
+              <ToggleGroupItem
+                value="harness"
+                disabled={!modeCapabilities.harness.available}
+              >
                 <FlaskConical data-icon="inline-start" />
                 Harness
               </ToggleGroupItem>
-              <ToggleGroupItem value="live" disabled>
+              <ToggleGroupItem
+                value="live"
+                disabled={!modeCapabilities.live.available}
+              >
                 <Radio data-icon="inline-start" />
                 Live bb
               </ToggleGroupItem>
             </ToggleGroup>
             <p className="mate-help">
-              {harness?.detail ??
-                "Inspecting the official SDK harness and native bb runtime…"}
+              Fixture: deterministic approximation. Harness:{" "}
+              {modeCapabilities.harness.detail} Live:{" "}
+              {modeCapabilities.live.detail}
             </p>
           </div>
 
-          <PluginInspectionCard inspection={inspection} error={error} />
+          <PluginInspectionCard
+            inspection={inspection}
+            error={inspectionError}
+          />
 
           <div className="mate-field">
             <label className="mate-field-heading" htmlFor="mate-surface">
@@ -297,7 +414,7 @@ export function MateOverlay({
 
           <div className="mate-field">
             <label className="mate-field-heading" htmlFor="mate-fixture">
-              Fixture
+              Scenario
             </label>
             <Select
               items={fixtureItems}
@@ -307,7 +424,7 @@ export function MateOverlay({
               }}
             >
               <SelectTrigger id="mate-fixture" className="mate-select-trigger">
-                <SelectValue placeholder="Choose a fixture" />
+                <SelectValue placeholder="Choose a scenario" />
               </SelectTrigger>
               <SelectContent
                 align="end"
@@ -324,6 +441,56 @@ export function MateOverlay({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="mate-control-row">
+            <div className="mate-field">
+              <span className="mate-field-heading">Theme</span>
+              <ToggleGroup
+                aria-label="Preview theme"
+                className="mate-compact-toggle"
+                spacing={0}
+                value={[state.theme]}
+                onValueChange={(values) => {
+                  const theme = values[0] as PreviewTheme | undefined;
+                  if (theme) onThemeChange(theme);
+                }}
+              >
+                <ToggleGroupItem value="light">Light</ToggleGroupItem>
+                <ToggleGroupItem value="dark">Dark</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            <div className="mate-field">
+              <span className="mate-field-heading">Viewport</span>
+              <ToggleGroup
+                aria-label="Preview viewport"
+                className="mate-compact-toggle"
+                spacing={0}
+                value={[state.viewport]}
+                onValueChange={(values) => {
+                  const viewport = values[0] as PreviewViewport | undefined;
+                  if (viewport) onViewportChange(viewport);
+                }}
+              >
+                <ToggleGroupItem value="desktop">Desktop</ToggleGroupItem>
+                <ToggleGroupItem value="compact">Compact</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </div>
+
+          <MateLauncherActions
+            commands={handoffs}
+            liveAvailable={Boolean(live?.available)}
+            liveUrl={live?.url ?? null}
+          />
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRefreshInspection}
+          >
+            Refresh passive report
+          </Button>
 
           <div className="mate-runtime-line">
             <span>bb {inspection?.native.bbVersion ?? "unavailable"}</span>

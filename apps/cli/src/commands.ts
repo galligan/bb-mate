@@ -207,7 +207,7 @@ export async function runCli(
   if (args.command === "dev") {
     printInspection(runtime, context, false);
     const pluginRoot = context.report.target?.rootPath;
-    if (!pluginRoot) return failure;
+    if (!pluginRoot && context.report.state !== "ambiguous") return failure;
     line(runtime.stdout, connectExposure(context.report, args.port));
     line(
       runtime.stdout,
@@ -224,7 +224,8 @@ export async function runCli(
         cwd: runtime.workspaceRoot,
         env: {
           ...runtime.env,
-          BB_MATE_PLUGIN: pluginRoot,
+          BB_MATE_WORKSPACE: runtime.cwd,
+          ...(pluginRoot ? { BB_MATE_PLUGIN: pluginRoot } : {}),
           ...(context.bbExecutable ? { BB_CLI: context.bbExecutable } : {}),
         },
       },
