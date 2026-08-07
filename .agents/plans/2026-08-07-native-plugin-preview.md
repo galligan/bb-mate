@@ -16,8 +16,14 @@ dependency.
 - The frontend harness validates registration and hook behavior. It does not
   reproduce bb layout or CSS, so live bb remains the visual authority.
 - `@bb/plugin-sdk@0.4.1` is not currently available from the public npm
-  registry. The harness must therefore be capability-gated; BB Mate will not
-  copy it or import `../bb`.
+  registry. [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) now
+  tracks the external publication gap. The harness must therefore be
+  capability-gated; BB Mate will not copy it or import `../bb`.
+- [get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) tracks the packaged
+  scaffold's missing development dependencies, and draft
+  [PR #1135](https://github.com/get-bb/bb/pull/1135) contains the upstream fix.
+  BB Mate will continue invoking native scaffolding rather than patching the
+  generated package itself.
 - Upstream PR #1107 is the intended declaration-sync path. BB Mate should
   report its availability, not create a competing type-sync mechanism.
 - Upstream PR #1109 is the supported sidebar-replacement reference. BB Mate
@@ -32,9 +38,8 @@ Two independent review passes completed before implementation:
 2. Plugin-author-DX review required an explicit capability matrix, clean-room
    validation, trusted-code disclosure, and native CLI output preservation.
 
-The separate upstream investigation confirmed the two remaining upstream
-gaps—scaffold install under `NODE_ENV=production` and missing SDK publication—
-and is handling their issues/PR independently.
+The separate upstream investigation opened #1133 and #1134 and prepared draft
+PR #1135. Their lifecycle remains upstream-owned and independent of this plan.
 
 ## Walking skeleton
 
@@ -62,7 +67,8 @@ and is handling their issues/PR independently.
 
 ## Follow-on after the walking skeleton
 
-When `@bb/plugin-sdk` is published, add a narrow harness adapter that imports
-the official testing subpaths and runs plugin-owned stories/tests. Expand the
-surface matrix only from the public `CapturedPluginApp` contract, and validate
-every visually exact result in live bb.
+When #1134 establishes a supported `@bb/plugin-sdk` distribution, add a narrow
+harness adapter that imports the official testing subpaths and runs
+plugin-owned stories/tests. Expand the surface matrix only from the public
+`CapturedPluginApp` contract, and validate every visually exact result in live
+bb.

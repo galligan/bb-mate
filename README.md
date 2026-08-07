@@ -64,3 +64,11 @@ JSON output. Discovery never imports or executes plugin code. Harness mode only
 activates when the selected plugin can resolve the officially distributed
 `@bb/plugin-sdk/testing` and `@bb/plugin-sdk/testing/app` packages; BB Mate does
 not copy them or import them from `../bb`.
+
+Current upstream dependencies:
+
+- [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) tracks the missing
+  external `@bb/plugin-sdk` distribution required for Harness mode.
+- [get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) and draft
+  [PR #1135](https://github.com/get-bb/bb/pull/1135) own the native scaffold
+  development-dependency fix. BB Mate does not patch generated scaffolds.

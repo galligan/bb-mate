@@ -87,6 +87,13 @@ discovery. Host-rendered actions still require live bb for their real chrome.
 
 Until `@bb/plugin-sdk` is publicly installable, the workbench exposes Harness as
 an unavailable capability. The sibling checkout is not a fallback dependency.
+[get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) is the upstream
+publication tracker.
+
+Scaffold dependency installation remains native bb behavior. BB Mate does not
+repair generated packages after the fact;
+[get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) and draft
+[PR #1135](https://github.com/get-bb/bb/pull/1135) own that fix.
 
 ## Plugins
 

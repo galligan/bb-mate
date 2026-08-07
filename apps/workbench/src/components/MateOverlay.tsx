@@ -33,6 +33,8 @@ const scenarioItems = scenarios.map((scenario) => ({
   value: scenario.id,
 }));
 
+const pluginSdkPublicationIssue = "https://github.com/get-bb/bb/issues/1134";
+
 interface MateOverlayProps {
   scenarioId: string;
   onScenarioChange: (scenarioId: string) => void;
@@ -153,6 +155,17 @@ export function MateOverlay({
                     Live {live?.status ?? "not linked"}
                   </span>
                 </div>
+                {target.appEntry && harness && !harness.available ? (
+                  <a
+                    className="mate-live-link"
+                    href={pluginSdkPublicationIssue}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Track SDK publication
+                    <ExternalLink aria-hidden="true" />
+                  </a>
+                ) : null}
                 {live?.url ? (
                   <a
                     className="mate-live-link"
