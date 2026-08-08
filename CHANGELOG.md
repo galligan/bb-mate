@@ -3,7 +3,7 @@
 BB Mate is an alpha. This changelog records reviewable candidates and public
 prereleases; it does not imply a stable API or support promise.
 
-## Unreleased
+## 0.1.0-alpha.2 — public README refresh
 
 ### Changed
 
@@ -12,7 +12,9 @@ prereleases; it does not imply a stable API or support promise.
 - Rewrite the public documentation around plugin authors and clarify the
   boundary between native bb, `@bb/plugin-sdk`, and BB Mate.
 - Add repository, homepage, and issue-tracker metadata to the next packaged CLI
-  artifact. The existing npm `0.1.0-alpha.1` bytes remain unchanged.
+  artifact.
+- Publish a new package version so npm renders the public README. Runtime code,
+  dependencies, and Fixture stories are unchanged from alpha.1.
 
 ## 0.1.0-alpha.1 — public npm alpha
 

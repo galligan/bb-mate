@@ -18,7 +18,7 @@ The command rebuilds the CLI and surface lab, creates an isolated staging
 manifest with no workspace dependencies, and writes the versioned archive:
 
 ```text
-artifacts/bb-mate-0.1.0-alpha.1.tgz
+artifacts/bb-mate-0.1.0-alpha.2.tgz
 ```
 
 The artifact is MIT-licensed and configured for public publication under the
@@ -96,10 +96,10 @@ The package scripts above never publish. After owner approval, clean review,
 green hosted CI, and merge, publish only the exact post-merge artifact:
 
 ```sh
-npm publish ./artifacts/bb-mate-0.1.0-alpha.1.tgz --access public --tag alpha
+npm publish ./artifacts/bb-mate-0.1.0-alpha.2.tgz --access public --tag alpha
 ```
 
-Verify that `alpha` points to `0.1.0-alpha.1` and a clean registry install
+Verify that `alpha` points to `0.1.0-alpha.2` and a clean registry install
 succeeds. npm's first-package bootstrap also creates the registry's mandatory
 [`latest` tag](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md)
 at the only published version even when publication uses `--tag alpha`. An
