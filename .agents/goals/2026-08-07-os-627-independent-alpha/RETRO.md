@@ -164,6 +164,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The private local artifact is now the verified baseline for the external author guide, trust model, and support policy.
 - Next: Verify every documented command from a clean checkout or installed artifact, then complete security and targeted documentation review.
 - Blockers: A public license choice remains an explicit owner decision and is not authorized by this goal; the docs must make the private `UNLICENSED` boundary and pre-public-release gate explicit.
+
+2026-08-07 - OS-636 external guide candidate and clean-checkout correction
+- Changed: Added the five-minute Fixture path, external author guide, full-trust operation matrix, CONTRIBUTING, SECURITY, and support/deprecation/license policies. During clean-checkout verification, fixed Ladle's default cwd-derived application ID by overriding it with the stable `bb-mate-surface-lab-v1` ID and added an artifact assertion for that boundary.
+- Verified: A fresh archive of commit fa6fd86 installed with the frozen lockfile, served the documented loopback story URL, exposed the expected story in `meta.json`, and stopped cleanly. Before the fix, the source and fresh checkout each built internally stable archives but differed because Ladle embedded a hash of `process.cwd()`. With the stable ID, both independent checkout paths produce the same 40-file, 13-story SHA-256 `545ae6a9d4e30caf2b6099b90f087ad1e026b5e089b2cb13cbb7ea8534d5b359`.
+- Result: The documented clean-checkout package path is now byte-reproducible across checkout roots, not only across repeated builds in one directory.
+- Next: Run the exact committed clean-checkout aggregate, browser gate, standing security review, and fresh targeted author-doc review.
+- Blockers: None inside the private-alpha scope; the public license remains an explicit owner gate.
 ```
 
 ## Preparation Audits
@@ -250,6 +257,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | macOS Playwright/axe matrix (14 tests)                                          | OS-635 regression    | pass                 | unchanged fixture baselines and accessibility matrix       |
 | Hosted CI 31228900314                                                           | OS-635 Linux probe   | expected failure     | visual green; clean-room tar PATH lacked external gzip     |
 | Corrected OS-635 aggregate                                                      | OS-635 candidate     | pass                 | explicit gzip tool; artifact SHA unchanged                 |
+| Archived clean checkout quickstart                                              | OS-636 source docs   | pass                 | frozen install; story URL and metadata verified            |
+| Cross-checkout package comparison                                               | OS-636 reproducible  | pass                 | both roots SHA `545ae6a…b359`; 40 files; 13 stories        |
 
 ## Prompt / Goal Alignment
 

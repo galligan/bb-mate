@@ -365,6 +365,17 @@ try {
       `Artifact leaks an absolute developer path in ${file}.`,
     );
   }
+  const labJavaScript = (
+    await Promise.all(
+      extractedFiles
+        .filter((file) => file.startsWith("dist/lab/") && file.endsWith(".js"))
+        .map((file) => fs.readFile(path.join(extractedPackage, file), "utf8")),
+    )
+  ).join("\n");
+  assert(
+    labJavaScript.includes("bb-mate-surface-lab-v1"),
+    "Packaged Ladle must use the checkout-independent application ID.",
+  );
 
   const copiedArtifact = path.join(temporaryRoot, artifactName);
   await fs.copyFile(artifactPath, copiedArtifact);
