@@ -50,7 +50,7 @@ separate owner decision.
 - [x] Add deterministic package inspection and clean-room lifecycle proof.
 - [x] Document the supported runtime/capability and no-publish boundary.
 - [x] Complete aggregate gates and standing/fresh-targeted review.
-- [ ] Land the PR, verify main CI, and move OS-635 to Done.
+- [x] Land the PR, verify main CI, and move OS-635 to Done.
 
 ## Completion
 

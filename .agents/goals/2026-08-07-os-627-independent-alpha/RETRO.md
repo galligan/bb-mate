@@ -157,6 +157,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The package test now declares the complete external tool closure it actually needs on both macOS and Linux.
 - Next: Re-run standing and targeted review on the changed snapshot, amend the PR, and follow hosted CI to green.
 - Blockers: None.
+
+2026-08-07 - OS-635 landed and OS-636 started
+- Changed: Corrected the Linux clean-room tool closure, merged OS-635 in PR #10, reconciled its GitButler lane, moved Linear to Done, and opened the recommended OS-636 documentation branch from clean main.
+- Verified: Corrected PR run 31229243221 and post-merge main run 31229355120 both passed verify and visual; GitGuardian passed; merge commit 544d9b1; no review threads; clean lane-free workspace.
+- Result: The private local artifact is now the verified baseline for the external author guide, trust model, and support policy.
+- Next: Verify every documented command from a clean checkout or installed artifact, then complete security and targeted documentation review.
+- Blockers: A public license choice remains an explicit owner decision and is not authorized by this goal; the docs must make the private `UNLICENSED` boundary and pre-public-release gate explicit.
 ```
 
 ## Preparation Audits
@@ -262,7 +269,7 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green   |
 | OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green   |
 | OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green   |
-| OS-635 | In Progress | Local package implementation and review                |
+| OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green  |
 | OS-636 | Todo        | Unblocked; finalized after artifact commands stabilize |
 | OS-637 | Todo        | Blocked by OS-632/634/635/636                          |
 | OS-638 | Todo        | Blocked by OS-629/637; final ready PR only             |
