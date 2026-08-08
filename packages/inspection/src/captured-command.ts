@@ -9,6 +9,7 @@ const forcedSettlementDelayMs = 10;
 export interface CapturedCommandOptions {
   timeoutMs?: number;
   maxOutputBytes?: number;
+  env?: NodeJS.ProcessEnv;
 }
 
 export function runCapturedCommand(
@@ -21,6 +22,7 @@ export function runCapturedCommand(
     const child = spawn(executable, [...args], {
       cwd,
       detached: process.platform !== "win32",
+      env: options.env,
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
     });

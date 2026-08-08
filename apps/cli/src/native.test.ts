@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  nativeCommandEnv,
   resolveBbExecutable,
   runCapturedCommand,
   runInheritedCommand,
@@ -68,6 +69,40 @@ describe("native command boundary", () => {
         env: { BB_CLI: "./missing-bb", PATH: fallback.root },
       }),
     ).toBe(await fs.realpath(fallback.file));
+  });
+
+  test("removes bb re-exec selectors from delegated native commands", () => {
+    expect(
+      nativeCommandEnv({
+        BB_CLI: "/tmp/daemon-managed-bb",
+        BB_CLI_REEXEC: "1",
+        BB_SERVER_URL: "http://127.0.0.1:49161",
+        PATH: "/usr/bin",
+      }),
+    ).toEqual({
+      BB_SERVER_URL: "http://127.0.0.1:49161",
+      PATH: "/usr/bin",
+    });
+  });
+
+  test("passes an explicit environment to captured native commands", async () => {
+    const fixture = await executable(
+      "env-probe",
+      '#!/bin/sh\nprintf \'%s|%s\' "${BB_CLI-unset}" "${BB_MATE_SENTINEL-unset}"\n',
+    );
+
+    expect(
+      await runCapturedCommand(fixture.file, [], fixture.root, {
+        env: nativeCommandEnv({
+          BB_CLI: fixture.file,
+          BB_MATE_SENTINEL: "preserved",
+        }),
+      }),
+    ).toEqual({
+      stdout: "unset|preserved",
+      stderr: "",
+      exitCode: 0,
+    });
   });
 
   test("preserves a delegated process signal", async () => {

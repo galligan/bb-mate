@@ -192,6 +192,20 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Review: Standing `tmp/reviews/standing/os-636-round-2.json`; targeted `tmp/reviews/targeted-os636/round-2.json`.
 - Next: Commit the approved corrections, open the draft PR, follow hosted CI and review threads, then land and reconcile OS-636 before starting OS-637.
 - Blockers: None.
+
+2026-08-07 - OS-636 landed and OS-637 started
+- Changed: Promoted and merged PR #11, reconciled GitButler to a clean lane-free main, closed OS-636, and opened the Linear-recommended OS-637 branch.
+- Verified: PR CI 31230755681 and post-merge main CI 31230856034 both passed verify and visual; GitGuardian passed; PR #11 had no reviews, inline comments, or unresolved review threads.
+- Result: OS-636 is Done at merge commit `b2d5c203e7ee2f69314a5babbe2097260c87a4d0`. OS-637 is unblocked and scoped to disposable clean-room state only.
+- Next: Execute the external-author trial from a fresh temporary profile, fix all P0/P1 friction, and rerun before review.
+- Blockers: None inside the private-alpha scope.
+
+2026-08-07 - OS-637 clean-room trial found and fixed native re-exec loop
+- Changed: Ran the source, packaged, browser, compatibility, native build, and guarded Live journey from disposable state. Added an explicit environment boundary so BB Mate consumes `BB_CLI` without forwarding bb's own re-exec selector into the resolved child.
+- Verified: Before the fix, all four native probes timed out at five seconds while the same bb 0.35.1 executable succeeded directly. After the fix, the isolated native host reported bb 0.35.1 and unpaired Connect, `check` built server/app metadata at SDK 0.4.1, and `live` refused the uninstalled plugin with the exact path-install handoff.
+- Result: Trial finding F-1 (P1) is fixed with focused tests for selector removal and captured-child environment preservation. All 13 surfaces, ownership classifications, inert content-script behavior, and Vite HMR were verified in Chrome.
+- Next: Commit the correction and report, rerun the entire journey from a new clean archive, then complete standing and targeted review.
+- Blockers: None; Harness remains expected upstream-dependent.
 ```
 
 ## Preparation Audits
@@ -288,6 +302,11 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Git-less export Playwright/axe and link audit                                   | OS-636 clean source  | pass                 | 14 browser checks; 21 Markdown files                       |
 | `bun run format:check && bun run check && bun run test && bun run build`        | OS-636 final         | pass                 | 172 tests; package SHA `b8b2f756…c2479`                    |
 | macOS Playwright/axe matrix (14 tests)                                          | OS-636 final         | pass                 | unchanged visual and accessibility baselines               |
+| Hosted CI 31230755681                                                           | OS-636 PR            | pass                 | verify, visual, and GitGuardian green                      |
+| Hosted CI 31230856034                                                           | OS-636 main          | pass                 | post-merge verify and visual green                         |
+| OS-637 clean source/browser trial                                               | OS-637 first run     | pass                 | 13 stories; ownership; inert lifecycle; HMR observed       |
+| OS-637 native probe before correction                                           | OS-637 first run     | expected failure     | leaked `BB_CLI`; four five-second native timeouts          |
+| OS-637 fixed isolated native lane                                               | OS-637 correction    | pass                 | bb 0.35.1; build green; guarded Live handoff               |
 
 ## Prompt / Goal Alignment
 
@@ -308,8 +327,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green  |
 | OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green  |
 | OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green |
-| OS-636 | In Progress | Final local candidate approved; PR and CI remain      |
-| OS-637 | Todo        | Blocked by OS-632/634/635/636                         |
+| OS-636 | Done        | PR #11 merged at `b2d5c20`; main CI 31230856034 green |
+| OS-637 | In Progress | Clean-room external-author trial                      |
 | OS-638 | Todo        | Blocked by OS-629/637; final ready PR only            |
 
 ## Follow-Ups

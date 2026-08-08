@@ -16,6 +16,10 @@ dev/reload, and the live runtime.
   inspection, build, or Live handoffs. Other versions may still produce useful
   diagnostics but are best-effort until the compatibility target is updated.
 
+Install native bb through its own supported distribution before using native
+handoffs. The local BB Mate artifact does not bundle, install, configure, or
+start bb on the author's behalf.
+
 Fixture exploration does not require native bb, Connect, secrets, a sibling
 `../bb` checkout, or a published `@bb/plugin-sdk` package.
 

@@ -56,7 +56,7 @@ compatibility, mutation, support, and private-license boundaries unambiguous.
       contribution/security documents.
 - [x] Verify every copyable command in clean source and artifact environments.
 - [x] Complete aggregate gates and standing/fresh-targeted review.
-- [ ] Land the PR, verify main CI, and move OS-636 to Done.
+- [x] Land the PR, verify main CI, and move OS-636 to Done.
 
 ## Completion
 
