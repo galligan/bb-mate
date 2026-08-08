@@ -91,5 +91,7 @@ record:
 - announcement text and audience.
 
 OS-645 records the owner-approved `bb-mate@0.1.0-alpha.1` npm release under the
-`alpha` dist-tag. It does not authorize moving `latest`, creating a Git tag or
-GitHub release, changing visibility, or announcing availability.
+`alpha` dist-tag. npm's first-package bootstrap also created its mandatory
+`latest` tag at that same only version; an authenticated removal attempt returned
+E400. OS-645 does not authorize intentionally repointing it, creating a Git tag
+or GitHub release, changing visibility, or announcing availability.

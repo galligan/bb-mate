@@ -99,6 +99,11 @@ green hosted CI, and merge, publish only the exact post-merge artifact:
 npm publish ./artifacts/bb-mate-0.1.0-alpha.1.tgz --access public --tag alpha
 ```
 
-Verify that `alpha` points to `0.1.0-alpha.1`, `latest` was not created or moved,
-and a clean registry install succeeds. Publication does not create a Git tag or
-GitHub release, change repository visibility, or send an announcement.
+Verify that `alpha` points to `0.1.0-alpha.1` and a clean registry install
+succeeds. npm's first-package bootstrap also creates the registry's mandatory
+[`latest` tag](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md)
+at the only published version even when publication uses
+`--tag alpha`; OS-645 records the authenticated E400 returned when removal was
+attempted. Do not intentionally repoint that tag in later alpha work.
+Publication does not create a Git tag or GitHub release, change repository
+visibility, or send an announcement.

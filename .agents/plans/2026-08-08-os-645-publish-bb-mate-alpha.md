@@ -4,8 +4,9 @@
 
 Publish the reviewed BB Mate CLI as the public unscoped package
 `bb-mate@0.1.0-alpha.1` under the `alpha` dist-tag. Preserve the verified
-private `0.1.0-alpha.0` bytes, keep the GitHub repository private, and leave
-`latest` untouched.
+private `0.1.0-alpha.0` bytes and keep the GitHub repository private. npm's
+first-package registry bootstrap also created its mandatory `latest` tag at the
+same only published version; the attempted authenticated removal returned E400.
 
 ## Success proof
 
@@ -20,8 +21,9 @@ private `0.1.0-alpha.0` bytes, keep the GitHub repository private, and leave
 - Targeted and full-stack local reviews are 5/5 with no open P0/P1/P2.
 - The release PR is CI-green and merged; the exact post-merge artifact matches
   the reviewed artifact.
-- npm shows `bb-mate@0.1.0-alpha.1` under `alpha`, does not expose or move
-  `latest`, and a clean registry install/help/uninstall lifecycle passes.
+- npm shows `bb-mate@0.1.0-alpha.1` under `alpha`; the registry's mandatory
+  bootstrap `latest` tag points to the same only version; and a clean registry
+  install/help/uninstall lifecycle passes.
 - Linear OS-645 records the release commit, PR, CI, registry URL, checksums,
   integrity, and remaining alpha limitations.
 
@@ -37,17 +39,17 @@ private `0.1.0-alpha.0` bytes, keep the GitHub repository private, and leave
 4. [x] Run the full local gate and record the exact candidate artifact evidence.
 5. [x] Complete targeted and full-stack local reviews; fix and re-run any open
        P0/P1/P2 finding.
-6. [ ] Commit on the Linear branch, open a draft PR, pass hosted CI, mark ready,
+6. [x] Commit on the Linear branch, open a draft PR, pass hosted CI, mark ready,
        merge, and verify main CI.
-7. [ ] Rebuild on merged main, prove exact artifact identity, publish with
+7. [x] Rebuild on merged main, prove exact artifact identity, publish with
        `--tag alpha`, and verify registry metadata plus a clean registry lifecycle.
 8. [ ] Update Linear and this plan with final provenance and leave the GitButler
        workspace clean with no applied lanes.
 
 ## Boundaries
 
-- Do not publish `0.1.0-alpha.0`, move `latest`, create a Git tag or GitHub
-  release, change repository visibility, or announce the release.
+- Do not publish `0.1.0-alpha.0`, intentionally repoint `latest`, create a Git
+  tag or GitHub release, change repository visibility, or announce the release.
 - Do not edit `../bb`, implement upstream-dependent OS-639–OS-644 work, copy the
   SDK/Harness, or mutate normal bb/plugin/Connect state.
 - Stop before publication if the name is no longer available, the exact artifact
@@ -60,9 +62,11 @@ private `0.1.0-alpha.0` bytes, keep the GitHub repository private, and leave
 ## Evidence
 
 - Linear: OS-645
-- Release PR: pending
-- Release commit: pending
-- Main merge commit: pending
+- Release PR: <https://github.com/galligan/bb-mate/pull/14>
+- Release commit: `3a9694b4fbccf0cbeb76b8f071d9f71ab8bbea5d`
+- Main merge commit: `c2c33fea523148e56914168df84399db1c0adc51`
+- PR CI: <https://github.com/galligan/bb-mate/actions/runs/31259377836>
+- Main CI: <https://github.com/galligan/bb-mate/actions/runs/31259484216>
 - Package: 41 files, 13 stories, 514333-byte archive, 1057566 bytes unpacked
 - Package SHA-256:
   `c3d474a2eb5dc48de93c672941df8bc4313e3a62a0392ce35674ba1322d68f6d`
@@ -73,4 +77,13 @@ private `0.1.0-alpha.0` bytes, keep the GitHub repository private, and leave
   — 5/5 clean after fixing two P2s from round 1
 - Full-stack review: `/tmp/agent-reviews/os-645/full-stack/round-1.json` —
   5/5 clean, zero open P0-P3
-- Registry: pending
+- Post-publish review: `/tmp/agent-reviews/os-645/post-publish/round-1.json` —
+  5/5 clean, zero open P0-P3
+- Registry: <https://www.npmjs.com/package/bb-mate/v/0.1.0-alpha.1>
+- Live tags: `alpha: 0.1.0-alpha.1`, mandatory first-package
+  `latest: 0.1.0-alpha.1`
+- Registry lifecycle: exact registry tarball SHA-256 matched the merged-main
+  artifact; clean `bb-mate@alpha` install/help/uninstall passed with no residue
+- Tag divergence: authenticated `npm dist-tag rm bb-mate latest` returned E400;
+  [npm registry metadata](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md)
+  documents that every package has a `latest` tag
