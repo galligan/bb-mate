@@ -45,11 +45,7 @@ const runtime: CliRuntime = {
     runCapturedCommand(executable, args, cwd, {
       env: nativeCommandEnv(process.env),
     }),
-  runInherited: (executable, args, options) =>
-    runInheritedCommand(executable, args, {
-      ...options,
-      env: nativeCommandEnv(options.env),
-    }),
+  runInherited: runInheritedCommand,
 };
 
 const result = await runCli(process.argv.slice(2), runtime);

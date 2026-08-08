@@ -195,6 +195,11 @@ describe("bb-mate CLI", () => {
       options: { cwd: string; env: NodeJS.ProcessEnv };
     }> = [];
     const testRuntime = runtime(root, nativeOutput(pluginRoot), {
+      env: {
+        BB_CLI: "/daemon/managed/bb",
+        BB_CLI_REEXEC: "1",
+        BB_MATE_SENTINEL: "preserved",
+      },
       runInherited: async (executable, args, options) => {
         launches.push({ executable, args, options });
         return { exitCode: 0, signal: null };
@@ -227,6 +232,7 @@ describe("bb-mate CLI", () => {
           env: {
             BB_CLI: "/fake/bin/bb",
             BB_MATE_PLUGIN: pluginRoot,
+            BB_MATE_SENTINEL: "preserved",
             BB_MATE_WORKSPACE: root,
           },
         },
@@ -434,10 +440,21 @@ describe("bb-mate CLI", () => {
       executable: string;
       args: readonly string[];
       cwd: string;
+      env: NodeJS.ProcessEnv;
     }> = [];
     const testRuntime = runtime(pluginRoot, nativeOutput(pluginRoot), {
+      env: {
+        BB_CLI: "/daemon/managed/bb",
+        BB_CLI_REEXEC: "1",
+        BB_MATE_SENTINEL: "preserved",
+      },
       runInherited: async (executable, args, options) => {
-        delegated.push({ executable, args, cwd: options.cwd });
+        delegated.push({
+          executable,
+          args,
+          cwd: options.cwd,
+          env: options.env,
+        });
         await fs.mkdir(path.join(pluginRoot, "dist"));
         await fs.writeFile(
           path.join(pluginRoot, "dist", "server.meta.json"),
@@ -462,6 +479,7 @@ describe("bb-mate CLI", () => {
         executable: "/fake/bin/bb",
         args: ["plugin", "build", "."],
         cwd: pluginRoot,
+        env: { BB_MATE_SENTINEL: "preserved" },
       },
     ]);
     expect(testRuntime.stdout.join("")).toContain("Running: bb plugin build .");
@@ -486,10 +504,19 @@ describe("bb-mate CLI", () => {
 
   test("hands an installed path plugin to native live development", async () => {
     const { pluginRoot } = await createPlugin();
-    const delegated: Array<{ args: readonly string[]; cwd: string }> = [];
+    const delegated: Array<{
+      args: readonly string[];
+      cwd: string;
+      env: NodeJS.ProcessEnv;
+    }> = [];
     const testRuntime = runtime(pluginRoot, nativeOutput(pluginRoot, true), {
+      env: {
+        BB_CLI: "/daemon/managed/bb",
+        BB_CLI_REEXEC: "1",
+        BB_MATE_SENTINEL: "preserved",
+      },
       runInherited: async (_executable, args, options) => {
-        delegated.push({ args, cwd: options.cwd });
+        delegated.push({ args, cwd: options.cwd, env: options.env });
         return { exitCode: null, signal: "SIGTERM" };
       },
     });
@@ -498,7 +525,11 @@ describe("bb-mate CLI", () => {
 
     expect(result).toEqual({ exitCode: null, signal: "SIGTERM" });
     expect(delegated).toEqual([
-      { args: ["plugin", "dev", "."], cwd: pluginRoot },
+      {
+        args: ["plugin", "dev", "."],
+        cwd: pluginRoot,
+        env: { BB_MATE_SENTINEL: "preserved" },
+      },
     ]);
     expect(testRuntime.stdout.join("")).toContain("Running: bb plugin dev .");
   });

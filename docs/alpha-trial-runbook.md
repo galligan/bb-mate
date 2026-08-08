@@ -1,0 +1,216 @@
+# Clean-room alpha trial runbook
+
+This runbook reproduces the OS-637 source, package, and isolated native lanes
+without a sibling bb checkout or normal bb state. It targets the verified macOS
+arm64 environment. Use two unused loopback ports and keep every generated file
+under one disposable root.
+
+## 1. Export the candidate
+
+Run this from a BB Mate checkout. Record the candidate commit before exporting
+a Git-less source tree:
+
+```sh
+candidate="$(git rev-parse HEAD)"
+trial_root="$(mktemp -d "${TMPDIR:-/tmp}/bb-mate-alpha-trial.XXXXXX")"
+source_dir="$trial_root/source"
+profile="$trial_root/profile"
+prefix="$trial_root/install"
+plugin="$trial_root/plugin"
+mkdir -p "$source_dir" "$profile" "$prefix" "$plugin"
+git archive --format=tar "$candidate" | tar -xf - -C "$source_dir"
+test ! -e "$source_dir/.git"
+test ! -e "$source_dir/node_modules"
+```
+
+Save `trial_root`, `candidate`, and the two chosen ports in the trial notes. Do
+not point any later variable at an existing plugin, home directory, or bb data
+directory.
+
+## 2. Enter an empty profile
+
+Capture the directory containing Bun before starting a shell that loads no user
+configuration:
+
+```sh
+tool_bin="$(dirname "$(command -v bun)")"
+env -i \
+  USER="${USER:-trial}" \
+  LOGNAME="${LOGNAME:-trial}" \
+  SHELL=/bin/zsh \
+  PATH="$tool_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  TRIAL_ROOT="$trial_root" \
+  CANDIDATE="$candidate" \
+  /bin/zsh --no-rcs
+```
+
+Inside that shell, reconstruct only trial-local values:
+
+```sh
+trial_root="$TRIAL_ROOT"
+candidate="$CANDIDATE"
+source_dir="$trial_root/source"
+profile="$trial_root/profile"
+prefix="$trial_root/install"
+plugin="$trial_root/plugin"
+export HOME="$profile/home"
+export XDG_CONFIG_HOME="$profile/config"
+export XDG_CACHE_HOME="$profile/cache"
+export XDG_STATE_HOME="$profile/state"
+export XDG_DATA_HOME="$profile/data"
+export TMPDIR="$profile/tmp"
+export BUN_INSTALL_CACHE_DIR="$profile/cache/bun"
+export npm_config_cache="$profile/cache/npm"
+mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" \
+  "$XDG_STATE_HOME" "$XDG_DATA_HOME" "$TMPDIR"
+unset BB_CLI BB_CLI_REEXEC BB_SERVER_URL BB_DATA_DIR
+```
+
+The empty shell must not contain saved credentials, dotenv values, or a path to
+a sibling bb checkout.
+
+## 3. Verify source Fixture mode
+
+```sh
+cd "$source_dir"
+time bun install --frozen-lockfile
+bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61047
+```
+
+Open the printed URL and confirm `meta.json` exposes 13 stories. Inspect a
+plugin component, host action, mixed/bb-owned seam, and content-script story.
+The content-script fixture must remain inert. To prove HMR, copy
+`apps/workbench/src/thread-list-fixtures.ts`, change the deterministic
+`Agent focus` label, observe the browser update without restarting, and restore
+the copied file. Stop the foreground server with Control-C.
+
+## 4. Build and install the artifact
+
+```sh
+cd "$source_dir"
+bun run compatibility:check
+bun run package:artifact
+artifact="$source_dir/artifacts/bb-mate-0.1.0-alpha.0.tgz"
+shasum -a 256 "$artifact"
+npm install --prefix "$prefix" --no-save --package-lock=false "$artifact"
+mate="$prefix/node_modules/.bin/bb-mate"
+"$mate" --help
+```
+
+For the OS-637 candidate, the archive contains 40 files and 13 stories. Record
+the checksum rather than assuming it matches an earlier candidate.
+
+## 5. Create the disposable plugin
+
+Create these three files under the empty `plugin` directory:
+
+Create `package.json` with:
+
+```json
+{
+  "name": "bb-plugin-alpha-trial",
+  "version": "1.0.0",
+  "private": true,
+  "engines": { "bb": ">=0.35.1", "bbPluginSdk": ">=0.4.1" },
+  "dependencies": { "@bb/plugin-sdk": "^0.4.1" },
+  "bb": {
+    "name": "Alpha Trial",
+    "description": "Disposable clean-room plugin",
+    "branding": { "icon": "Puzzle" },
+    "server": "./server.ts",
+    "app": "./app.tsx"
+  }
+}
+```
+
+Use this same content for `server.ts` and `app.tsx`:
+
+```ts
+export default {};
+```
+
+Fixture mode can inspect this manifest without the unpublished SDK. Native bb
+owns the later build and writes only disposable plugin output.
+
+## 6. Start isolated native bb
+
+Provision the trusted native prerequisite separately. Its install scripts are
+required for the native SQLite binding; this is not an install script from the
+BB Mate archive.
+
+```sh
+npm install --prefix "$prefix" --no-save --package-lock=false \
+  bb-app@0.35.1 "$artifact"
+bb="$prefix/node_modules/.bin/bb"
+bb_app="$prefix/node_modules/.bin/bb-app"
+bb_data="$profile/bb-data"
+server_port=49286
+daemon_port=49287
+test -x "$bb" && test -x "$bb_app"
+```
+
+Choose different unused ports when either example port is occupied. In a
+second empty-profile terminal, run the combined server and host daemon in the
+foreground:
+
+```sh
+"$bb_app" --data-dir "$bb_data" \
+  --server-port "$server_port" \
+  --host-daemon-port "$daemon_port"
+```
+
+Back in the trial shell, bind every native command to that process:
+
+```sh
+export BB_CLI="$bb"
+export BB_SERVER_URL="http://127.0.0.1:$server_port"
+export BB_DATA_DIR="$bb_data"
+"$bb" --version
+"$bb" plugin list --json
+"$bb" connect status --json
+```
+
+The version must be 0.35.1, the inventory must contain builtins only, and
+Connect must be unpaired. Stop if any normal plugin or paired Connect state is
+visible.
+
+## 7. Exercise source and packaged native handoffs
+
+From the source archive, verify that both terminal and browser inspection use
+the isolated bb instance:
+
+```sh
+cd "$source_dir"
+bun run bb-mate dev "$plugin" --host 127.0.0.1 --port 61048
+curl -fsS http://127.0.0.1:61048/bb-mate-session.json
+```
+
+The session JSON must report bb 0.35.1 and unpaired Connect. Stop the source
+server, then exercise the installed artifact:
+
+```sh
+"$mate" inspect "$plugin"
+"$mate" check "$plugin"
+"$mate" live "$plugin"
+"$mate" dev "$plugin" --host 127.0.0.1 --port 61049
+```
+
+`check` must delegate `bb plugin build .` and refresh metadata. Because the
+plugin was intentionally not installed, `live` must exit 1 and print the exact
+`bb plugin install <path> --yes` handoff without running it. The packaged dev
+server must expose all 13 static stories. Stop it with Control-C.
+
+## 8. Uninstall and teardown
+
+```sh
+npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
+test ! -e "$prefix/node_modules/bb-mate"
+test ! -e "$prefix/node_modules/.bin/bb-mate"
+test ! -e "$prefix/package-lock.json"
+```
+
+Stop the isolated `bb-app` foreground process with Control-C. Verify all four
+chosen ports are closed and review the trial root before removing that exact
+temporary directory. The only plugin mutation should be `plugin/dist` from the
+native build. Do not install the plugin, pair or expose Connect, publish the
+artifact, or reuse normal bb state during this trial.

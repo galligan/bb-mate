@@ -213,6 +213,20 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The F-1 P1 correction survives a true first-run environment. No P0/P1 finding remains, no plugin was installed, Connect stayed unpaired, and normal bb/plugin state was not used.
 - Next: Run the repository aggregate and standing/fresh-targeted reviews, fix all findings, then open the draft PR.
 - Blockers: None inside the private-alpha scope.
+
+2026-08-07 - OS-637 round-one review found a source native-selection regression
+- Changed: Standing and fresh targeted reviewers traced the full production runtime and reproduced that the first F-1 correction stripped canonical `BB_CLI` from the non-native source Vite child. Both also found that the durable report did not fully define the isolated native setup; targeted review additionally requested explicit uninstall-residue evidence.
+- Verified: Both reviewers scored the branch 2/5 and blocked readiness. Standing reproduced terminal bb 0.35.1 preflight followed by blocked browser inspection with no bb version. Targeted confirmed the aggregate remained green at 174 tests, 40 files, 13 stories, and SHA-256 `fc99a5161ad0890706d03306de32248174aa3ead67b3daf334932f6868214a07`.
+- Review: Standing `tmp/reviews/standing/os-637-round-1.json`; targeted `tmp/reviews/targeted-os637/round-1.json`.
+- Next: Consume selectors only at native invocations, preserve canonical bb for Vite, commit the complete clean-room runbook and uninstall evidence, rerun isolated source/native paths, and request round two.
+- Blockers: OS-637 remains blocked by the open P1 until the corrected production path and reviews pass.
+
+2026-08-07 - OS-637 review corrections and isolated rerun green
+- Changed: Moved selector consumption into the shared native invocation boundary, preserved a freshly resolved canonical `BB_CLI` for the source Vite child, added direct source/check/live environment assertions, and committed the complete clean-profile/native runbook plus uninstall-residue evidence.
+- Verified: With `BB_CLI_REEXEC=1` deliberately present, terminal preflight and the source `/bb-mate-session.json` both reported isolated bb 0.35.1 and unpaired Connect. Native check rebuilt SDK 0.4.1 metadata; Live refused the uninstalled plugin with the exact handoff; isolated inventory remained eight builtins only. The aggregate passed 175 tests, all builds, all 14 Playwright/axe checks, and produced a 40-file/13-story artifact at SHA-256 `0e5503f371a1ffc57c4f4fc333828f4b40affe146b82c7f2c7980f925c48d00e`.
+- Result: Both round-one P1/P2 findings and the targeted P3 are corrected in code, tests, durable procedure, and current runtime evidence. No normal plugin or Connect state was used or changed.
+- Next: Commit the corrections and request standing plus fresh-targeted round-two approval.
+- Blockers: None pending independent review.
 ```
 
 ## Preparation Audits
@@ -315,6 +329,9 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-637 native probe before correction                                           | OS-637 first run     | expected failure     | leaked `BB_CLI`; four five-second native timeouts          |
 | OS-637 fixed isolated native lane                                               | OS-637 correction    | pass                 | bb 0.35.1; build green; guarded Live handoff               |
 | OS-637 second scratch rerun                                                     | OS-637 final trial   | pass                 | new roots; 13 stories; HMR; native build; uninstall        |
+| OS-637 standing review round one                                                | OS-637 review        | changes requested    | 2/5; P1 source selector; P2 missing runbook                |
+| OS-637 targeted review round one                                                | OS-637 review        | changes requested    | 2/5; same P1/P2 plus P3 uninstall evidence                 |
+| OS-637 corrected production source/native rerun                                 | OS-637 correction    | pass                 | browser bb 0.35.1; 175 tests; SHA `0e5503f…d00e`           |
 
 ## Prompt / Goal Alignment
 

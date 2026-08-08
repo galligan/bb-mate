@@ -4,6 +4,7 @@ import {
   discoverPluginRoots,
   formatInspection,
   inspectPlugin,
+  nativeCommandEnv,
   type CommandResult,
   type PluginInspection,
 } from "@bb-mate/inspection";
@@ -228,7 +229,7 @@ export async function runCli(
       {
         cwd: runtime.workspaceRoot,
         env: {
-          ...runtime.env,
+          ...nativeCommandEnv(runtime.env),
           BB_MATE_WORKSPACE: runtime.cwd,
           ...(pluginRoot ? { BB_MATE_PLUGIN: pluginRoot } : {}),
           ...(context.bbExecutable ? { BB_CLI: context.bbExecutable } : {}),
@@ -245,7 +246,7 @@ export async function runCli(
     const build = await runtime.runInherited(
       context.bbExecutable,
       ["plugin", "build", "."],
-      { cwd: pluginRoot, env: runtime.env },
+      { cwd: pluginRoot, env: nativeCommandEnv(runtime.env) },
     );
     if (build.signal || build.exitCode !== 0) return build;
     const refreshed = await inspectSelection(runtime, pluginRoot);
@@ -272,7 +273,7 @@ export async function runCli(
     line(runtime.stdout, "Running: bb plugin dev .");
     return runtime.runInherited(context.bbExecutable, ["plugin", "dev", "."], {
       cwd: pluginRoot,
-      env: runtime.env,
+      env: nativeCommandEnv(runtime.env),
     });
   }
 

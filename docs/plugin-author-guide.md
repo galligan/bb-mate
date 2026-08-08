@@ -128,6 +128,8 @@ workbench. It binds only to loopback and does not serve inspection data. The
 archive remains private, `UNLICENSED`, and unsupported for registry publication.
 The reproducible artifact and clean-room lifecycle are specified in
 [local-package.md](local-package.md).
+Release-candidate maintainers can reproduce the source, packaged, and isolated
+native lanes with the [clean-room alpha trial runbook](alpha-trial-runbook.md).
 
 ## Plugin package boundary
 
