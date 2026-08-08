@@ -122,8 +122,9 @@ npm install --prefix "$prefix" --no-save --package-lock=false "$artifact"
 "$prefix/node_modules/.bin/bb-mate" --help
 ```
 
-Stop any foreground Fixture server before update or uninstall. A local update
-is a replacement with another explicitly checksummed archive:
+Stop any foreground Fixture server before update or uninstall. If the next
+artifact keeps the same package identity (`bb-mate`), a local update is a
+replacement with another explicitly checksummed archive:
 
 ```sh
 next_artifact="/approved/path/bb-mate-next.tgz"
@@ -131,6 +132,26 @@ next_artifact="/approved/path/bb-mate-next.tgz"
 npm install --prefix "$prefix" --no-save --package-lock=false "$next_artifact"
 "$prefix/node_modules/.bin/bb-mate" --help
 ```
+
+If the owner changes the package name or scope, do not install the new identity
+over the old one or use the old binary as verification. Remove the old package,
+prove its package and binary are absent, then install and verify the exact new
+package and bin identities recorded by that handoff:
+
+```sh
+old_package="bb-mate"
+next_package="@approved-scope/approved-name"
+next_bin="approved-bin"
+npm uninstall --prefix "$prefix" --no-save --package-lock=false "$old_package"
+test ! -e "$prefix/node_modules/$old_package"
+test ! -e "$prefix/node_modules/.bin/bb-mate"
+npm install --prefix "$prefix" --no-save --package-lock=false "$next_artifact"
+test -e "$prefix/node_modules/$next_package/package.json"
+"$prefix/node_modules/.bin/$next_bin" --help
+```
+
+The values above are placeholders, not a proposed public identity. Replace them
+only with the approved package metadata in the next handoff.
 
 Uninstall only BB Mate from the disposable prefix:
 

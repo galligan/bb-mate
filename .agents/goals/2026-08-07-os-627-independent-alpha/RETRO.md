@@ -248,6 +248,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The technical candidate is a go for explicitly authorized private local sharing and a no-go for npm/public release. OS-638 changes only handoff documentation outside the package allowlist; publication, license, visibility, merge, and announcement remain stopped.
 - Next: Complete standing and fresh-targeted review, fix every finding, then open and verify the ready-but-unmerged PR.
 - Blockers: None for the documentation PR; owner decisions intentionally block distribution execution.
+
+2026-08-07 - OS-638 round-one review update-identity correction
+- Changed: Made the same-package update assumption explicit and added a separate remove/prove-absent/install/verify procedure for an approved future package name or scope change.
+- Verified: Standing review approved the exact candidate 5/5 with zero P0-P3. Fresh targeted review independently reproduced the exact artifact and approved every acceptance row except the prior update procedure, scoring 4/5 with one reasonable P3.
+- Result: A future renamed or scoped package can no longer falsely verify a stale `bb-mate` installation; placeholder identities remain explicitly non-proposals.
+- Next: Format and commit the correction, then obtain standing and targeted exact-head reapproval.
+- Blockers: None pending independent re-review.
 ```
 
 ## Preparation Audits
@@ -302,6 +309,10 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 1         | OS-636 targeted    | `tmp/reviews/targeted-os636/round-1.json`  | 3/5        | changes requested | 4          | Intake, versions, lifecycle, aggregate execution      |
 | 2         | OS-636 standing    | `tmp/reviews/standing/os-636-round-2.json` | 5/5        | clean             | 0          | Trust, support, lifecycle, and script closure         |
 | 2         | OS-636 targeted    | `tmp/reviews/targeted-os636/round-2.json`  | 5/5        | clean             | 0          | External-author workflow and artifact closure         |
+| 3         | OS-637 standing    | `tmp/reviews/standing/os-637-round-3.json` | 5/5        | clean             | 0          | Final process-tree and clean-room recheck             |
+| 4         | OS-637 targeted    | `tmp/reviews/targeted-os637/round-4.json`  | 5/5        | clean             | 0          | All six acceptance criteria passed                    |
+| 1         | OS-638 standing    | `tmp/reviews/standing/os-638-round-1.json` | 5/5        | clean             | 0          | Full handoff, lifecycle, stop, and provenance review  |
+| 1         | OS-638 targeted    | `tmp/reviews/targeted-os638/round-1.json`  | 4/5        | changes requested | 0          | One P3 for future package-identity update handling    |
 
 ## Verification Log
 
