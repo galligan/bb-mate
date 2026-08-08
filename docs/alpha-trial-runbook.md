@@ -81,7 +81,16 @@ a sibling bb checkout.
 ```sh
 cd "$source_dir"
 time bun install --frozen-lockfile
-bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61047
+bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61047 \
+  >"$profile/source-stories.log" 2>&1 &
+source_stories_pid=$!
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  curl -fsS http://127.0.0.1:61047/meta.json \
+    >"$profile/source-meta.json" && break
+  test "$attempt" -lt 10 || exit 1
+  sleep 0.5
+done
+test "$(jq '.stories | length' "$profile/source-meta.json")" -eq 13
 ```
 
 Open the printed URL and confirm `meta.json` exposes 13 stories. Inspect a
@@ -97,9 +106,9 @@ cp "$fixture" "$fixture.trial-backup"
 perl -pi -e 's/Agent focus/Agent focus trial/' "$fixture"
 # Observe "Agent focus trial" in the open browser without restarting Vite.
 mv "$fixture.trial-backup" "$fixture"
+kill -INT "$source_stories_pid" 2>/dev/null || true
+wait "$source_stories_pid" || true
 ```
-
-Stop the foreground server with Control-C.
 
 ## 4. Build and install the artifact
 
