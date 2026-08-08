@@ -255,6 +255,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: A future renamed or scoped package can no longer falsely verify a stale `bb-mate` installation; placeholder identities remain explicitly non-proposals.
 - Next: Format and commit the correction, then obtain standing and targeted exact-head reapproval.
 - Blockers: None pending independent re-review.
+
+2026-08-07 - OS-638 final standing and targeted review clean
+- Changed: Closed the sole targeted P3 without changing the package, product source, or release boundary.
+- Verified: Standing and fresh targeted round-two reviews both approved exact head `e6217abb9050ec6857f1712eaa7db6f25a7b8f3e` at 5/5 with zero P0-P3. Each independently exercised a renamed/scoped-package lifecycle and confirmed the old package/bin were absent before the exact new manifest/bin verification. Formatting, links, diff hygiene, package allowlist, artifact checksum, all acceptance rows, and stop rules remain green.
+- Result: OS-638 is locally review-clean and ready for the hosted draft-PR gate.
+- Next: Commit review evidence, exact-head recheck, open the draft PR, follow hosted CI and review threads, then promote to ready and stop unmerged.
+- Blockers: None; release execution remains explicitly unauthorized.
 ```
 
 ## Preparation Audits
@@ -313,6 +320,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 4         | OS-637 targeted    | `tmp/reviews/targeted-os637/round-4.json`  | 5/5        | clean             | 0          | All six acceptance criteria passed                    |
 | 1         | OS-638 standing    | `tmp/reviews/standing/os-638-round-1.json` | 5/5        | clean             | 0          | Full handoff, lifecycle, stop, and provenance review  |
 | 1         | OS-638 targeted    | `tmp/reviews/targeted-os638/round-1.json`  | 4/5        | changes requested | 0          | One P3 for future package-identity update handling    |
+| 2         | OS-638 standing    | `tmp/reviews/standing/os-638-round-2.json` | 5/5        | clean             | 0          | Renamed/scoped lifecycle and full non-regression      |
+| 2         | OS-638 targeted    | `tmp/reviews/targeted-os638/round-2.json`  | 5/5        | clean             | 0          | P3 fixed with literal new-identity package proof      |
 
 ## Verification Log
 

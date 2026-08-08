@@ -50,7 +50,7 @@ and upstream limitation explicit, then leave a green ready PR unmerged for Matt.
 - [x] Inventory landed, deferred, version, license, compatibility, and support state.
 - [x] Write the complete traceable release handoff and owner decision checklist.
 - [x] Run candidate artifact, aggregate, visual, content, and clean-room gates.
-- [ ] Complete standing and fresh targeted review with no open P0-P3.
+- [x] Complete standing and fresh targeted review with no open P0-P3.
 - [ ] Open a draft PR, obtain green hosted gates, mark ready, and stop unmerged.
 
 ## Completion
