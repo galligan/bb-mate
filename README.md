@@ -4,6 +4,33 @@ BB Mate is a private Bun monorepo for designing, prototyping, and shipping exten
 
 The browser workbench lives in `apps/workbench`. Installable bb plugins live in `plugins/<name>` as independent workspace packages with their own manifests and release versions.
 
+## Five-minute Fixture quickstart
+
+Prerequisites: repository access and the currently verified Bun 1.3.14. Newer
+engine-compatible Bun versions are best-effort until added to CI. npm is needed
+only for the local-artifact workflow. Native bb, Connect, credentials, and the
+unpublished plugin SDK are not required for Fixture stories.
+
+From a fresh checkout:
+
+```sh
+bun install --frozen-lockfile
+bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61000
+```
+
+Open
+<http://127.0.0.1:61000/?story=surfaces--sidebar-thread-list--catalog-fixtures>.
+That story is deterministic browser state. Starting it executes BB Mate's
+checked-out development dependencies and opens a loopback server, but it does
+not import or execute a selected plugin, contact bb/Connect, or mutate native
+plugin state.
+
+Continue with the [external plugin-author guide](docs/plugin-author-guide.md),
+then read the [trust and operation model](docs/trust-model.md) before pointing
+BB Mate at third-party code. Project expectations live in
+[CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and
+[SUPPORT.md](SUPPORT.md).
+
 ## Commands
 
 ```sh

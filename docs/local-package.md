@@ -5,7 +5,8 @@ any registry, repository-visibility, license, or release decision.
 
 ## Artifact contract
 
-Run from a clean checkout with Bun 1.3.14 or newer and npm available:
+Run from a clean checkout with the verified Bun 1.3.14 and npm available.
+Newer engine-compatible Bun versions are best-effort until added to CI:
 
 ```sh
 bun install --frozen-lockfile

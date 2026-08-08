@@ -6,7 +6,8 @@ plugin packages, a copied plugin SDK, or authenticated host state.
 
 ## Runtime support
 
-- Bun 1.3.14 or newer executes the `bb-mate` bin.
+- Bun 1.3.14 is the verified `bb-mate` runtime. Newer engine-compatible Bun
+  versions are best-effort until added to CI.
 - npm may install or inspect the tarball, but Node is not a supported CLI
   runtime.
 - Native bb handoffs target the supported macOS bb host. Fixture inspection and
@@ -34,12 +35,19 @@ bundled CLI, and static lab assets.
 Choose an empty prefix and install the generated file without publishing:
 
 ```sh
+plugin="/absolute/path/to/plugin"
 prefix="$(mktemp -d)"
 npm install --prefix "$prefix" --no-save --package-lock=false ./artifacts/bb-mate-0.1.0-alpha.0.tgz
 export PATH="$prefix/node_modules/.bin:$PATH"
 bb-mate --help
-bb-mate inspect ./path/to/plugin
-bb-mate dev ./path/to/plugin
+bb-mate inspect "$plugin"
+bb-mate dev "$plugin"
+```
+
+Open the printed loopback URL, then stop the foreground server with Control-C
+before uninstalling in the same shell:
+
+```sh
 npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
 ```
 
