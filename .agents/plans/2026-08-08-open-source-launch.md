@@ -35,11 +35,11 @@ private to public only after the documentation change is reviewed and green.
        supporting open-source documentation needed by that path.
 4. [x] Run the full local gate, package inspection, link/content checks, and
        targeted plus standing local review.
-5. [ ] Commit on the OS-646 branch, open a draft PR, pass hosted CI and review,
+5. [x] Commit on the OS-646 branch, open a draft PR, pass hosted CI and review,
        mark ready, and merge.
-6. [ ] Verify post-merge main CI, then change GitHub visibility to public and
+6. [x] Verify post-merge main CI, then change GitHub visibility to public and
        configure/verify public-facing repository metadata and security intake.
-7. [ ] Verify anonymous public reachability and the clean GitButler workspace;
+7. [x] Verify anonymous public reachability and the clean GitButler workspace;
        record final provenance in Linear and mark OS-646 Done.
 
 ## Boundaries
@@ -65,3 +65,12 @@ private to public only after the documentation change is reviewed and green.
   clean
 - Local gate: frozen install, format, check, aggregate tests/package lifecycle,
   build, 14 visual/a11y tests, and 41-file package inspection passed
+- Documentation PR: <https://github.com/galligan/bb-mate/pull/17>
+- Documentation commit: `c3f6f22ef77c31810112f49264a7d363bc88562b`
+- Documentation merge: `b37236c9938807140859c7afdc1dc2f54bdc7fe9`
+- PR CI: <https://github.com/galligan/bb-mate/actions/runs/31261051621>
+- Post-merge main CI:
+  <https://github.com/galligan/bb-mate/actions/runs/31261149664>
+- Public repository: <https://github.com/galligan/bb-mate>
+- Anonymous verification: public API/raw README and credential-free HTTPS clone
+  passed; Issues and private vulnerability reporting are enabled
