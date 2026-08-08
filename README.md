@@ -109,7 +109,10 @@ explicit package allowlist. Its installed `dev` command serves only loopback
 Fixture assets; source-checkout `dev` retains the interactive workbench. The
 [clean-room package workflow](docs/local-package.md) documents contents,
 runtime support, missing-capability behavior, temporary install/uninstall, and
-the no-publish boundary.
+the no-publish boundary. The
+[shareable-alpha release handoff](docs/release-handoff.md) records the exact
+candidate, known limitations, recovery path, draft copy, and owner go/no-go
+decisions.
 
 ## Layout
 
