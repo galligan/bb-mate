@@ -28,7 +28,7 @@ test ! -e "$source_dir/.git"
 test ! -e "$source_dir/node_modules"
 ```
 
-Save `trial_root`, `candidate`, and the two chosen ports in the trial notes. Do
+Save `trial_root`, `candidate`, and the five chosen ports in the trial notes. Do
 not point any later variable at an existing plugin, home directory, or bb data
 directory.
 
@@ -255,7 +255,11 @@ wait "$bb_app_pid"
 npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
 test ! -e "$prefix/node_modules/bb-mate"
 test ! -e "$prefix/node_modules/.bin/bb-mate"
+test ! -e "$prefix/package.json"
 test ! -e "$prefix/package-lock.json"
+if test -e "$prefix/node_modules/.package-lock.json"; then
+  ! grep -F 'node_modules/bb-mate' "$prefix/node_modules/.package-lock.json"
+fi
 ```
 
 Verify all five chosen ports are closed and review the trial root before

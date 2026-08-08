@@ -69,20 +69,20 @@ host, so no normal plugin inventory or Connect state was used or changed.
 
 ## Results
 
-| Milestone                | Result               | Evidence                                                                                                    |
-| ------------------------ | -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Fresh dependency install | pass                 | frozen lockfile; 1,536 packages; 11.8 s                                                                     |
-| First Fixture preview    | pass                 | documented story visible about 13 s after beginning install                                                 |
-| Catalog discovery        | pass                 | all 13 story IDs returned by `meta.json`                                                                    |
-| Ownership vocabulary     | pass                 | plugin component, host action, mixed/bb-owned seam, and content-script lifecycle inspected in-browser       |
-| Fixture edit/reload      | pass                 | disposable `Agent focus` name changed; Vite reported HMR and Chrome showed the new value without restart    |
-| Artifact build/install   | pass                 | 40-file archive; installed with npm outside the source checkout                                             |
-| Packaged preview         | pass                 | exact documented story visible; all 13 packaged stories present                                             |
-| Compatibility drift      | pass                 | all 18 target, version, registry, dependency, token, and registration checks passed                         |
-| Passive inspection       | pass                 | bb 0.35.1, unpaired Connect, missing SDK/Harness, and uninstalled plugin reported independently             |
-| Native check             | pass                 | delegated `bb plugin build .`; server/app metadata refreshed at SDK 0.4.1                                   |
-| Live handoff             | expected unavailable | no install performed; printed the exact native path-install command and exited 1                            |
-| Cleanup                  | pass                 | servers stopped; bb-mate package, bin, and lock residue absent; only disposable plugin build output changed |
+| Milestone                | Result               | Evidence                                                                                                            |
+| ------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Fresh dependency install | pass                 | frozen lockfile; 1,536 packages; 11.8 s                                                                             |
+| First Fixture preview    | pass                 | documented story visible about 13 s after beginning install                                                         |
+| Catalog discovery        | pass                 | all 13 story IDs returned by `meta.json`                                                                            |
+| Ownership vocabulary     | pass                 | plugin component, host action, mixed/bb-owned seam, and content-script lifecycle inspected in-browser               |
+| Fixture edit/reload      | pass                 | disposable `Agent focus` name changed; Vite reported HMR and Chrome showed the new value without restart            |
+| Artifact build/install   | pass                 | 40-file archive; installed with npm outside the source checkout                                                     |
+| Packaged preview         | pass                 | exact documented story visible; all 13 packaged stories present                                                     |
+| Compatibility drift      | pass                 | all 18 target, version, registry, dependency, token, and registration checks passed                                 |
+| Passive inspection       | pass                 | bb 0.35.1, unpaired Connect, missing SDK/Harness, and uninstalled plugin reported independently                     |
+| Native check             | pass                 | delegated `bb plugin build .`; server/app metadata refreshed at SDK 0.4.1                                           |
+| Live handoff             | expected unavailable | no install performed; printed the exact native path-install command and exited 1                                    |
+| Cleanup                  | pass                 | servers stopped; bb-mate package, bin, manifest, and lock entry absent; only disposable plugin build output changed |
 
 The timed values are command milestones, not a usability benchmark. Browser
 automation used an ordinary installed Chrome because a first-time author needs
