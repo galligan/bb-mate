@@ -241,6 +241,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: Every upstream-independent implementation/trial issue through OS-637 is Done. OS-638 is unblocked and explicitly stops at a green ready but unmerged PR.
 - Next: Assemble the traceable version, artifact, compatibility, limitations, lifecycle, copy, and owner-decision handoff; review and verify it without publishing or merging.
 - Blockers: Public license, repository visibility, publication, release, and announcement remain owner decisions rather than implementation blockers.
+
+2026-08-07 - OS-638 handoff and local candidate gates green
+- Changed: Added the proposed private-alpha changelog and a release handoff covering provenance, compatibility, trial evidence, known gaps, install/update/uninstall/recovery, trust/support/fidelity, draft copy, and explicit technical/owner/execution decisions.
+- Verified: Live Linear inventory shows OS-623 and OS-628 through OS-637 Done, OS-638 In Progress, and OS-639 through OS-644 Backlog with `upstream-dependent`. The exact product baseline reproduced the 40-file, 13-story archive at SHA-256 `0e5503f371a1ffc57c4f4fc333828f4b40affe146b82c7f2c7980f925c48d00e`; format/check/175 tests/build, 14 visual/accessibility checks, package inspection/lifecycle, diff hygiene, and all relative handoff links passed.
+- Result: The technical candidate is a go for explicitly authorized private local sharing and a no-go for npm/public release. OS-638 changes only handoff documentation outside the package allowlist; publication, license, visibility, merge, and announcement remain stopped.
+- Next: Complete standing and fresh-targeted review, fix every finding, then open and verify the ready-but-unmerged PR.
+- Blockers: None for the documentation PR; owner decisions intentionally block distribution execution.
 ```
 
 ## Preparation Audits
@@ -348,6 +355,11 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-637 corrected production source/native rerun                                 | OS-637 correction    | pass                 | browser bb 0.35.1; 175 tests; SHA `0e5503f…d00e`           |
 | OS-637 standing review round three                                              | OS-637 final review  | 5/5 clean            | zero P0-P3; literal process-tree shutdown passed           |
 | OS-637 targeted review round four                                               | OS-637 final review  | 5/5 clean            | all six acceptance criteria passed                         |
+| OS-638 live roadmap inventory                                                   | OS-638 handoff       | pass                 | independent Done; six upstream issues remain Backlog       |
+| OS-638 format/check/test/build aggregate                                        | OS-638 candidate     | pass                 | 175 tests; compatibility and all builds green              |
+| OS-638 Playwright/axe matrix                                                    | OS-638 candidate     | pass                 | 14 deterministic visual/accessibility checks               |
+| OS-638 package inspection and clean-room lifecycle                              | OS-638 candidate     | pass                 | 40 files; 13 stories; SHA `0e5503f...d00e`                 |
+| OS-638 relative-link, private-path, stop-rule, and diff audit                   | OS-638 handoff       | pass                 | three handoff files; documentation-only candidate          |
 
 ## Prompt / Goal Alignment
 
@@ -369,8 +381,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green  |
 | OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green |
 | OS-636 | Done        | PR #11 merged at `b2d5c20`; main CI 31230856034 green |
-| OS-637 | In Progress | Clean-room external-author trial                      |
-| OS-638 | Todo        | Blocked by OS-629/637; final ready PR only            |
+| OS-637 | Done        | PR #12 merged at `c8363d3`; main CI 31233902043 green |
+| OS-638 | In Progress | Handoff locally green; final ready PR remains         |
 
 ## Follow-Ups
 
