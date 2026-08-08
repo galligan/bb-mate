@@ -136,6 +136,27 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The next hosted run can execute the already-reviewed exact-image test shape without changing visual acceptance thresholds or baselines.
 - Next: Lint, review, commit, push, and follow both hosted jobs to green.
 - Blockers: None.
+
+2026-08-07 - OS-632 landed and OS-635 started
+- Changed: Merged OS-632 in PR #9, reconciled its GitButler lane, moved Linear to Done, and opened the recommended OS-635 branch and plan from clean main.
+- Verified: PR run 31225976689 and post-merge main run 31226118637 both passed the full verify and pinned visual jobs; merge commit 9f2aa0c; no review threads; clean lane-free workspace.
+- Result: Deterministic visual/accessibility coverage is now the packaging baseline.
+- Next: Build and prove the private versioned local artifact without publishing.
+- Blockers: None.
+
+2026-08-07 - OS-635 package walking skeleton green
+- Changed: Defined a staged private package manifest without workspace dependencies; bundled the Bun CLI; packaged the 13-story lab; added a loopback-only, path/symlink-confined GET/HEAD server; isolated clean-room state; added third-party notices and local package docs.
+- Verified: 32 CLI/server tests pass. The lifecycle test performs two complete builds plus a staging repack under an isolated exact-tool PATH, requires byte-identical output, checks the 40-file allowlist and path/source/symlink boundaries, installs under isolated HOME/XDG/npm/Bun state, runs help and expected-nonzero missing-bb inspection, proves the entrypoint stayed inert, serves all 13 stories with bb/Connect/SDK unavailable, and verifies uninstall package/manifest/root-lock/hidden-lock residue. The generated license payload covers direct runtimes, their closures, the complete Ladle static-client import set, and embedded notices. Current SHA-256: 6e8b25d89345c2e68908131eb2d8f9e4cb31ab12be1b238447f3f8f9e64afc13.
+- Result: The installed artifact works outside the source checkout with no sibling bb, workspace link, plugin package, or publication side effect.
+- Next: Run aggregate gates, standing and fresh targeted implementation review, then the hosted PR loop.
+- Blockers: None.
+
+2026-08-07 - OS-635 hosted Linux tool closure corrected
+- Changed: Added the exact `gzip` executable to the clean-room PATH alongside `tar`; GNU tar delegates gzip decompression to that binary on the hosted Linux runner.
+- Verified: Hosted run 31228900314 proved the missing-tool failure after visual passed. The corrected snapshot passes `bun run package:test` and the complete format/check/test/build/diff gate locally with the artifact hash and 40-file allowlist unchanged.
+- Result: The package test now declares the complete external tool closure it actually needs on both macOS and Linux.
+- Next: Re-run standing and targeted review on the changed snapshot, amend the PR, and follow hosted CI to green.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -150,33 +171,42 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 
 ## Review Log
 
-| Milestone | Reviewer           | Report                                     | Score      | Verdict           | Open P0-P2 | Notes                                                |
-| --------- | ------------------ | ------------------------------------------ | ---------- | ----------------- | ---------- | ---------------------------------------------------- |
-| prep      | OS-629 audit       | agent transcript                           | not scored | complete          | 0          | Independent public drift check                       |
-| prep      | surface audit      | agent transcript                           | not scored | complete          | 0          | Incremental 633/634/632 chain                        |
-| prep      | distribution audit | agent transcript                           | not scored | complete          | 0          | Local candidate and stop rules                       |
-| prep      | packet alignment   | agent transcript                           | not scored | clean             | 0          | Three P2s fixed; recheck clean                       |
-| 1         | OS-629 standing    | `tmp/reviews/standing/os-629-round-1.json` | 3/5        | changes requested | 3          | Target validation, decision durability, split errors |
-| 1         | OS-629 targeted    | `tmp/reviews/targeted-os629/round-1.json`  | 2/5        | changes requested | 2          | Decision and release-ref coherence                   |
-| 2         | OS-629 standing    | `tmp/reviews/standing/os-629-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                 |
-| 2         | OS-629 targeted    | `tmp/reviews/targeted-os629/round-2.json`  | 5/5        | clean             | 0          | Negative probes and full gate pass                   |
-| 1         | OS-633 standing    | `tmp/reviews/standing/os-633-round-1.json` | 3/5        | changes requested | 2          | Sidebar scenario and viewport gaps                   |
-| 1         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-1.json`  | 3/5        | changes requested | 2          | Host-action evidence and inert viewport              |
-| 2         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-2.json`  | 4/5        | changes requested | 0          | One reasonable P3 isolation-test gap                 |
-| 2         | OS-633 standing    | `tmp/reviews/standing/os-633-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                 |
-| 3         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-3.json`  | 5/5        | clean             | 0          | Full boundary and correction recheck                 |
-| 1         | OS-634 standing    | `tmp/reviews/standing/os-634-round-1.json` | 2/5        | changes requested | 4          | Mode honesty, sentinel, redaction, interactions      |
-| 1         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-1.json`  | 2/5        | changes requested | 5          | Stale links, Live truth, redaction, test gaps        |
-| 2         | OS-634 standing    | `tmp/reviews/standing/os-634-round-2.json` | 5/5        | clean             | 0          | All findings plus final handoff/privacy recheck      |
-| 2         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-2.json`  | 5/5        | clean             | 0          | Acceptance matrix and full final-tree verification   |
-| 1         | OS-632 standing    | `tmp/reviews/standing/os-632-round-1.json` | 2/5        | changes requested | 3          | Ambient Mate state, portal/traversal, stale servers  |
-| 1         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-1.json`  | 2/5        | changes requested | 3          | Matrix/panel axe gaps and shallow traversal          |
-| 2         | OS-632 standing    | `tmp/reviews/standing/os-632-round-2.json` | 5/5        | clean             | 0          | Determinism, portal/traversal, stale-port recheck    |
-| 2         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-2.json`  | 5/5        | clean             | 0          | Full matrix, portal, and keyboard recheck            |
-| 3         | OS-632 standing    | `tmp/reviews/standing/os-632-round-3.json` | 5/5        | clean             | 0          | Pinned CI container and 14-test shape recheck        |
-| 3         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-3.json`  | 5/5        | clean             | 0          | Coverage, script boundary, and workflow recheck      |
-| 4         | OS-632 standing    | `tmp/reviews/standing/os-632-round-4.json` | 5/5        | clean             | 0          | Fresh-image unzip prerequisite proof                 |
-| 4         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-4.json`  | 5/5        | clean             | 0          | Minimal bootstrap and unchanged-policy recheck       |
+| Milestone | Reviewer           | Report                                     | Score      | Verdict           | Open P0-P2 | Notes                                                 |
+| --------- | ------------------ | ------------------------------------------ | ---------- | ----------------- | ---------- | ----------------------------------------------------- |
+| prep      | OS-629 audit       | agent transcript                           | not scored | complete          | 0          | Independent public drift check                        |
+| prep      | surface audit      | agent transcript                           | not scored | complete          | 0          | Incremental 633/634/632 chain                         |
+| prep      | distribution audit | agent transcript                           | not scored | complete          | 0          | Local candidate and stop rules                        |
+| prep      | packet alignment   | agent transcript                           | not scored | clean             | 0          | Three P2s fixed; recheck clean                        |
+| 1         | OS-629 standing    | `tmp/reviews/standing/os-629-round-1.json` | 3/5        | changes requested | 3          | Target validation, decision durability, split errors  |
+| 1         | OS-629 targeted    | `tmp/reviews/targeted-os629/round-1.json`  | 2/5        | changes requested | 2          | Decision and release-ref coherence                    |
+| 2         | OS-629 standing    | `tmp/reviews/standing/os-629-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                  |
+| 2         | OS-629 targeted    | `tmp/reviews/targeted-os629/round-2.json`  | 5/5        | clean             | 0          | Negative probes and full gate pass                    |
+| 1         | OS-633 standing    | `tmp/reviews/standing/os-633-round-1.json` | 3/5        | changes requested | 2          | Sidebar scenario and viewport gaps                    |
+| 1         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-1.json`  | 3/5        | changes requested | 2          | Host-action evidence and inert viewport               |
+| 2         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-2.json`  | 4/5        | changes requested | 0          | One reasonable P3 isolation-test gap                  |
+| 2         | OS-633 standing    | `tmp/reviews/standing/os-633-round-2.json` | 5/5        | clean             | 0          | All standing and targeted gaps fixed                  |
+| 3         | OS-633 targeted    | `tmp/reviews/targeted-os633/round-3.json`  | 5/5        | clean             | 0          | Full boundary and correction recheck                  |
+| 1         | OS-634 standing    | `tmp/reviews/standing/os-634-round-1.json` | 2/5        | changes requested | 4          | Mode honesty, sentinel, redaction, interactions       |
+| 1         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-1.json`  | 2/5        | changes requested | 5          | Stale links, Live truth, redaction, test gaps         |
+| 2         | OS-634 standing    | `tmp/reviews/standing/os-634-round-2.json` | 5/5        | clean             | 0          | All findings plus final handoff/privacy recheck       |
+| 2         | OS-634 targeted    | `tmp/reviews/targeted-os634/round-2.json`  | 5/5        | clean             | 0          | Acceptance matrix and full final-tree verification    |
+| 1         | OS-632 standing    | `tmp/reviews/standing/os-632-round-1.json` | 2/5        | changes requested | 3          | Ambient Mate state, portal/traversal, stale servers   |
+| 1         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-1.json`  | 2/5        | changes requested | 3          | Matrix/panel axe gaps and shallow traversal           |
+| 2         | OS-632 standing    | `tmp/reviews/standing/os-632-round-2.json` | 5/5        | clean             | 0          | Determinism, portal/traversal, stale-port recheck     |
+| 2         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-2.json`  | 5/5        | clean             | 0          | Full matrix, portal, and keyboard recheck             |
+| 3         | OS-632 standing    | `tmp/reviews/standing/os-632-round-3.json` | 5/5        | clean             | 0          | Pinned CI container and 14-test shape recheck         |
+| 3         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-3.json`  | 5/5        | clean             | 0          | Coverage, script boundary, and workflow recheck       |
+| 4         | OS-632 standing    | `tmp/reviews/standing/os-632-round-4.json` | 5/5        | clean             | 0          | Fresh-image unzip prerequisite proof                  |
+| 4         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-4.json`  | 5/5        | clean             | 0          | Minimal bootstrap and unchanged-policy recheck        |
+| 1         | OS-635 standing    | `tmp/reviews/standing/os-635-round-1.json` | 3/5        | changes requested | 3          | Isolation, notices, and failed-bind diagnostics       |
+| 1         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-1.json`  | 3/5        | changes requested | 3          | Full-build determinism, notices, uninstall residue    |
+| 2         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-2.json`  | 4/5        | changes requested | 1          | Missing Ladle static-client runtime license closure   |
+| 3         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-3.json`  | 5/5        | superseded        | 1          | Premature approval missed npm hidden-lock residue     |
+| 2         | OS-635 standing    | `tmp/reviews/standing/os-635-round-2.json` | 4/5        | changes requested | 1          | Traversal-form root and hidden npm lock residue       |
+| 3         | OS-635 standing    | `tmp/reviews/standing/os-635-round-3.json` | 5/5        | clean             | 0          | Independent npm residue and full final recheck        |
+| 4         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-4.json`  | 5/5        | clean             | 0          | Superseding residue reconstruction and final recheck  |
+| 4         | OS-635 standing    | `tmp/reviews/standing/os-635-round-4.json` | 5/5        | clean             | 0          | Exact gzip closure and Linux GNU tar control          |
+| 5         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-5.json`  | 5/5        | clean             | 0          | Linux portability, isolation, and determinism recheck |
 
 ## Verification Log
 
@@ -208,6 +238,11 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | CI-shaped pinned container without host IPC (14 tests)                          | OS-632 CI correction | pass                 | standing reviewer independently passed in 14.2 seconds     |
 | Hosted CI 31225715348                                                           | OS-632 split jobs    | expected failure     | verify green; visual stopped before tests on missing unzip |
 | Fresh pinned-image unzip probe                                                  | OS-632 bootstrap     | pass                 | exact apt step installed `/usr/bin/unzip`                  |
+| `bun run package:test`                                                          | OS-635 clean room    | pass                 | two full builds; 40 files; 13 stories; SHA `6e8b25d…fc13`  |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-635 candidate     | pass                 | 172 tests; package lifecycle and all builds green          |
+| macOS Playwright/axe matrix (14 tests)                                          | OS-635 regression    | pass                 | unchanged fixture baselines and accessibility matrix       |
+| Hosted CI 31228900314                                                           | OS-635 Linux probe   | expected failure     | visual green; clean-room tar PATH lacked external gzip     |
+| Corrected OS-635 aggregate                                                      | OS-635 candidate     | pass                 | explicit gzip tool; artifact SHA unchanged                 |
 
 ## Prompt / Goal Alignment
 
@@ -226,8 +261,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green   |
 | OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green   |
 | OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green   |
-| OS-632 | In Progress | Deterministic visual and accessibility regression      |
-| OS-635 | Todo        | Blocked by OS-633                                      |
+| OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green   |
+| OS-635 | In Progress | Local package implementation and review                |
 | OS-636 | Todo        | Unblocked; finalized after artifact commands stabilize |
 | OS-637 | Todo        | Blocked by OS-632/634/635/636                          |
 | OS-638 | Todo        | Blocked by OS-629/637; final ready PR only             |

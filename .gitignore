@@ -4,4 +4,5 @@ dist/
 *.log
 .vite/
 coverage/
+artifacts/
 .agents/goals/*/tmp/

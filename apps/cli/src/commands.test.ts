@@ -240,6 +240,33 @@ describe("bb-mate CLI", () => {
     );
   });
 
+  test("uses the packaged surface-lab launcher without a source checkout", async () => {
+    const { root, pluginRoot } = await createPlugin({ workspace: true });
+    const fixtureLaunches: Array<{ host: string; port: number }> = [];
+    let inherited = false;
+    const testRuntime = runtime(root, nativeOutput(pluginRoot), {
+      fixtureName: "surface lab",
+      runFixture: async (options) => {
+        fixtureLaunches.push(options);
+        return { exitCode: 0, signal: null };
+      },
+      runInherited: async () => {
+        inherited = true;
+        return { exitCode: 1, signal: null };
+      },
+    });
+
+    const result = await runCli(
+      ["dev", "--host", "127.0.0.1", "--port", "4317"],
+      testRuntime.value,
+    );
+
+    expect(result).toEqual({ exitCode: 0, signal: null });
+    expect(fixtureLaunches).toEqual([{ host: "127.0.0.1", port: 4317 }]);
+    expect(inherited).toBe(false);
+    expect(testRuntime.stdout.join("")).not.toContain("Launching Fixture");
+  });
+
   test("does not present the Connect base URL as an unshared workbench port", async () => {
     const { root, pluginRoot } = await createPlugin({ workspace: true });
     const testRuntime = runtime(root, nativeOutput(pluginRoot));

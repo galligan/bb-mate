@@ -1,10 +1,25 @@
 {
-  "name": "@bb-mate/cli",
-  "version": "0.0.0",
+  "name": "bb-mate",
+  "version": "0.1.0-alpha.0",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "bin": {
-    "bb-mate": "./src/bin.ts"
+    "bb-mate": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "THIRD_PARTY_LICENSES.md"
+  ],
+  "engines": {
+    "bun": ">=1.3.14"
+  },
+  "bbMate": {
+    "runtime": "Bun",
+    "nativeHost": "macOS",
+    "fixtureCi": "Linux"
   },
   "scripts": {
     "build": "tsc --noEmit",

@@ -20,6 +20,7 @@ export interface CliRuntime {
   env: NodeJS.ProcessEnv;
   bunExecutable: string;
   workspaceRoot: string;
+  fixtureName?: string;
   stdout(value: string): void;
   stderr(value: string): void;
   resolveBb(): Promise<string | null>;
@@ -33,6 +34,7 @@ export interface CliRuntime {
     args: readonly string[],
     options: { cwd: string; env: NodeJS.ProcessEnv },
   ): Promise<ProcessExit>;
+  runFixture?(options: { host: string; port: number }): Promise<ProcessExit>;
 }
 
 interface InspectionContext {
@@ -49,8 +51,8 @@ const help = `Usage: bb-mate [path]
        bb-mate check [path]
        bb-mate live [path]
 
-Fixture workbench and passive inspection stay in BB Mate. Native bb owns build,
-install, dev/reload, and live runtime.`;
+Fixture workbench, packaged surface lab, and passive inspection stay in BB Mate.
+Native bb owns build, install, dev/reload, and live runtime.`;
 
 function line(writer: (value: string) => void, value = "") {
   writer(`${value}\n`);
@@ -209,9 +211,12 @@ export async function runCli(
     const pluginRoot = context.report.target?.rootPath;
     if (!pluginRoot && context.report.state !== "ambiguous") return failure;
     line(runtime.stdout, connectExposure(context.report, args.port));
+    if (runtime.runFixture) {
+      return runtime.runFixture({ host: args.host, port: args.port });
+    }
     line(
       runtime.stdout,
-      `Launching Fixture workbench at http://${displayHost(args.host)}:${args.port}`,
+      `Launching Fixture ${runtime.fixtureName ?? "workbench"} at http://${displayHost(args.host)}:${args.port}`,
     );
     return runtime.runInherited(
       runtime.bunExecutable,
