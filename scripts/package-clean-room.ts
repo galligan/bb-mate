@@ -202,6 +202,7 @@ try {
     node: Bun.which("node"),
     npm: Bun.which("npm"),
     tar: Bun.which("tar"),
+    gzip: Bun.which("gzip"),
   };
   for (const [name, executable] of Object.entries(exactTools)) {
     assert(executable, `Required clean-room tool is unavailable: ${name}.`);
