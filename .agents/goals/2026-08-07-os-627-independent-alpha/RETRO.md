@@ -1,8 +1,8 @@
 # Execution Retro: OS-627 upstream-independent alpha
 
 Date started: 2026-08-07
-Date finalized: Pending
-Status: Active
+Date finalized: 2026-08-08
+Status: Completed
 Spec: `.agents/goals/2026-08-07-os-627-independent-alpha/SPEC.md`
 Goal: `.agents/goals/2026-08-07-os-627-independent-alpha/GOAL.md`
 Prompt: `.agents/goals/2026-08-07-os-627-independent-alpha/PROMPT.md`
@@ -11,30 +11,36 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 ## Summary
 
 - Objective: complete OS-629 and OS-632 through OS-638 without upstream work.
-- Completion horizon: `ready-pr`; OS-629 through OS-637 merge, OS-638 stops ready.
+- Completion horizon: `ready-pr`; OS-629 through OS-637 merged and OS-638
+  reached a green ready PR before the later owner-authorized landing step.
 - Baseline: clean `main` at `a637aa0`; main CI run 31206636916 green.
 - Capability baseline: native bb 0.35.1; official `@bb/plugin-sdk` remains
   unpublished, so Harness stays accurately unavailable.
-- Forbidden actions: no publication, tag/release, visibility change,
-  announcement, public-license choice, upstream edit, normal plugin/Connect
-  mutation, or final OS-638 merge.
+- During the goal loop, forbidden actions included publication, tag/release,
+  visibility change, announcement, public-license choice, upstream edit, normal
+  plugin/Connect mutation, and the final OS-638 merge. The loop stopped at that
+  boundary before the owner separately authorized merging on 2026-08-08.
 
 ## Readiness
 
 - Prompt checked: yes; 3,604 characters and no placeholders.
 - Goal/prompt alignment checked: yes; packet doctor passes.
-- Review blockers: none in preparation.
-- Verification blockers: none in preparation.
-- Tracker blockers: dependency graph recorded in the goal.
-- Authority blockers: public license/release and OS-638 merge remain owner gates.
-- Next action: implement OS-632 and preserve execution evidence here.
+- Review blockers: none; every included implementation and handoff review closed
+  at 5/5 with zero P0-P3 before the ready-PR boundary.
+- Verification blockers: none; local and hosted gates are green.
+- Tracker blockers: only OS-639 through OS-644 remain upstream-dependent.
+- Authority blockers: public license, npm publication, repository visibility,
+  tag/release, and announcement remain owner gates.
+- Closeout action: merge PR #13 under the 2026-08-08 authorization, verify main,
+  and keep every distribution action stopped.
 
 ## Goal Amendments
 
-| Time            | Change                                | Reason                                                                 | Approved By         |
-| --------------- | ------------------------------------- | ---------------------------------------------------------------------- | ------------------- |
-| 2026-08-07 prep | Finish at ready OS-638 PR, not merged | OS-638 explicitly requires an owner gate before merging its handoff PR | Issue specification |
-| 2026-08-07 prep | Sequence OS-633 -> OS-634 -> OS-632   | Visual/a11y baselines must cover the completed launcher                | Preparation audit   |
+| Time                  | Change                                        | Reason                                                                 | Approved By         |
+| --------------------- | --------------------------------------------- | ---------------------------------------------------------------------- | ------------------- |
+| 2026-08-07 prep       | Finish at ready OS-638 PR, not merged         | OS-638 explicitly requires an owner gate before merging its handoff PR | Issue specification |
+| 2026-08-07 prep       | Sequence OS-633 -> OS-634 -> OS-632           | Visual/a11y baselines must cover the completed launcher                | Preparation audit   |
+| 2026-08-08 post-ready | Permit PR #13 merge after extra local reviews | Owner explicitly authorized merging the completed handoff work         | Matt Galligan       |
 
 ## Execution Log
 
@@ -234,6 +240,34 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Review: Standing `tmp/reviews/standing/os-637-round-3.json`; targeted `tmp/reviews/targeted-os637/round-4.json`.
 - Next: Open the draft PR, follow hosted CI and all review threads, then ready/land and reconcile Linear.
 - Blockers: None.
+
+2026-08-07 - OS-637 landed and OS-638 started
+- Changed: Promoted and merged PR #12, reconciled GitButler to clean lane-free main, closed OS-637, and opened the Linear-recommended OS-638 branch at the release-handoff stop boundary.
+- Verified: PR CI 31233812475 passed verify, visual, and GitGuardian with no reviews, inline comments, or unresolved threads. Post-merge main CI 31233902043 passed verify and visual at merge commit `c8363d3e80e54371f62b826a0e808268f2317038`.
+- Result: Every upstream-independent implementation/trial issue through OS-637 is Done. OS-638 is unblocked and explicitly stops at a green ready but unmerged PR.
+- Next: Assemble the traceable version, artifact, compatibility, limitations, lifecycle, copy, and owner-decision handoff; review and verify it without publishing or merging.
+- Blockers: Public license, repository visibility, publication, release, and announcement remain owner decisions rather than implementation blockers.
+
+2026-08-07 - OS-638 handoff and local candidate gates green
+- Changed: Added the proposed private-alpha changelog and a release handoff covering provenance, compatibility, trial evidence, known gaps, install/update/uninstall/recovery, trust/support/fidelity, draft copy, and explicit technical/owner/execution decisions.
+- Verified: Live Linear inventory shows OS-623 and OS-628 through OS-637 Done, OS-638 In Progress, and OS-639 through OS-644 Backlog with `upstream-dependent`. The exact product baseline reproduced the 40-file, 13-story archive at SHA-256 `0e5503f371a1ffc57c4f4fc333828f4b40affe146b82c7f2c7980f925c48d00e`; format/check/175 tests/build, 14 visual/accessibility checks, package inspection/lifecycle, diff hygiene, and all relative handoff links passed.
+- Result: The technical candidate is a go for explicitly authorized private local sharing and a no-go for npm/public release. OS-638 changes only handoff documentation outside the package allowlist; publication, license, visibility, merge, and announcement remain stopped.
+- Next: Complete standing and fresh-targeted review, fix every finding, then open and verify the ready-but-unmerged PR.
+- Blockers: None for the documentation PR; owner decisions intentionally block distribution execution.
+
+2026-08-07 - OS-638 round-one review update-identity correction
+- Changed: Made the same-package update assumption explicit and added a separate remove/prove-absent/install/verify procedure for an approved future package name or scope change.
+- Verified: Standing review approved the exact candidate 5/5 with zero P0-P3. Fresh targeted review independently reproduced the exact artifact and approved every acceptance row except the prior update procedure, scoring 4/5 with one reasonable P3.
+- Result: A future renamed or scoped package can no longer falsely verify a stale `bb-mate` installation; placeholder identities remain explicitly non-proposals.
+- Next: Format and commit the correction, then obtain standing and targeted exact-head reapproval.
+- Blockers: None pending independent re-review.
+
+2026-08-07 - OS-638 final standing and targeted review clean
+- Changed: Closed the sole targeted P3 without changing the package, product source, or release boundary.
+- Verified: Standing and fresh targeted round-two reviews both approved exact head `e6217abb9050ec6857f1712eaa7db6f25a7b8f3e` at 5/5 with zero P0-P3. Each independently exercised a renamed/scoped-package lifecycle and confirmed the old package/bin were absent before the exact new manifest/bin verification. Formatting, links, diff hygiene, package allowlist, artifact checksum, all acceptance rows, and stop rules remain green.
+- Result: OS-638 is locally review-clean and ready for the hosted draft-PR gate.
+- Next: Commit review evidence, exact-head recheck, open the draft PR, follow hosted CI and review threads, then promote to ready and stop unmerged.
+- Blockers: None; release execution remains explicitly unauthorized.
 ```
 
 ## Preparation Audits
@@ -288,6 +322,12 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 1         | OS-636 targeted    | `tmp/reviews/targeted-os636/round-1.json`  | 3/5        | changes requested | 4          | Intake, versions, lifecycle, aggregate execution      |
 | 2         | OS-636 standing    | `tmp/reviews/standing/os-636-round-2.json` | 5/5        | clean             | 0          | Trust, support, lifecycle, and script closure         |
 | 2         | OS-636 targeted    | `tmp/reviews/targeted-os636/round-2.json`  | 5/5        | clean             | 0          | External-author workflow and artifact closure         |
+| 3         | OS-637 standing    | `tmp/reviews/standing/os-637-round-3.json` | 5/5        | clean             | 0          | Final process-tree and clean-room recheck             |
+| 4         | OS-637 targeted    | `tmp/reviews/targeted-os637/round-4.json`  | 5/5        | clean             | 0          | All six acceptance criteria passed                    |
+| 1         | OS-638 standing    | `tmp/reviews/standing/os-638-round-1.json` | 5/5        | clean             | 0          | Full handoff, lifecycle, stop, and provenance review  |
+| 1         | OS-638 targeted    | `tmp/reviews/targeted-os638/round-1.json`  | 4/5        | changes requested | 0          | One P3 for future package-identity update handling    |
+| 2         | OS-638 standing    | `tmp/reviews/standing/os-638-round-2.json` | 5/5        | clean             | 0          | Renamed/scoped lifecycle and full non-regression      |
+| 2         | OS-638 targeted    | `tmp/reviews/targeted-os638/round-2.json`  | 5/5        | clean             | 0          | P3 fixed with literal new-identity package proof      |
 
 ## Verification Log
 
@@ -341,6 +381,11 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-637 corrected production source/native rerun                                 | OS-637 correction    | pass                 | browser bb 0.35.1; 175 tests; SHA `0e5503f…d00e`           |
 | OS-637 standing review round three                                              | OS-637 final review  | 5/5 clean            | zero P0-P3; literal process-tree shutdown passed           |
 | OS-637 targeted review round four                                               | OS-637 final review  | 5/5 clean            | all six acceptance criteria passed                         |
+| OS-638 live roadmap inventory                                                   | OS-638 handoff       | pass                 | independent Done; six upstream issues remain Backlog       |
+| OS-638 format/check/test/build aggregate                                        | OS-638 candidate     | pass                 | 175 tests; compatibility and all builds green              |
+| OS-638 Playwright/axe matrix                                                    | OS-638 candidate     | pass                 | 14 deterministic visual/accessibility checks               |
+| OS-638 package inspection and clean-room lifecycle                              | OS-638 candidate     | pass                 | 40 files; 13 stories; SHA `0e5503f...d00e`                 |
+| OS-638 relative-link, private-path, stop-rule, and diff audit                   | OS-638 handoff       | pass                 | three handoff files; documentation-only candidate          |
 
 ## Prompt / Goal Alignment
 
@@ -362,8 +407,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green  |
 | OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green |
 | OS-636 | Done        | PR #11 merged at `b2d5c20`; main CI 31230856034 green |
-| OS-637 | In Progress | Clean-room external-author trial                      |
-| OS-638 | Todo        | Blocked by OS-629/637; final ready PR only            |
+| OS-637 | Done        | PR #12 merged at `c8363d3`; main CI 31233902043 green |
+| OS-638 | In Progress | PR #13 green/ready; owner-authorized merge is next    |
 
 ## Follow-Ups
 
@@ -373,4 +418,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 
 ## Final State
 
-Pending execution.
+The original goal reached its required green, ready, unmerged PR #13 at exact
+head `914fea203cc6de2eae29e3ef6d4818ac16b7b35a`. All upstream-independent work
+through OS-637 was already on main, and OS-638 supplied the traceable private
+local-alpha handoff without publishing or changing release state.
+
+On 2026-08-08, Matt explicitly authorized merging PR #13 after additional local
+review passes. That authorization extends only to the repository merge. Public
+licensing, npm publication, tag/release creation, repository visibility,
+announcement, upstream bb edits, and normal plugin or Connect mutation remain
+outside scope. OS-639 through OS-644 remain Backlog and `upstream-dependent`.
