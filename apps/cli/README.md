@@ -1,8 +1,16 @@
-# BB Mate local alpha artifact
+# BB Mate
 
-This private package is a local-only BB Mate candidate. It contains a bundled
-`bb-mate` CLI and the deterministic static surface lab; it does not contain bb,
-plugin packages, a copied plugin SDK, or authenticated host state.
+BB Mate is a fixture-driven authoring companion for native bb plugins. This
+package contains the bundled `bb-mate` CLI and deterministic static surface lab;
+it does not contain bb, plugin packages, a copied plugin SDK, or authenticated
+host state.
+
+Install the current public alpha with npm:
+
+```sh
+npm install --global bb-mate@alpha
+bb-mate --help
+```
 
 ## Runtime support
 
@@ -12,8 +20,17 @@ plugin packages, a copied plugin SDK, or authenticated host state.
   runtime.
 - Native bb handoffs target the supported macOS bb host. Fixture inspection and
   the packaged surface lab are also exercised in isolated Linux CI.
-- The package is `private` and `UNLICENSED`. Neither this artifact nor its
-  version is approved for registry publication.
+- BB Mate is an MIT-licensed public alpha. Commands, fixtures, and package
+  contents may change between prereleases without a stable API guarantee.
+
+## Support and security
+
+The source repository and issue tracker remain private. This alpha has no
+public support queue, response-time SLA, or stable API guarantee. Contact an
+npm-listed maintainer through an existing private channel for support. For a
+potential vulnerability, request a secure reporting path before sharing details
+and do not publish exploit information, credentials, customer data, or local
+paths.
 
 ## Build and inspect
 
@@ -25,10 +42,10 @@ bun run package:artifact
 bun run package:inspect
 ```
 
-The first command produces `artifacts/bb-mate-0.1.0-alpha.0.tgz`. npm's pack
+The first command produces `artifacts/bb-mate-0.1.0-alpha.1.tgz`. npm's pack
 report exposes every included file; the package manifest allowlists only
-`README.md`, `package.json`, self-contained third-party notices/licenses, the
-bundled CLI, and static lab assets.
+`LICENSE`, `README.md`, `package.json`, self-contained third-party
+notices/licenses, the bundled CLI, and static lab assets.
 
 ## Temporary local installation
 
@@ -37,7 +54,7 @@ Choose an empty prefix and install the generated file without publishing:
 ```sh
 plugin="/absolute/path/to/plugin"
 prefix="$(mktemp -d)"
-npm install --prefix "$prefix" --no-save --package-lock=false ./artifacts/bb-mate-0.1.0-alpha.0.tgz
+npm install --prefix "$prefix" --no-save --package-lock=false ./artifacts/bb-mate-0.1.0-alpha.1.tgz
 export PATH="$prefix/node_modules/.bin:$PATH"
 bb-mate --help
 bb-mate inspect "$plugin"

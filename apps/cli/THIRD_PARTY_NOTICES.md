@@ -30,5 +30,5 @@ The generated payload includes Base UI's runtime dependency closure, Ladle,
 classnames, Prism React Renderer and PrismJS, PropTypes and React Is, React and
 scheduler, the Focus Lock/React Remove Scroll family, Reach UI dialog, tslib,
 and the inspection parser dependency closure. This inventory and those notices
-do not choose or grant a license for BB Mate itself; the local artifact remains
-private and `UNLICENSED`.
+cover third-party components only. BB Mate itself is distributed under the MIT
+License included as `LICENSE` in the package.

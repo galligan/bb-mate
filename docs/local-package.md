@@ -1,7 +1,8 @@
-# Clean-room local package
+# Clean-room package and npm release
 
-BB Mate can produce a private local alpha artifact for installation tests before
-any registry, repository-visibility, license, or release decision.
+BB Mate produces the exact public alpha artifact locally before npm publication.
+Package construction remains separate from the registry operation so the same
+reviewed bytes can be installed, inspected, and checksummed before release.
 
 ## Artifact contract
 
@@ -17,13 +18,14 @@ The command rebuilds the CLI and surface lab, creates an isolated staging
 manifest with no workspace dependencies, and writes the versioned archive:
 
 ```text
-artifacts/bb-mate-0.1.0-alpha.0.tgz
+artifacts/bb-mate-0.1.0-alpha.1.tgz
 ```
 
-The artifact remains `private: true`, `UNLICENSED`, and unpublishable by the
-supported workflow. The staged `files` allowlist permits only:
+The artifact is MIT-licensed and configured for public publication under the
+`alpha` dist-tag. The staged `files` allowlist permits only:
 
 - `package.json`;
+- `LICENSE`;
 - `README.md`, `THIRD_PARTY_NOTICES.md`, and the generated self-contained
   `THIRD_PARTY_LICENSES.md`;
 - `dist/cli.js`, a Bun-targeted self-contained CLI bundle;
@@ -33,7 +35,7 @@ Plugin packages, source files, node_modules, Vite/Ladle servers, desktop app
 bundles, `../bb`, absolute developer paths, workspace links, secrets, and
 authenticated browser state are excluded.
 
-Inspect npm's exact dry-run file list without creating or publishing an archive:
+Inspect npm's exact dry-run file list without publishing an archive:
 
 ```sh
 bun run package:inspect
@@ -88,8 +90,15 @@ The test:
 The temporary environment is removed after the test. The versioned archive
 under `artifacts/` is generated and ignored by version control.
 
-## Stop boundary
+## Publication boundary
 
-These commands do not run `npm publish`, create a tag or release, change
-repository visibility, select a public license, or send an announcement. Those
-remain explicit owner decisions for the later release handoff.
+The package scripts above never publish. After owner approval, clean review,
+green hosted CI, and merge, publish only the exact post-merge artifact:
+
+```sh
+npm publish ./artifacts/bb-mate-0.1.0-alpha.1.tgz --access public --tag alpha
+```
+
+Verify that `alpha` points to `0.1.0-alpha.1`, `latest` was not created or moved,
+and a clean registry install succeeds. Publication does not create a Git tag or
+GitHub release, change repository visibility, or send an announcement.

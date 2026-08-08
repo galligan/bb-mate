@@ -1,7 +1,27 @@
 # Changelog
 
-BB Mate is a private alpha. This changelog records reviewable local candidates;
-it does not imply publication, a public license, or a stable support promise.
+BB Mate is an alpha. This changelog records reviewable candidates and public
+prereleases; it does not imply a stable API or support promise.
+
+## 0.1.0-alpha.1 — public npm alpha
+
+### Changed
+
+- Publish the CLI and deterministic 13-story Fixture lab as the unscoped
+  `bb-mate` package under npm's `alpha` dist-tag.
+- License BB Mate under MIT while keeping bundled third-party notices and
+  licenses explicit.
+- Keep the GitHub repository private; public support intake and announcements
+  are not part of this release.
+
+### Known limitations
+
+- Fixture is a deterministic approximation; Live bb remains the visual and
+  integration authority.
+- Harness and the remaining OS-639–OS-644 capabilities stay unavailable until
+  their upstream contracts ship.
+- This prerelease supports Bun as its CLI runtime and carries no stable API,
+  response-time SLA, or public issue tracker.
 
 ## 0.1.0-alpha.0 — private local candidate
 

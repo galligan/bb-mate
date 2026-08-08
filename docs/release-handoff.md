@@ -2,12 +2,12 @@
 
 ## Decision
 
-The `0.1.0-alpha.0` candidate is a **go for private local sharing with explicitly
-authorized collaborators** and a **no-go for npm publication or public release**.
-The technical independent roadmap is green, but license, distribution name,
-repository visibility, release channel, and announcement approval remain owner
-decisions. This handoff prepares those decisions; it does not make or execute
-them.
+The `0.1.0-alpha.0` candidate completed its private local handoff. On 2026-08-08
+the owner approved the next release phase in OS-645: publish the new
+`bb-mate@0.1.0-alpha.1` artifact publicly under npm's `alpha` dist-tag, license
+BB Mate under MIT, and keep the GitHub repository private. That approval does
+not move `latest`, create a Git tag or GitHub release, change repository
+visibility, or authorize an announcement.
 
 ## Candidate provenance
 
@@ -44,6 +44,32 @@ registry operation.
   rerun every gate, and record a new checksum and source commit.
 - Use [CHANGELOG.md](../CHANGELOG.md) as the proposed `0.1.0-alpha.0` notes. It
   describes current behavior and limitations without implying publication.
+
+## OS-645 public-alpha candidate
+
+The approved public successor is a new artifact, not modified `alpha.0` bytes:
+
+| Field           | `0.1.0-alpha.1` candidate                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| Package         | `bb-mate`                                                                                         |
+| License         | MIT; `LICENSE` shipped                                                                            |
+| npm channel     | public `alpha`; `latest` untouched                                                                |
+| Archive         | `bb-mate-0.1.0-alpha.1.tgz`                                                                       |
+| Archive files   | 41                                                                                                |
+| Catalog stories | 13                                                                                                |
+| SHA-256         | `c3d474a2eb5dc48de93c672941df8bc4313e3a62a0392ce35674ba1322d68f6d`                                |
+| npm shasum      | `2a5360d125b0189aaef5ebc85c10da162ed2c47c`                                                        |
+| npm integrity   | `sha512-GykyMJ9mAcHPhij1njHjVE3oUszJFjBLbhhLtmFbmQdueNnBE8bRHouV/Nyhp7ald53O5Mq3lzIRxP6wAdrTwg==` |
+| Repository      | private                                                                                           |
+| Release commit  | pending PR merge                                                                                  |
+
+Two complete builds and a staging repack are byte-identical. The isolated
+lifecycle verifies both local-prefix and global npm install/help/uninstall,
+passive inspection without plugin execution, all 13 packaged stories, and no
+package/bin/manifest/lockfile residue. npm's exact publication dry-run accepts
+the archive under `alpha`. Targeted and full-stack local reviews are 5/5 clean
+after fixing the shipped support/security disclosure and global-install test
+coverage.
 
 ## Independent roadmap status
 
@@ -212,16 +238,16 @@ not indicate regression in the green Fixture/local-package candidate.
 
 ## Proposed release notes
 
-> **Draft — do not publish without owner approval**
+> **Approved for `bb-mate@0.1.0-alpha.1` under npm's `alpha` dist-tag**
 >
-> BB Mate `0.1.0-alpha.0` is a private local preview for bb plugin authors. It
+> BB Mate `0.1.0-alpha.1` is a public npm preview for bb plugin authors. It
 > adds actionable compatibility inspection, a thin native-handoff CLI, a
 > deterministic 13-surface Fixture lab, visual/accessibility checks, and a
 > reproducible local archive. Native bb still owns scaffold, build, install,
 > dev/reload, and runtime. Fixture is an approximation; official Harness and a
 > real frontend reference-plugin Live path remain upstream-dependent. This
-> preview is `UNLICENSED`, carries no stable support promise, and must not be
-> redistributed.
+> preview is MIT-licensed and carries no stable API or support promise. The
+> source repository and issue tracker remain private.
 
 ## Proposed announcement copy
 
@@ -248,29 +274,31 @@ not indicate regression in the green Fixture/local-package candidate.
       notes, and draft announcement are documented.
 - [x] Fixture/Harness/Live claims remain honest and upstream work is separate.
 
-### Owner decisions — blocking public/npm release
+### Owner decisions — approved for OS-645
 
-- [ ] Approve the distribution model and audience: private file, private
-      registry, or public npm.
-- [ ] Choose and re-check the final package name/scope; npm `E404` is not a
+- [x] Approve public npm distribution for the alpha audience.
+- [x] Choose `bb-mate` and re-check the final name immediately before release;
+      npm `E404` is not a
       reservation.
-- [ ] Choose a public license, add the license file, and update package/repository
-      metadata, or explicitly keep the candidate private and `UNLICENSED`.
-- [ ] Decide repository visibility independently from package distribution.
-- [ ] Approve supported platforms/versions, support commitment, security contact,
-      and release channel.
-- [ ] Approve the final version/tag policy. Proposed first registry version:
-      `0.1.0-alpha.1`, not a mutation of the verified local `alpha.0` bytes.
-- [ ] Approve exact release notes, announcement copy, audience, and timing.
+- [x] Choose MIT and add the license file plus package metadata.
+- [x] Keep the GitHub repository private independently from public npm.
+- [x] Preserve the documented alpha support/security limitations and use the
+      `alpha` release channel.
+- [x] Approve `0.1.0-alpha.1`, not a mutation of the verified local `alpha.0`
+      bytes.
+- [x] Approve the release notes. Announcement copy, audience, and timing remain
+      unapproved and out of scope.
 
-### Execution — not authorized by this handoff
+### OS-645 execution
 
-- [ ] Remove `private: true` only after all applicable owner decisions are
-      committed and reviewed.
-- [ ] Rebuild and rerun every gate; record the new commit, artifact manifest,
+- [x] Remove `private: true` after recording the approved decisions; add MIT
+      metadata and the shipped license.
+- [x] Rebuild and rerun every local gate; record the candidate artifact manifest,
       checksum, and registry dry run.
-- [ ] Publish, tag, create a release, change visibility, or send the announcement
-      only under separate explicit approval.
+- [ ] Merge the reviewed CI-green release PR, rebuild the exact artifact on main,
+      publish it under `alpha`, and verify the registry lifecycle.
+- [x] Keep tags, GitHub releases, visibility changes, and announcements out of
+      OS-645.
 
-Current verdict: **private local sharing go; public/npm release no-go**. Keep the
-OS-638 PR ready but unmerged until the owner chooses the next boundary.
+Current verdict: **public npm alpha approved; implementation, review, merge, and
+exact-artifact verification pending in OS-645**.
