@@ -43,7 +43,7 @@ same only published version; the attempted authenticated removal returned E400.
        merge, and verify main CI.
 7. [x] Rebuild on merged main, prove exact artifact identity, publish with
        `--tag alpha`, and verify registry metadata plus a clean registry lifecycle.
-8. [ ] Update Linear and this plan with final provenance and leave the GitButler
+8. [x] Update Linear and this plan with final provenance and leave the GitButler
        workspace clean with no applied lanes.
 
 ## Boundaries
@@ -67,6 +67,11 @@ same only published version; the attempted authenticated removal returned E400.
 - Main merge commit: `c2c33fea523148e56914168df84399db1c0adc51`
 - PR CI: <https://github.com/galligan/bb-mate/actions/runs/31259377836>
 - Main CI: <https://github.com/galligan/bb-mate/actions/runs/31259484216>
+- Post-publish docs PR: <https://github.com/galligan/bb-mate/pull/15>
+- Post-publish docs commit: `c7d416a19848ba2e6d96c2384e4047df9144d3e3`
+- Post-publish docs merge: `3c826e6b32b8c68224dbd8e6f4ce0269e3b2e2f6`
+- Post-publish PR CI: <https://github.com/galligan/bb-mate/actions/runs/31260024137>
+- Post-publish main CI: <https://github.com/galligan/bb-mate/actions/runs/31260105723>
 - Package: 41 files, 13 stories, 514333-byte archive, 1057566 bytes unpacked
 - Package SHA-256:
   `c3d474a2eb5dc48de93c672941df8bc4313e3a62a0392ce35674ba1322d68f6d`
