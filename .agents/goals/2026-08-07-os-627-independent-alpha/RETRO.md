@@ -227,6 +227,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: Both round-one P1/P2 findings and the targeted P3 are corrected in code, tests, durable procedure, and current runtime evidence. No normal plugin or Connect state was used or changed.
 - Next: Commit the corrections and request standing plus fresh-targeted round-two approval.
 - Blockers: None pending independent review.
+
+2026-08-07 - OS-637 final standing and targeted review clean
+- Changed: Iterated the executable clean-room runbook through literal clean-archive probes: exact GitButler branch provenance, complete empty-shell tool paths, five endpoint assignments, source/package readiness polling, hidden npm lock semantics, and reliable process-tree teardown with TERM grace plus KILL fallback.
+- Verified: Standing round three and targeted round four approved exact head `0fefc5535320ae3f0b01398c9520d673e1ca2700` at 5/5 with zero P0-P3 findings. Both reproduced the 13-story Bun/Ladle lane and verified the wrapper/child exited, `wait` settled, and port 61047 closed. All six OS-637 acceptance criteria pass; the unchanged production tree remains green at 175 tests, all builds, 14 Playwright/axe checks, and artifact SHA-256 `0e5503f371a1ffc57c4f4fc333828f4b40affe146b82c7f2c7980f925c48d00e`.
+- Review: Standing `tmp/reviews/standing/os-637-round-3.json`; targeted `tmp/reviews/targeted-os637/round-4.json`.
+- Next: Open the draft PR, follow hosted CI and all review threads, then ready/land and reconcile Linear.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -332,6 +339,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-637 standing review round one                                                | OS-637 review        | changes requested    | 2/5; P1 source selector; P2 missing runbook                |
 | OS-637 targeted review round one                                                | OS-637 review        | changes requested    | 2/5; same P1/P2 plus P3 uninstall evidence                 |
 | OS-637 corrected production source/native rerun                                 | OS-637 correction    | pass                 | browser bb 0.35.1; 175 tests; SHA `0e5503f…d00e`           |
+| OS-637 standing review round three                                              | OS-637 final review  | 5/5 clean            | zero P0-P3; literal process-tree shutdown passed           |
+| OS-637 targeted review round four                                               | OS-637 final review  | 5/5 clean            | all six acceptance criteria passed                         |
 
 ## Prompt / Goal Alignment
 
