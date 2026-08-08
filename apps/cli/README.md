@@ -1,83 +1,96 @@
 # BB Mate
 
-BB Mate is a fixture-driven authoring companion for native bb plugins. This
-package contains the bundled `bb-mate` CLI and deterministic static surface lab;
-it does not contain bb, plugin packages, a copied plugin SDK, or authenticated
-host state.
+BB Mate is an experimental, fixture-driven authoring companion for native
+[bb](https://github.com/get-bb/bb) plugins.
 
-Install the current public alpha with npm:
+The package contains the `bb-mate` CLI and a deterministic static plugin-surface
+lab. It does not contain bb, plugin packages, a copied plugin SDK, or
+authenticated host state.
+
+> BB Mate is an independent community project. Native bb and
+> `@bb/plugin-sdk` remain authoritative for plugin contracts, scaffolding,
+> build/install/dev behavior, host rendering, and runtime state.
+
+## Install
 
 ```sh
 npm install --global bb-mate@alpha
 bb-mate --help
 ```
 
+From an existing plugin directory:
+
+```sh
+bb-mate inspect .
+bb-mate dev .
+```
+
+Use the `alpha` tag explicitly. This is a prerelease and its command surface
+may change.
+
+## Commands
+
+```text
+bb-mate inspect <plugin>  Read manifests, native metadata, and compatibility
+bb-mate dev <plugin>      Open the packaged Fixture surface lab
+bb-mate check <plugin>    Inspect, delegate bb plugin build, inspect again
+bb-mate live <plugin>     Hand off an installed path plugin to bb plugin dev
+```
+
+`inspect` is passive: it does not import or execute the selected plugin.
+
+`check` and `live` cross the passive boundary by delegating to the native
+`bb` CLI with inherited output. `live` runs only when bb confirms that the
+same real plugin path is installed; otherwise it prints the native installation
+command without running it.
+
+The installed `dev` command serves the bundled 13-story lab on loopback. It
+does not install, build, reload, or run the selected plugin, and it never serves
+inspection data over HTTP.
+
+## bb, the SDK, and BB Mate
+
+- **bb** owns scaffolding, declaration refresh, build, install, update,
+  dev/reload, host UI, and live runtime.
+- **`@bb/plugin-sdk`** owns the typed backend/frontend contracts and official
+  testing contracts.
+- **BB Mate** adds passive inspection, deterministic Fixture stories,
+  compatibility diagnostics, visual/a11y tooling, and native handoff.
+
+BB Mate never copies the SDK testing harness or uses private bb application code
+as a substitute. Harness mode remains unavailable until the selected plugin can
+resolve the official testing package and BB Mate has an upstream-backed adapter.
+Live bb is always the visual and integration authority.
+
+Learn more in the
+[repository README](https://github.com/galligan/bb-mate#readme) and
+[plugin-author guide](https://github.com/galligan/bb-mate/blob/main/docs/plugin-author-guide.md).
+
 ## Runtime support
 
-- Bun 1.3.14 is the verified `bb-mate` runtime. Newer engine-compatible Bun
-  versions are best-effort until added to CI.
-- npm may install or inspect the tarball, but Node is not a supported CLI
-  runtime.
-- Native bb handoffs target the supported macOS bb host. Fixture inspection and
-  the packaged surface lab are also exercised in isolated Linux CI.
-- BB Mate is an MIT-licensed public alpha. Commands, fixtures, and package
-  contents may change between prereleases without a stable API guarantee.
+- Bun 1.3.14 is the verified runtime; newer engine-compatible Bun versions are
+  best-effort until added to CI.
+- npm is the installer, but Node is not a supported CLI runtime.
+- Native handoffs target a supported macOS bb host.
+- Fixture and package checks are also exercised in isolated Linux CI.
 
-## Support and security
+## Trust and security
 
-The source repository and issue tracker remain private. This alpha has no
-public support queue, response-time SLA, or stable API guarantee. Contact an
-npm-listed maintainer through an existing private channel for support. For a
-potential vulnerability, request a secure reporting path before sharing details
-and do not publish exploit information, credentials, customer data, or local
-paths.
+Plugins are full-trust local code. Review a plugin before using native
+`check` or `live` handoffs. See the
+[trust model](https://github.com/galligan/bb-mate/blob/main/docs/trust-model.md)
+for the filesystem, network, secret, and execution boundaries.
 
-## Build and inspect
+Report bugs through
+[GitHub Issues](https://github.com/galligan/bb-mate/issues). Report
+vulnerabilities privately through
+[GitHub Security Advisories](https://github.com/galligan/bb-mate/security/advisories/new).
 
-From a clean BB Mate checkout:
+## Source and license
 
-```sh
-bun install --frozen-lockfile
-bun run package:artifact
-bun run package:inspect
-```
+Source: <https://github.com/galligan/bb-mate>
 
-The first command produces `artifacts/bb-mate-0.1.0-alpha.1.tgz`. npm's pack
-report exposes every included file; the package manifest allowlists only
-`LICENSE`, `README.md`, `package.json`, self-contained third-party
-notices/licenses, the bundled CLI, and static lab assets.
-
-## Temporary local installation
-
-Choose an empty prefix and install the generated file without publishing:
-
-```sh
-plugin="/absolute/path/to/plugin"
-prefix="$(mktemp -d)"
-npm install --prefix "$prefix" --no-save --package-lock=false ./artifacts/bb-mate-0.1.0-alpha.1.tgz
-export PATH="$prefix/node_modules/.bin:$PATH"
-bb-mate --help
-bb-mate inspect "$plugin"
-bb-mate dev "$plugin"
-```
-
-Open the printed loopback URL, then stop the foreground server with Control-C
-before uninstalling in the same shell:
-
-```sh
-npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
-```
-
-`inspect` reads manifests and generated metadata without executing the plugin.
-When native `bb` is missing, the report names that unavailable capability and
-still permits Fixture use. In the installed artifact, `dev` serves the packaged
-13-story surface lab; it does not install, build, reload, or run plugin code.
-Source-checkout `dev` continues to launch the interactive Vite workbench.
-The packaged static server binds only to `127.0.0.1`, `::1`, or `localhost`,
-confines decoded requests and resolved symlinks to its generated lab directory,
-and accepts only GET/HEAD. It never exposes plugin or inspection data over HTTP.
-
-Native `check` and `live` remain explicit terminal handoffs and fail clearly
-when a compatible `bb` executable or installed path plugin is unavailable.
-Harness remains unavailable unless the selected plugin installs the official
-public testing package.
+BB Mate is available under the
+[MIT License](https://github.com/galligan/bb-mate/blob/main/LICENSE). bb and its
+plugin SDK are separate upstream software governed by their own repository and
+license.

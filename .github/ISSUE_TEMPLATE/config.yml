@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream bb issues
+    url: https://github.com/get-bb/bb/issues
+    about: Report native bb CLI, plugin SDK, host UI, or runtime problems upstream.
+  - name: Private security report
+    url: https://github.com/galligan/bb-mate/security/advisories/new
+    about: Report a BB Mate vulnerability privately.

@@ -2,7 +2,10 @@
 
 ## Repository boundary
 
-BB Mate is downstream of bb. The sibling `../bb` checkout is the live reference for public plugin SDK contracts and host behavior, but it is not part of this Bun workspace.
+BB Mate is downstream of [bb](https://github.com/get-bb/bb). Public plugin SDK
+contracts and live bb behavior are authoritative. A contributor may use a local
+upstream checkout for read-only comparison, but it is not part of this Bun
+workspace and is never required to build or test BB Mate.
 
 ## Workbench
 
@@ -50,12 +53,12 @@ Stay attached to upstream through supported versioned boundaries:
   `--diff` flow when updating; do not copy raw application files.
 - Hugeicons and bb-facing type/token choices track the versions used by the
   target bb release.
-- The sibling `../bb` checkout and installed Connect client are read-only
+- An optional local upstream checkout and installed bb client are read-only
   contract/visual references. Hashed desktop assets are never imported.
 
-A follow-up should automate upstream drift detection: record the target bb and
-plugin SDK release, compare the bb registry manifest and the small set of
-measured sidebar tokens, then fail a dedicated parity check when they move.
+The compatibility target records the expected bb and plugin SDK releases and
+checks public upstream metadata plus the measured token/registration surface for
+drift.
 
 ## Runtime sources
 
@@ -90,8 +93,8 @@ Build/check and Live handoffs use the repository-proven `bun run bb-mate`
 entrypoint and are copied under an explicit user gesture. Targets are expressed
 relative to the BB Mate command workspace. If inspection started in an external
 workspace, copyable handoffs are unavailable: serializing a cross-root command
-would disclose local path hierarchy, while a bare `bb-mate` binary is not part
-of the proven private-workspace installation. Available commands execute only
+would disclose local path hierarchy, while a bare global `bb-mate` binary is not
+part of the proven source-checkout entrypoint. Available commands execute only
 in the developer's terminal, where the CLI delegates to native bb with inherited
 output. There is no HTTP action endpoint and no Connect fetch, proxy, or iframe.
 

@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a reproducible problem in BB Mate
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve BB Mate. Native bb or SDK problems generally belong in [get-bb/bb](https://github.com/get-bb/bb/issues). Do not include secrets or vulnerability details here.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Provide the smallest steps or repository that reproduce the problem using fake data.
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BB Mate version
+      placeholder: bb-mate@0.1.0-alpha.1 or source commit
+    validations:
+      required: true
+  - type: input
+    id: bun
+    attributes:
+      label: Bun version
+      placeholder: Output of bun --version
+    validations:
+      required: true
+  - type: input
+    id: bb
+    attributes:
+      label: bb version
+      description: Required only when the report involves native bb.
+      placeholder: Output of bb --version
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Include the exact command and exit status. Remove credentials, customer data, authenticated state, and local paths.
+      render: shell
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Reporting boundary
+      options:
+        - label: This concerns BB Mate inspection, fixtures, diagnostics, orchestration, packaging, or documentation.
+          required: true
+        - label: I have removed secrets, private data, and unredacted local paths.
+          required: true

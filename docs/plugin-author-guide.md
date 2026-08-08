@@ -1,16 +1,14 @@
-# External plugin-author guide
+# Plugin-author guide
 
-This guide assumes you have an existing bb plugin and no private knowledge of
-the repository's design history. BB Mate is an optional downstream authoring
-companion: native bb still owns scaffold, declaration refresh, build, install,
-dev/reload, and the live runtime.
+BB Mate is an optional downstream authoring companion for native
+[bb](https://github.com/get-bb/bb) plugins. Native bb still owns scaffold,
+declaration refresh, build, install, dev/reload, and the live runtime.
 
 ## Prerequisites
 
-- access to this private repository;
 - Bun 1.3.14, the currently verified version; newer engine-compatible versions
   are best-effort until added to CI;
-- npm for inspecting and temporarily installing the local alpha archive;
+- npm for installing the public alpha;
 - an existing bb plugin when you want inspection or native handoff guidance;
 - native bb 0.35.1, the currently recorded target, for supported native
   inspection, build, or Live handoffs. Other versions may still produce useful
@@ -28,6 +26,8 @@ Fixture exploration does not require native bb, Connect, secrets, a sibling
 From a fresh checkout:
 
 ```sh
+git clone https://github.com/galligan/bb-mate.git
+cd bb-mate
 bun install --frozen-lockfile
 bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61000
 ```
@@ -180,8 +180,7 @@ actual host layout, styling, routing, state, action lifecycle, and runtime.
 - Follow [CONTRIBUTING.md](../CONTRIBUTING.md) for change and verification
   requirements.
 - Use [SUPPORT.md](../SUPPORT.md) to determine whether a bb/SDK combination is
-  in scope and find the repository-local intake path when you do not have
-  Outfitter Linear access.
+  in scope and whether the report belongs here or in upstream bb.
 - Read [SECURITY.md](../SECURITY.md) before reporting a vulnerability or
   handling plugin secrets.
 
