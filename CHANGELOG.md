@@ -22,6 +22,9 @@ prereleases; it does not imply a stable API or support promise.
   their upstream contracts ship.
 - This prerelease supports Bun as its CLI runtime and carries no stable API,
   response-time SLA, or public issue tracker.
+- npm's first-package bootstrap also points its mandatory `latest` tag at this
+  only published version; install `bb-mate@alpha` to select the intended channel
+  explicitly.
 
 ## 0.1.0-alpha.0 — private local candidate
 

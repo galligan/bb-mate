@@ -6,8 +6,10 @@ The `0.1.0-alpha.0` candidate completed its private local handoff. On 2026-08-08
 the owner approved the next release phase in OS-645: publish the new
 `bb-mate@0.1.0-alpha.1` artifact publicly under npm's `alpha` dist-tag, license
 BB Mate under MIT, and keep the GitHub repository private. That approval does
-not move `latest`, create a Git tag or GitHub release, change repository
-visibility, or authorize an announcement.
+not intentionally repoint `latest`, create a Git tag or GitHub release, change
+repository visibility, or authorize an announcement. npm's first-package
+bootstrap nevertheless created its mandatory `latest` tag at the same only
+published version; OS-645 records the failed authenticated removal attempt.
 
 ## Candidate provenance
 
@@ -53,7 +55,7 @@ The approved public successor is a new artifact, not modified `alpha.0` bytes:
 | --------------- | ------------------------------------------------------------------------------------------------- |
 | Package         | `bb-mate`                                                                                         |
 | License         | MIT; `LICENSE` shipped                                                                            |
-| npm channel     | public `alpha`; `latest` untouched                                                                |
+| npm channel     | public `alpha`; mandatory bootstrap `latest` points to the same only version                      |
 | Archive         | `bb-mate-0.1.0-alpha.1.tgz`                                                                       |
 | Archive files   | 41                                                                                                |
 | Catalog stories | 13                                                                                                |
@@ -61,7 +63,7 @@ The approved public successor is a new artifact, not modified `alpha.0` bytes:
 | npm shasum      | `2a5360d125b0189aaef5ebc85c10da162ed2c47c`                                                        |
 | npm integrity   | `sha512-GykyMJ9mAcHPhij1njHjVE3oUszJFjBLbhhLtmFbmQdueNnBE8bRHouV/Nyhp7ald53O5Mq3lzIRxP6wAdrTwg==` |
 | Repository      | private                                                                                           |
-| Release commit  | pending PR merge                                                                                  |
+| Release commit  | `3a9694b4fbccf0cbeb76b8f071d9f71ab8bbea5d`; merge `c2c33fea523148e56914168df84399db1c0adc51`      |
 
 Two complete builds and a staging repack are byte-identical. The isolated
 lifecycle verifies both local-prefix and global npm install/help/uninstall,
@@ -70,6 +72,13 @@ package/bin/manifest/lockfile residue. npm's exact publication dry-run accepts
 the archive under `alpha`. Targeted and full-stack local reviews are 5/5 clean
 after fixing the shipped support/security disclosure and global-install test
 coverage.
+
+The live registry tarball is byte-identical to the merged-main artifact. Both
+`alpha` and npm's mandatory `latest` bootstrap tag resolve to
+`0.1.0-alpha.1`. An authenticated `npm dist-tag rm bb-mate latest` attempt
+returned E400, consistent with npm registry metadata requiring every package to
+[define `latest`](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md);
+no second version was published and no tag was repointed.
 
 ## Independent roadmap status
 
@@ -295,10 +304,10 @@ not indicate regression in the green Fixture/local-package candidate.
       metadata and the shipped license.
 - [x] Rebuild and rerun every local gate; record the candidate artifact manifest,
       checksum, and registry dry run.
-- [ ] Merge the reviewed CI-green release PR, rebuild the exact artifact on main,
+- [x] Merge the reviewed CI-green release PR, rebuild the exact artifact on main,
       publish it under `alpha`, and verify the registry lifecycle.
 - [x] Keep tags, GitHub releases, visibility changes, and announcements out of
       OS-645.
 
-Current verdict: **public npm alpha approved; implementation, review, merge, and
-exact-artifact verification pending in OS-645**.
+Current verdict: **`bb-mate@0.1.0-alpha.1` is published and byte-verified; the
+mandatory first-package `latest` bootstrap divergence is recorded in OS-645**.
