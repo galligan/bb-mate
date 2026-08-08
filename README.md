@@ -6,9 +6,10 @@ The browser workbench lives in `apps/workbench`. Installable bb plugins live in 
 
 ## Five-minute Fixture quickstart
 
-Prerequisites: repository access, Bun 1.3.14 or newer, and npm. Native bb,
-Connect, credentials, and the unpublished plugin SDK are not required for
-Fixture stories.
+Prerequisites: repository access and the currently verified Bun 1.3.14. Newer
+engine-compatible Bun versions are best-effort until added to CI. npm is needed
+only for the local-artifact workflow. Native bb, Connect, credentials, and the
+unpublished plugin SDK are not required for Fixture stories.
 
 From a fresh checkout:
 

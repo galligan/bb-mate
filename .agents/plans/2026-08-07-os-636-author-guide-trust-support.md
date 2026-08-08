@@ -54,8 +54,8 @@ compatibility, mutation, support, and private-license boundaries unambiguous.
 - [x] Inventory and reconcile existing author-facing documentation.
 - [x] Add the external author, trust/mutation, compatibility/support, and
       contribution/security documents.
-- [ ] Verify every copyable command in clean source and artifact environments.
-- [ ] Complete aggregate gates and standing/fresh-targeted review.
+- [x] Verify every copyable command in clean source and artifact environments.
+- [x] Complete aggregate gates and standing/fresh-targeted review.
 - [ ] Land the PR, verify main CI, and move OS-636 to Done.
 
 ## Completion

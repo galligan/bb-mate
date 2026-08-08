@@ -8,9 +8,12 @@ workflow instead of recreating it here.
 
 1. Read [AGENTS.md](AGENTS.md), [README.md](README.md), and
    [docs/architecture.md](docs/architecture.md).
-2. Use the Linear issue as the source of truth. For non-trivial work, add or
-   update a plan under `.agents/plans/` before implementation.
-3. Create the Linear-recommended non-main branch with GitButler.
+2. Maintainers use the Linear issue as the source of truth. If you do not have
+   Outfitter Linear access, open a private repository GitHub Issue with the
+   context and desired outcome; a maintainer will link or create the Linear
+   issue and give you its branch slug before implementation.
+3. Create that Linear-recommended non-main branch with GitButler. For
+   non-trivial work, add or update a plan under `.agents/plans/` first.
 4. Install exactly the locked dependencies:
 
    ```sh

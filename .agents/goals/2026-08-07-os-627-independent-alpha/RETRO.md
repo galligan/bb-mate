@@ -171,6 +171,27 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The documented clean-checkout package path is now byte-reproducible across checkout roots, not only across repeated builds in one directory.
 - Next: Run the exact committed clean-checkout aggregate, browser gate, standing security review, and fresh targeted author-doc review.
 - Blockers: None inside the private-alpha scope; the public license remains an explicit owner gate.
+
+2026-08-07 - OS-636 committed clean-checkout gates green
+- Changed: Committed the documentation candidate and checkout-independent lab correction, then exported commit 58d72ef into a new directory with no Git metadata or pre-existing dependencies.
+- Verified: The fresh export passed frozen install, format, type/compatibility checks, all 172 tests, the 40-file/13-story package lifecycle at SHA `545ae6a…b359`, every build, all 14 Playwright/axe checks, and all 21 local Markdown link targets. The final `git diff --check` invocation was inapplicable inside the Git-less archive and returned Git usage after every repository gate had passed; the source workspace diff check is green.
+- Result: Every documented non-mutating path is backed by a clean source or isolated artifact execution. Native build/install/dev handoffs remain exact-argv tested and deliberately unexecuted because this goal forbids normal native-state mutation.
+- Next: Fix standing and targeted review findings, then complete the hosted PR loop.
+- Blockers: None.
+
+2026-08-07 - OS-636 round-one review corrections
+- Changed: Corrected the source-workbench session-endpoint disclosure, exact bb/Bun and Linux-runner support envelope, non-Linear author intake, artifact Control-C lifecycle, and aggregate plugin-script execution disclosure.
+- Verified: Standing and targeted round one each scored 3/5. All four targeted findings and both standing findings now have direct documentation corrections; the stable package implementation was independently verified by both reviewers.
+- Result: External authors can distinguish source passive HTTP inspection from the packaged static lab, identify exact verified versions/environments, reach support without private tracker access, and understand that root gates execute plugin-owned code.
+- Next: Run focused documentation checks and standing/fresh-targeted round-two review.
+- Blockers: None.
+
+2026-08-07 - OS-636 final review and aggregate green
+- Changed: Closed every standing and external-author review finding by documenting the source inspection endpoint, exact support envelope, private GitHub intake, foreground-server cleanup order, and aggregate plugin-script execution boundary.
+- Verified: Both second-round reviewers approved at 5/5 with no P0-P3 findings. The current tree passed format, compatibility/type checks, all 172 tests, every build, all 14 Playwright/axe checks, and `git diff --check`; the clean-room package contains 40 files and 13 stories at SHA-256 `b8b2f756215c01413f110cc2a31d85484fa243a2d019676aa2141d834d3c2479`.
+- Review: Standing `tmp/reviews/standing/os-636-round-2.json`; targeted `tmp/reviews/targeted-os636/round-2.json`.
+- Next: Commit the approved corrections, open the draft PR, follow hosted CI and review threads, then land and reconcile OS-636 before starting OS-637.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -221,6 +242,10 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 4         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-4.json`  | 5/5        | clean             | 0          | Superseding residue reconstruction and final recheck  |
 | 4         | OS-635 standing    | `tmp/reviews/standing/os-635-round-4.json` | 5/5        | clean             | 0          | Exact gzip closure and Linux GNU tar control          |
 | 5         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-5.json`  | 5/5        | clean             | 0          | Linux portability, isolation, and determinism recheck |
+| 1         | OS-636 standing    | `tmp/reviews/standing/os-636-round-1.json` | 3/5        | changes requested | 2          | HTTP trust boundary and support envelope              |
+| 1         | OS-636 targeted    | `tmp/reviews/targeted-os636/round-1.json`  | 3/5        | changes requested | 4          | Intake, versions, lifecycle, aggregate execution      |
+| 2         | OS-636 standing    | `tmp/reviews/standing/os-636-round-2.json` | 5/5        | clean             | 0          | Trust, support, lifecycle, and script closure         |
+| 2         | OS-636 targeted    | `tmp/reviews/targeted-os636/round-2.json`  | 5/5        | clean             | 0          | External-author workflow and artifact closure         |
 
 ## Verification Log
 
@@ -259,6 +284,10 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Corrected OS-635 aggregate                                                      | OS-635 candidate     | pass                 | explicit gzip tool; artifact SHA unchanged                 |
 | Archived clean checkout quickstart                                              | OS-636 source docs   | pass                 | frozen install; story URL and metadata verified            |
 | Cross-checkout package comparison                                               | OS-636 reproducible  | pass                 | both roots SHA `545ae6a…b359`; 40 files; 13 stories        |
+| Git-less export of 58d72ef format/check/test/build                              | OS-636 clean source  | pass                 | 172 tests; compatibility and both builds green             |
+| Git-less export Playwright/axe and link audit                                   | OS-636 clean source  | pass                 | 14 browser checks; 21 Markdown files                       |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-636 final         | pass                 | 172 tests; package SHA `b8b2f756…c2479`                    |
+| macOS Playwright/axe matrix (14 tests)                                          | OS-636 final         | pass                 | unchanged visual and accessibility baselines               |
 
 ## Prompt / Goal Alignment
 
@@ -271,17 +300,17 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 
 ## Tracker / PR Log
 
-| Item   | State       | Notes                                                  |
-| ------ | ----------- | ------------------------------------------------------ |
-| OS-627 | In Progress | Parent epic                                            |
-| OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green   |
-| OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green   |
-| OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green   |
-| OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green   |
-| OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green  |
-| OS-636 | Todo        | Unblocked; finalized after artifact commands stabilize |
-| OS-637 | Todo        | Blocked by OS-632/634/635/636                          |
-| OS-638 | Todo        | Blocked by OS-629/637; final ready PR only             |
+| Item   | State       | Notes                                                 |
+| ------ | ----------- | ----------------------------------------------------- |
+| OS-627 | In Progress | Parent epic                                           |
+| OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green  |
+| OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green  |
+| OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green  |
+| OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green  |
+| OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green |
+| OS-636 | In Progress | Final local candidate approved; PR and CI remain      |
+| OS-637 | Todo        | Blocked by OS-632/634/635/636                         |
+| OS-638 | Todo        | Blocked by OS-629/637; final ready PR only            |
 
 ## Follow-Ups
 

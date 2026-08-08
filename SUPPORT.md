@@ -9,13 +9,15 @@ license grant or permission to redistribute it.
 - Source: the current green `main` snapshot.
 - Local package: the exact private alpha artifact produced and verified by that
   snapshot.
-- Toolchain: the Bun version pinned by `packageManager` and the npm installer
-  path documented in [docs/local-package.md](docs/local-package.md).
+- Toolchain: Bun 1.3.14, pinned by `packageManager`, and the npm installer path
+  documented in [docs/local-package.md](docs/local-package.md). Newer versions
+  accepted by the package engine are best-effort until added to CI.
 - Native integration: the one bb release recorded in
   `compatibility/bb-target.json`, plus plugin engine ranges that honestly include
   that release.
-- Platforms: macOS for native bb handoffs; macOS and the pinned Linux CI image
-  for deterministic Fixture/package checks as documented.
+- Platforms: macOS for native bb handoffs; macOS and GitHub's moving
+  `ubuntu-latest` runner for aggregate/package checks; and the versioned
+  Playwright 1.62.1 Noble container for Linux Fixture visual baselines.
 
 Old source snapshots, modified tarballs, alternate runtimes, undeclared bb/SDK
 versions, and third-party plugin behavior are best-effort only.
@@ -63,11 +65,14 @@ designed to be removable, not to freeze older native workflows.
 
 ## Asking for help
 
-Use a Linear issue in the Outfitter workspace for private project work. Include
-the BB Mate commit, artifact version if applicable, `bun --version`, native
-`bb --version` when used, the selected plugin's engine ranges, the exact command
-and exit status, and sanitized diagnostics. Do not attach secrets, authenticated
-state, customer data, or unredacted local paths.
+If you have Outfitter Linear access, use the linked Linear issue for private
+project work. Otherwise open a private issue in this GitHub repository; a
+maintainer will triage it into Linear and keep the repository issue as the
+author-facing thread. Include the BB Mate commit, artifact version if
+applicable, `bun --version`, native `bb --version` when used, the selected
+plugin's engine ranges, the exact command and exit status, and sanitized
+diagnostics. Do not attach secrets, authenticated state, customer data, or
+unredacted local paths.
 
 Potential vulnerabilities follow [SECURITY.md](SECURITY.md), not the ordinary
 support queue.

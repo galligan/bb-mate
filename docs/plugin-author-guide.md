@@ -8,10 +8,13 @@ dev/reload, and the live runtime.
 ## Prerequisites
 
 - access to this private repository;
-- Bun 1.3.14 or newer;
+- Bun 1.3.14, the currently verified version; newer engine-compatible versions
+  are best-effort until added to CI;
 - npm for inspecting and temporarily installing the local alpha archive;
 - an existing bb plugin when you want inspection or native handoff guidance;
-- native bb 0.35.x only for native inspection, build, or Live handoffs.
+- native bb 0.35.1, the currently recorded target, for supported native
+  inspection, build, or Live handoffs. Other versions may still produce useful
+  diagnostics but are best-effort until the compatibility target is updated.
 
 Fixture exploration does not require native bb, Connect, secrets, a sibling
 `../bb` checkout, or a published `@bb/plugin-sdk` package.
@@ -107,6 +110,12 @@ prefix="$(mktemp -d)"
 npm install --prefix "$prefix" --no-save --package-lock=false ./artifacts/bb-mate-0.1.0-alpha.0.tgz
 "$prefix/node_modules/.bin/bb-mate" --help
 "$prefix/node_modules/.bin/bb-mate" dev "$plugin"
+```
+
+Open the printed loopback URL, then stop the foreground server with Control-C
+before uninstalling in the same shell:
+
+```sh
 npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
 ```
 
@@ -166,7 +175,8 @@ actual host layout, styling, routing, state, action lifecycle, and runtime.
 - Follow [CONTRIBUTING.md](../CONTRIBUTING.md) for change and verification
   requirements.
 - Use [SUPPORT.md](../SUPPORT.md) to determine whether a bb/SDK combination is
-  in scope.
+  in scope and find the repository-local intake path when you do not have
+  Outfitter Linear access.
 - Read [SECURITY.md](../SECURITY.md) before reporting a vulnerability or
   handling plugin secrets.
 
