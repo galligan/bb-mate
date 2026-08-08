@@ -67,6 +67,23 @@ bb reports the selected real path as installed. Otherwise it prints the exact
 path-install command without running it. Set `BB_CLI` to select a specific bb
 executable; an executable on `PATH` is used as the fallback.
 
+## Local alpha package
+
+Build and inspect the private, versioned local artifact without publishing:
+
+```sh
+bun run package:artifact
+bun run package:inspect
+bun run package:test
+```
+
+The artifact bundles the Bun CLI and static 13-story surface lab behind an
+explicit package allowlist. Its installed `dev` command serves only loopback
+Fixture assets; source-checkout `dev` retains the interactive workbench. The
+[clean-room package workflow](docs/local-package.md) documents contents,
+runtime support, missing-capability behavior, temporary install/uninstall, and
+the no-publish boundary.
+
 ## Layout
 
 ```text

@@ -136,6 +136,20 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: The next hosted run can execute the already-reviewed exact-image test shape without changing visual acceptance thresholds or baselines.
 - Next: Lint, review, commit, push, and follow both hosted jobs to green.
 - Blockers: None.
+
+2026-08-07 - OS-632 landed and OS-635 started
+- Changed: Merged OS-632 in PR #9, reconciled its GitButler lane, moved Linear to Done, and opened the recommended OS-635 branch and plan from clean main.
+- Verified: PR run 31225976689 and post-merge main run 31226118637 both passed the full verify and pinned visual jobs; merge commit 9f2aa0c; no review threads; clean lane-free workspace.
+- Result: Deterministic visual/accessibility coverage is now the packaging baseline.
+- Next: Build and prove the private versioned local artifact without publishing.
+- Blockers: None.
+
+2026-08-07 - OS-635 package walking skeleton green
+- Changed: Defined a staged private package manifest without workspace dependencies; bundled the Bun CLI; packaged the 13-story lab; added a loopback-only, path/symlink-confined GET/HEAD server; isolated clean-room state; added third-party notices and local package docs.
+- Verified: 32 CLI/server tests pass. The lifecycle test performs two complete builds plus a staging repack under an isolated exact-tool PATH, requires byte-identical output, checks the 40-file allowlist and path/source/symlink boundaries, installs under isolated HOME/XDG/npm/Bun state, runs help and expected-nonzero missing-bb inspection, proves the entrypoint stayed inert, serves all 13 stories with bb/Connect/SDK unavailable, and verifies uninstall package/manifest/root-lock/hidden-lock residue. The generated license payload covers direct runtimes, their closures, the complete Ladle static-client import set, and embedded notices. Current SHA-256: 6e8b25d89345c2e68908131eb2d8f9e4cb31ab12be1b238447f3f8f9e64afc13.
+- Result: The installed artifact works outside the source checkout with no sibling bb, workspace link, plugin package, or publication side effect.
+- Next: Run aggregate gates, standing and fresh targeted implementation review, then the hosted PR loop.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -177,6 +191,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | 3         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-3.json`  | 5/5        | clean             | 0          | Coverage, script boundary, and workflow recheck      |
 | 4         | OS-632 standing    | `tmp/reviews/standing/os-632-round-4.json` | 5/5        | clean             | 0          | Fresh-image unzip prerequisite proof                 |
 | 4         | OS-632 targeted    | `tmp/reviews/targeted-os632/round-4.json`  | 5/5        | clean             | 0          | Minimal bootstrap and unchanged-policy recheck       |
+| 1         | OS-635 standing    | `tmp/reviews/standing/os-635-round-1.json` | 3/5        | changes requested | 3          | Isolation, notices, and failed-bind diagnostics      |
+| 1         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-1.json`  | 3/5        | changes requested | 3          | Full-build determinism, notices, uninstall residue   |
+| 2         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-2.json`  | 4/5        | changes requested | 1          | Missing Ladle static-client runtime license closure  |
+| 3         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-3.json`  | 5/5        | superseded        | 1          | Premature approval missed npm hidden-lock residue    |
+| 2         | OS-635 standing    | `tmp/reviews/standing/os-635-round-2.json` | 4/5        | changes requested | 1          | Traversal-form root and hidden npm lock residue      |
+| 3         | OS-635 standing    | `tmp/reviews/standing/os-635-round-3.json` | 5/5        | clean             | 0          | Independent npm residue and full final recheck       |
+| 4         | OS-635 targeted    | `tmp/reviews/targeted-os635/round-4.json`  | 5/5        | clean             | 0          | Superseding residue reconstruction and final recheck |
 
 ## Verification Log
 
@@ -208,6 +229,9 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | CI-shaped pinned container without host IPC (14 tests)                          | OS-632 CI correction | pass                 | standing reviewer independently passed in 14.2 seconds     |
 | Hosted CI 31225715348                                                           | OS-632 split jobs    | expected failure     | verify green; visual stopped before tests on missing unzip |
 | Fresh pinned-image unzip probe                                                  | OS-632 bootstrap     | pass                 | exact apt step installed `/usr/bin/unzip`                  |
+| `bun run package:test`                                                          | OS-635 clean room    | pass                 | two full builds; 40 files; 13 stories; SHA `6e8b25d…fc13`  |
+| `bun run format:check && bun run check && bun run test && bun run build`        | OS-635 candidate     | pass                 | 172 tests; package lifecycle and all builds green          |
+| macOS Playwright/axe matrix (14 tests)                                          | OS-635 regression    | pass                 | unchanged fixture baselines and accessibility matrix       |
 
 ## Prompt / Goal Alignment
 
@@ -226,8 +250,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-629 | Done        | PR #6 merged at `7f364f1`; main CI 31216658339 green   |
 | OS-633 | Done        | PR #7 merged at `7e11d89`; main CI 31218687904 green   |
 | OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green   |
-| OS-632 | In Progress | Deterministic visual and accessibility regression      |
-| OS-635 | Todo        | Blocked by OS-633                                      |
+| OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green   |
+| OS-635 | In Progress | Local package implementation and review                |
 | OS-636 | Todo        | Unblocked; finalized after artifact commands stabilize |
 | OS-637 | Todo        | Blocked by OS-632/634/635/636                          |
 | OS-638 | Todo        | Blocked by OS-629/637; final ready PR only             |

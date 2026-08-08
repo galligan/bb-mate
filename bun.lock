@@ -12,10 +12,10 @@
       },
     },
     "apps/cli": {
-      "name": "@bb-mate/cli",
-      "version": "0.0.0",
+      "name": "bb-mate",
+      "version": "0.1.0-alpha.0",
       "bin": {
-        "bb-mate": "./src/bin.ts",
+        "bb-mate": "./dist/cli.js",
       },
       "dependencies": {
         "@bb-mate/inspection": "workspace:*",
@@ -46,10 +46,10 @@
         "tw-animate-css": "^1.4.0",
       },
       "devDependencies": {
-        "@axe-core/playwright": "^4.12.1",
+        "@axe-core/playwright": "4.12.1",
         "@happy-dom/global-registrator": "^18.0.1",
         "@ladle/react": "5.1.1",
-        "@playwright/test": "^1.62.1",
+        "@playwright/test": "1.62.1",
         "@tailwindcss/vite": "^4.3.3",
         "@testing-library/react": "^16.3.0",
         "@testing-library/user-event": "^14.6.1",
@@ -162,8 +162,6 @@
     "@base-ui/react": ["@base-ui/react@1.7.0", "", { "dependencies": { "@babel/runtime": "^7.29.2", "@base-ui/utils": "0.3.2", "@floating-ui/react-dom": "^2.1.9", "@floating-ui/utils": "^0.2.12", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@date-fns/tz": "^1.2.0", "@types/react": "^17 || ^18 || ^19", "date-fns": "^4.0.0", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@date-fns/tz", "@types/react", "date-fns"] }, "sha512-j+8QjX44C32jrXD/qyEAGpFr70FRpGL2CY61mQd9nBPWN737CK0xxD1ceJ055rW4RtdvFDT1e7otzdlfxvsYug=="],
 
     "@base-ui/utils": ["@base-ui/utils@0.3.2", "", { "dependencies": { "@babel/runtime": "^7.29.2", "@floating-ui/utils": "^0.2.12", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-oWy1aq/I2GmYjpl4PhEAhzflF8VPGKgZeq0xAWTbfD5KBWyxcN0ZP2+WHSUm/5Z6lVMBDLReLcoXwSYoRc/zNQ=="],
-
-    "@bb-mate/cli": ["@bb-mate/cli@workspace:apps/cli"],
 
     "@bb-mate/inspection": ["@bb-mate/inspection@workspace:packages/inspection"],
 
@@ -562,6 +560,8 @@
     "baseline-browser-mapping": ["baseline-browser-mapping@2.11.12", "", { "bin": { "baseline-browser-mapping": "dist/cli.cjs" } }, "sha512-r7WnVImvVCeFpf2DOXfy41aPWzeNg3H/A2X4dKmy1QL0MSyyk/e7z8ihJ3N6Nn2PsdhkVlqnEfnUE4a05P2aTA=="],
 
     "bb-app": ["bb-app@0.35.1", "", { "dependencies": { "@parcel/watcher": "2.5.6", "@tailwindcss/node": "^4.3.0", "@tailwindcss/oxide": "^4.3.0", "better-sqlite3": "12.10.0", "esbuild": "^0.28.0", "hono": "^4.7.0", "jiti": "^2.6.1", "node-pty": "1.1.0", "pino": "^9.6.0", "pino-pretty": "^13.0.0", "pino-roll": "^4.0.0", "tailwindcss": "^4.3.0", "zod": "4.3.6" }, "os": [ "linux", "darwin", ], "bin": { "bb": "dist/bb.js", "bb-app": "dist/bb-app.js", "bb-server": "dist/bb-server.js", "bb-host-daemon": "dist/bb-host-daemon.js" } }, "sha512-gY0REaRmyMMVDsPsY102r18yeYHI9qYFBPxkrh4jkD6/qII77b4ctwWg1OwmeXnAYtkxN6TSYka9IwS6KUq+ZA=="],
+
+    "bb-mate": ["bb-mate@workspace:apps/cli"],
 
     "bb-plugin-linear": ["bb-plugin-linear@workspace:plugins/linear"],
 
