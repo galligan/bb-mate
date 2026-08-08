@@ -23,8 +23,9 @@ and upstream limitation explicit, then leave a green ready PR unmerged for Matt.
 
 ## Boundaries
 
-- Do not publish to npm, tag, create a release, merge the PR, change repository
-  visibility, send an announcement, or choose a public license.
+- The original goal loop must stop before merging. Do not publish to npm, tag,
+  create a release, change repository visibility, send an announcement, or
+  choose a public license.
 - Do not edit upstream bb or implement OS-639 through OS-644 locally.
 - Do not install a plugin or mutate Connect, normal bb state, secrets, or an
   existing developer environment.
@@ -51,10 +52,18 @@ and upstream limitation explicit, then leave a green ready PR unmerged for Matt.
 - [x] Write the complete traceable release handoff and owner decision checklist.
 - [x] Run candidate artifact, aggregate, visual, content, and clean-room gates.
 - [x] Complete standing and fresh targeted review with no open P0-P3.
-- [ ] Open a draft PR, obtain green hosted gates, mark ready, and stop unmerged.
+- [x] Open a draft PR, obtain green hosted gates, mark ready, and stop unmerged.
 
 ## Completion
 
 Complete for this goal loop when OS-638 has a green ready PR with a fully
 traceable local-alpha handoff and no unresolved review thread, while the PR and
 issue remain unmerged/In Progress at the explicit owner decision boundary.
+
+## Post-ready owner authorization
+
+The original goal loop completed at its required unmerged boundary. On
+2026-08-08, Matt explicitly authorized merging PR #13 after additional local
+review passes. That later authorization does not permit npm publication, a
+public-license choice, tagging or release creation, a visibility change, an
+announcement, upstream bb edits, or normal plugin/Connect mutation.

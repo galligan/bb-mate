@@ -1,8 +1,8 @@
 # Execution Retro: OS-627 upstream-independent alpha
 
 Date started: 2026-08-07
-Date finalized: Pending
-Status: Active
+Date finalized: 2026-08-08
+Status: Completed
 Spec: `.agents/goals/2026-08-07-os-627-independent-alpha/SPEC.md`
 Goal: `.agents/goals/2026-08-07-os-627-independent-alpha/GOAL.md`
 Prompt: `.agents/goals/2026-08-07-os-627-independent-alpha/PROMPT.md`
@@ -11,30 +11,36 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 ## Summary
 
 - Objective: complete OS-629 and OS-632 through OS-638 without upstream work.
-- Completion horizon: `ready-pr`; OS-629 through OS-637 merge, OS-638 stops ready.
+- Completion horizon: `ready-pr`; OS-629 through OS-637 merged and OS-638
+  reached a green ready PR before the later owner-authorized landing step.
 - Baseline: clean `main` at `a637aa0`; main CI run 31206636916 green.
 - Capability baseline: native bb 0.35.1; official `@bb/plugin-sdk` remains
   unpublished, so Harness stays accurately unavailable.
-- Forbidden actions: no publication, tag/release, visibility change,
-  announcement, public-license choice, upstream edit, normal plugin/Connect
-  mutation, or final OS-638 merge.
+- During the goal loop, forbidden actions included publication, tag/release,
+  visibility change, announcement, public-license choice, upstream edit, normal
+  plugin/Connect mutation, and the final OS-638 merge. The loop stopped at that
+  boundary before the owner separately authorized merging on 2026-08-08.
 
 ## Readiness
 
 - Prompt checked: yes; 3,604 characters and no placeholders.
 - Goal/prompt alignment checked: yes; packet doctor passes.
-- Review blockers: none in preparation.
-- Verification blockers: none in preparation.
-- Tracker blockers: dependency graph recorded in the goal.
-- Authority blockers: public license/release and OS-638 merge remain owner gates.
-- Next action: implement OS-632 and preserve execution evidence here.
+- Review blockers: none; every included implementation and handoff review closed
+  at 5/5 with zero P0-P3 before the ready-PR boundary.
+- Verification blockers: none; local and hosted gates are green.
+- Tracker blockers: only OS-639 through OS-644 remain upstream-dependent.
+- Authority blockers: public license, npm publication, repository visibility,
+  tag/release, and announcement remain owner gates.
+- Closeout action: merge PR #13 under the 2026-08-08 authorization, verify main,
+  and keep every distribution action stopped.
 
 ## Goal Amendments
 
-| Time            | Change                                | Reason                                                                 | Approved By         |
-| --------------- | ------------------------------------- | ---------------------------------------------------------------------- | ------------------- |
-| 2026-08-07 prep | Finish at ready OS-638 PR, not merged | OS-638 explicitly requires an owner gate before merging its handoff PR | Issue specification |
-| 2026-08-07 prep | Sequence OS-633 -> OS-634 -> OS-632   | Visual/a11y baselines must cover the completed launcher                | Preparation audit   |
+| Time                  | Change                                        | Reason                                                                 | Approved By         |
+| --------------------- | --------------------------------------------- | ---------------------------------------------------------------------- | ------------------- |
+| 2026-08-07 prep       | Finish at ready OS-638 PR, not merged         | OS-638 explicitly requires an owner gate before merging its handoff PR | Issue specification |
+| 2026-08-07 prep       | Sequence OS-633 -> OS-634 -> OS-632           | Visual/a11y baselines must cover the completed launcher                | Preparation audit   |
+| 2026-08-08 post-ready | Permit PR #13 merge after extra local reviews | Owner explicitly authorized merging the completed handoff work         | Matt Galligan       |
 
 ## Execution Log
 
@@ -402,7 +408,7 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green |
 | OS-636 | Done        | PR #11 merged at `b2d5c20`; main CI 31230856034 green |
 | OS-637 | Done        | PR #12 merged at `c8363d3`; main CI 31233902043 green |
-| OS-638 | In Progress | Handoff locally green; final ready PR remains         |
+| OS-638 | In Progress | PR #13 green/ready; owner-authorized merge is next    |
 
 ## Follow-Ups
 
@@ -412,4 +418,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 
 ## Final State
 
-Pending execution.
+The original goal reached its required green, ready, unmerged PR #13 at exact
+head `914fea203cc6de2eae29e3ef6d4818ac16b7b35a`. All upstream-independent work
+through OS-637 was already on main, and OS-638 supplied the traceable private
+local-alpha handoff without publishing or changing release state.
+
+On 2026-08-08, Matt explicitly authorized merging PR #13 after additional local
+review passes. That authorization extends only to the repository merge. Public
+licensing, npm publication, tag/release creation, repository visibility,
+announcement, upstream bb edits, and normal plugin or Connect mutation remain
+outside scope. OS-639 through OS-644 remain Backlog and `upstream-dependent`.
