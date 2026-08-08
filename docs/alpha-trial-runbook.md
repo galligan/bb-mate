@@ -70,7 +70,28 @@ export npm_config_cache="$profile/cache/npm"
 mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" \
   "$XDG_STATE_HOME" "$XDG_DATA_HOME" "$TMPDIR"
 unset BB_CLI BB_CLI_REEXEC BB_SERVER_URL BB_DATA_DIR
-command -v bun npm git tar shasum curl perl >/dev/null
+command -v bun npm git tar shasum curl perl pgrep >/dev/null
+
+stop_trial_process() {
+  local root_pid="$1"
+  local process alive attempt
+  local -a processes
+  processes=("$root_pid" "${(@f)$(pgrep -P "$root_pid" 2>/dev/null)}")
+  kill -TERM "$processes[@]" 2>/dev/null || true
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    alive=0
+    for process in "$processes[@]"; do
+      kill -0 "$process" 2>/dev/null && alive=1
+    done
+    test "$alive" -eq 0 && break
+    sleep 0.2
+  done
+  for process in "$processes[@]"; do
+    kill -0 "$process" 2>/dev/null && \
+      kill -KILL "$process" 2>/dev/null || true
+  done
+  wait "$root_pid" 2>/dev/null || true
+}
 ```
 
 The empty shell must not contain saved credentials, dotenv values, or a path to
@@ -106,8 +127,7 @@ cp "$fixture" "$fixture.trial-backup"
 perl -pi -e 's/Agent focus/Agent focus trial/' "$fixture"
 # Observe "Agent focus trial" in the open browser without restarting Vite.
 mv "$fixture.trial-backup" "$fixture"
-kill -INT "$source_stories_pid" 2>/dev/null || true
-wait "$source_stories_pid" || true
+stop_trial_process "$source_stories_pid"
 ```
 
 ## 4. Build and install the artifact
@@ -226,8 +246,7 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
 done
 jq '{bbVersion:.inspection.native.bbVersion, connect:.inspection.native.connect.paired}' \
   "$profile/source-session.json"
-kill -INT "$source_dev_pid" 2>/dev/null || true
-wait "$source_dev_pid" || true
+stop_trial_process "$source_dev_pid"
 ```
 
 The session JSON must report bb 0.35.1 and unpaired Connect. Stop the source
@@ -247,8 +266,7 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
   sleep 0.5
 done
 jq '.stories | length' "$profile/package-meta.json"
-kill -INT "$package_dev_pid" 2>/dev/null || true
-wait "$package_dev_pid" || true
+stop_trial_process "$package_dev_pid"
 ```
 
 `check` must delegate `bb plugin build .` and refresh metadata. Because the
@@ -259,8 +277,7 @@ server must expose all 13 static stories.
 ## 8. Uninstall and teardown
 
 ```sh
-kill -INT "$bb_app_pid"
-wait "$bb_app_pid"
+stop_trial_process "$bb_app_pid"
 npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
 test ! -e "$prefix/node_modules/bb-mate"
 test ! -e "$prefix/node_modules/.bin/bb-mate"
