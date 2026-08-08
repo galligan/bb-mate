@@ -30,11 +30,11 @@ the public project README and repository metadata already merged to main.
        exact artifact checksums.
 4. [x] Complete targeted release and full-stack local reviews; fix and rerun
        every open P0/P1/P2 finding.
-5. [ ] Commit on the OS-647 branch, open a draft PR, pass hosted CI/review, mark
+5. [x] Commit on the OS-647 branch, open a draft PR, pass hosted CI/review, mark
        ready, merge, and pass post-merge main CI.
-6. [ ] Rebuild on merged main, prove exact artifact identity, publish the exact
+6. [x] Rebuild on merged main, prove exact artifact identity, publish the exact
        tarball with `--tag alpha`, and verify registry metadata/readme/install.
-7. [ ] Confirm `alpha` moved to alpha.2 while `latest` stayed at alpha.1, update
+7. [x] Confirm `alpha` moved to alpha.2 while `latest` stayed at alpha.1, update
        Linear and this plan, and leave GitButler clean and lane-free.
 
 ## Boundaries
@@ -64,3 +64,21 @@ the public project README and repository metadata already merged to main.
   (`/tmp/agent-reviews/os-647/targeted/round-1.json`).
 - Full-stack review: 5/5 clean, zero findings
   (`/tmp/agent-reviews/os-647/full-stack/round-1.json`).
+- PR #19 merged the reviewed head `0fda07ff3df7e807d0bd30b90bfcff9e5eb41eb8`
+  to main as `521fa3f83aac7b4eddfd2e35859bdd4d220f1f8b`.
+- PR CI and post-merge main CI run `31263913305` passed `verify`, `visual`, and
+  GitGuardian checks.
+- The merged-main rebuild reproduced the reviewed SHA-256, npm shasum, and npm
+  integrity exactly before publication.
+- Published registry version:
+  <https://www.npmjs.com/package/bb-mate/v/0.1.0-alpha.2>.
+- Registry tags: `alpha: 0.1.0-alpha.2`, `latest: 0.1.0-alpha.1`.
+- The registry tarball reproduced SHA-256
+  `de6174f733c8a76fdc4b7e117ff2499a47d55e918e02150fecb9337384e0e843`.
+- The live npm page renders the public README, upstream bb link, ownership
+  boundary, repository/homepage/issues metadata, and MIT license.
+- A disposable registry install resolved alpha.2, `bb-mate --help` passed, and
+  uninstall left no package or binary residue.
+- The first one-time npm browser authorization expired without publishing; the
+  registry was confirmed unchanged before a fresh authorization completed the
+  exact publish.
