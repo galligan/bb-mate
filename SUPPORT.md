@@ -1,97 +1,73 @@
-# Support and compatibility policy
+# Support and compatibility
 
-BB Mate `0.1.0-alpha.1` is an MIT-licensed public npm alpha. It has no public
-support commitment, stable API guarantee, or response-time SLA. The GitHub
-repository remains private, so publication does not provide a public issue
-tracker or grant repository access.
+BB Mate is an MIT-licensed public alpha. It does not yet have a stable API,
+long-term support line, response-time commitment, or compatibility promise
+across every bb release.
+
+## Where to ask
+
+Open a [GitHub Issue](https://github.com/galligan/bb-mate/issues) for:
+
+- BB Mate discovery or inspection bugs;
+- Fixture lab, story, accessibility, or visual-regression problems;
+- incorrect compatibility diagnostics or native-command handoffs;
+- BB Mate documentation and packaging problems.
+
+Report native bb scaffolding, build/install/dev behavior, plugin runtime, host
+UI, routing, or SDK contract problems to the
+[upstream bb issue tracker](https://github.com/get-bb/bb/issues). A minimal
+reproduction that isolates the responsible layer helps both projects.
+
+Do not open a public issue for a vulnerability. Follow
+[SECURITY.md](SECURITY.md) instead.
+
+## Include in a report
+
+Please include:
+
+- the BB Mate version or source commit;
+- `bun --version`;
+- native `bb --version`, when native behavior is involved;
+- the selected plugin's `engines.bb` and `engines.bbPluginSdk` ranges;
+- the exact command, exit status, and sanitized diagnostic output;
+- a small reproduction using fake data when possible.
+
+Do not include credentials, customer data, authenticated state, or unredacted
+local paths.
 
 ## Supported line
 
-- Source: the current green `main` snapshot.
-- npm package: the exact `bb-mate@0.1.0-alpha.1` artifact published under the
-  `alpha` dist-tag and reproduced from the recorded release commit.
-- Toolchain: Bun 1.3.14, pinned by `packageManager`, and the npm installer path
-  documented in [docs/local-package.md](docs/local-package.md). Newer versions
-  accepted by the package engine are best-effort until added to CI.
-- Native integration: the one bb release recorded in
-  `compatibility/bb-target.json`, plus plugin engine ranges that honestly include
-  that release.
-- Platforms: macOS for native bb handoffs; macOS and GitHub's moving
-  `ubuntu-latest` runner for aggregate/package checks; and the versioned
-  Playwright 1.62.1 Noble container for Linux Fixture visual baselines.
+The actively maintained surface is:
 
-Old source snapshots, modified tarballs, alternate runtimes, undeclared bb/SDK
-versions, and third-party plugin behavior are best-effort only.
+- the current green `main` branch;
+- the current `bb-mate@alpha` npm package;
+- the bb target recorded in `compatibility/bb-target.json`;
+- Bun 1.3.14 and newer engine-compatible versions on a best-effort basis;
+- macOS for native bb handoffs;
+- the Linux environments exercised by CI for Fixture, package, and browser
+  checks.
 
-Run the current compatibility measurement before diagnosing a native mismatch:
+Old commits, modified tarballs, undeclared bb/SDK versions, alternate runtimes,
+and third-party plugin behavior are best-effort.
+
+Before diagnosing a native mismatch, run:
 
 ```sh
 bun run compatibility:check
 ```
 
-The report fails closed when its public upstream evidence cannot be verified.
-An outage or unavailable probe is not evidence of compatibility. Follow
-[docs/compatibility-target.md](docs/compatibility-target.md) to update the
-recorded target deliberately.
+The check fails closed when public upstream evidence is unavailable; a failed
+network probe is not proof of incompatibility. See
+[docs/compatibility-target.md](docs/compatibility-target.md) for the recorded
+target and update process.
 
-## Fidelity support
+## Fidelity boundaries
 
-- Fixture issues cover deterministic BB Mate stories and adapters only.
-- Harness issues are in scope only after the selected plugin resolves the
-  official testing package and BB Mate ships an upstream-backed adapter.
-- Live bb issues must be reproduced against the recorded target. Live bb is the
-  visual/integration authority; Fixture screenshots cannot overrule host
-  behavior.
+- **Fixture** support covers BB Mate's deterministic stories and adapters.
+- **Harness** support begins only when the selected plugin resolves the official
+  testing package and BB Mate has an upstream-backed adapter.
+- **Live bb** is the authority for host rendering and integration behavior.
 
-When the problem is native scaffolding, build/install/dev behavior, host chrome,
-routing, or runtime, report it upstream to bb with a minimal reproduction. BB
-Mate may improve its diagnosis or handoff but will not maintain a competing
-implementation.
-
-## Changes and deprecation
-
-Alpha commands, fixtures, and package contents may change between prereleases.
-When a supported BB Mate path is replaced, changes should:
-
-1. name the replacement in the issue, changelog/release handoff, or command
-   diagnostic;
-2. keep one clear path rather than parallel permanent modes;
-3. preserve the old path for at least one planned alpha handoff when practical;
-4. remove it immediately when retention would create a security or data-loss
-   risk, with that exception documented.
-
-When upstream bb adds a native capability that replaces a BB Mate seam, BB Mate
-adopts it and deletes or deprecates the duplicate. The downstream tool is
-designed to be removable, not to freeze older native workflows.
-
-## Asking for help
-
-If you have Outfitter Linear or private repository access, use the linked issue
-for project work. Public npm users should contact an npm-listed maintainer
-through an existing private channel; this alpha does not yet offer a public
-support queue. Include the BB Mate version, `bun --version`, native
-`bb --version` when used, the selected plugin's engine ranges, the exact command
-and exit status, and sanitized diagnostics. Do not attach secrets,
-authenticated state, customer data, or unredacted local paths.
-
-Potential vulnerabilities follow [SECURITY.md](SECURITY.md), not the ordinary
-support queue.
-
-## Release boundary
-
-The npm package is public under MIT while the repository remains private. Each
-later registry version, repository-visibility change, tag, GitHub release, or
-announcement remains an explicit owner decision. Before one of those actions,
-record:
-
-- the package and license metadata;
-- supported versions and platforms;
-- release channel, version, provenance, and rollback plan;
-- security contact and disclosure expectations;
-- announcement text and audience.
-
-OS-645 records the owner-approved `bb-mate@0.1.0-alpha.1` npm release under the
-`alpha` dist-tag. npm's first-package bootstrap also created its mandatory
-`latest` tag at that same only version; an authenticated removal attempt returned
-E400. OS-645 does not authorize intentionally repointing it, creating a Git tag
-or GitHub release, changing visibility, or announcing availability.
+Fixture screenshots cannot overrule live bb. When upstream adds a native
+capability that replaces a BB Mate seam, BB Mate should adopt it and retire the
+duplicate.

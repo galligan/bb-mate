@@ -1,5 +1,10 @@
 # Shareable-alpha release handoff
 
+> [!NOTE]
+> This is a historical maintainer record for the first alpha, not the current
+> installation or contribution guide. Start with the [project README](../README.md)
+> and [plugin-author guide](plugin-author-guide.md).
+
 ## Decision
 
 The `0.1.0-alpha.0` candidate completed its private local handoff. On 2026-08-08

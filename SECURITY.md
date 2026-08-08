@@ -2,45 +2,63 @@
 
 ## Reporting a vulnerability
 
+Please report suspected BB Mate vulnerabilities through
+[GitHub's private vulnerability reporting](https://github.com/galligan/bb-mate/security/advisories/new).
+
 Do not open a public issue or include exploit details, credentials, customer
-data, or local paths in ordinary logs or comments.
+data, authenticated state, or local paths in public logs or comments. A useful
+private report includes:
 
-Repository collaborators should use GitHub **Security → Report a
-vulnerability** to open a private security advisory. Public npm users should
-contact an npm-listed maintainer through an existing private channel and ask for
-a secure reporting path before sharing details. If no private channel is
-available, do not publish exploit details; this alpha does not yet provide a
-public vulnerability-intake address. Include the affected package version,
-reproduction steps using fake data, impact, and any known workaround.
+- the affected BB Mate version or source commit;
+- reproduction steps using fake data;
+- the expected and observed behavior;
+- the potential impact;
+- any known workaround.
 
-Maintainers will acknowledge a report when the project is actively staffed,
-reproduce and triage it, coordinate a fix and disclosure boundary, and credit
-the reporter if requested. This alpha has no public response-time or remediation
-SLA; see [SUPPORT.md](SUPPORT.md).
+This alpha has no guaranteed response or remediation time, but maintainers will
+acknowledge reports while the project is actively staffed, reproduce and triage
+the issue, coordinate a fix and disclosure boundary, and credit the reporter if
+requested.
 
-## Supported security surface
+Security problems in native bb or `@bb/plugin-sdk` should follow the
+[upstream bb security policy](https://github.com/get-bb/bb/security/policy).
 
-Only the current `main` snapshot and exact npm alpha identified in repository
-documentation are considered for security fixes. Old commits, locally modified
-artifacts, unpublished branches, unsupported bb/SDK versions, and third-party
-plugins are not maintained release lines.
+## Security boundary
 
-BB Mate does not sandbox plugins. Full-trust execution, passive inspection,
-native mutation boundaries, content-script handling, and secret expectations
-are documented in [docs/trust-model.md](docs/trust-model.md). A report that a
-third-party plugin intentionally reads files or uses the network is normally a
-plugin issue; a report that BB Mate executes a plugin during passive inspection,
-leaks redacted paths, crosses its server confinement, or runs a native mutation
-without an explicit terminal handoff is a BB Mate security issue.
+BB Mate treats plugins as full-trust local code. It is not a sandbox.
+
+Passive inspection is designed to read manifests and generated metadata without
+importing the plugin entrypoint. Native build and Live commands are explicit
+terminal actions because they can execute plugin toolchains or code and mutate
+native plugin state. The packaged Fixture server binds to loopback and does not
+serve plugin inspection data.
+
+See [docs/trust-model.md](docs/trust-model.md) for the detailed filesystem,
+network, secret, content-script, and native-command boundaries.
+
+A third-party plugin intentionally reading files or using the network is usually
+a plugin issue. The following are BB Mate security issues:
+
+- passive inspection executes a selected plugin;
+- diagnostics expose paths that should be redacted;
+- the packaged server escapes its static-lab root or binds beyond its documented
+  loopback boundary;
+- BB Mate runs a native mutation without an explicit user handoff;
+- a content-script fixture mounts trusted plugin code during ordinary discovery.
+
+## Supported versions
+
+Security fixes target the current `main` branch and current npm alpha. Old
+commits, modified artifacts, unsupported bb/SDK versions, and third-party plugin
+code are not maintained release lines.
 
 ## Handling fixes
 
-- Use fake deterministic fixtures and isolated profiles for reproduction.
-- Do not remove/reinstall a managed path plugin if that could discard settings
-  or secrets.
-- Keep advisory branches and artifacts private until the owner approves
-  disclosure.
-- Verify the smallest fix plus the full repository and relevant browser/package
-  gates before release consideration.
-- Publication, tagging, visibility, disclosure timing, and credential rotation
-  require explicit owner decisions.
+- Reproduce with deterministic fake data and isolated profiles.
+- Keep advisory branches and artifacts private until coordinated disclosure.
+- Do not remove and reinstall a managed path plugin when that could discard its
+  settings or secrets.
+- Verify the smallest fix plus the complete relevant repository, browser, and
+  package gates before release.
+- Treat publication, tagging, disclosure timing, and credential rotation as
+  separate maintainer decisions.

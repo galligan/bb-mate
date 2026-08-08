@@ -1,0 +1,46 @@
+name: Feature proposal
+description: Propose a focused improvement to BB Mate
+title: "proposal: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        BB Mate complements native bb; it does not replace the bb CLI, plugin SDK, runtime, installer, or host UI. Please describe the authoring problem before prescribing a solution.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Plugin-author problem
+      description: What is difficult today, and who encounters it?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What would become possible or clearer?
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Best-fit layer
+      options:
+        - BB Mate inspection or diagnostics
+        - Fixture lab or visual tooling
+        - Native-command orchestration or handoff
+        - Documentation or packaging
+        - Unsure; this may belong in upstream bb
+    validations:
+      required: true
+  - type: textarea
+    id: upstream
+    attributes:
+      label: Upstream relationship
+      description: Note any related get-bb/bb issue, SDK contract, or native capability.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include an existing native bb or SDK path if one is available.

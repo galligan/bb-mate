@@ -1,223 +1,206 @@
-# bb-mate
+# BB Mate
 
-BB Mate is a private Bun monorepo for designing, prototyping, and shipping extensions around [bb](https://github.com/get-bb/bb).
+[![CI](https://github.com/galligan/bb-mate/actions/workflows/ci.yml/badge.svg)](https://github.com/galligan/bb-mate/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/bb-mate?label=npm&color=cb3837)](https://www.npmjs.com/package/bb-mate)
+[![license](https://img.shields.io/github/license/galligan/bb-mate)](LICENSE)
 
-The browser workbench lives in `apps/workbench`. Installable bb plugins live in `plugins/<name>` as independent workspace packages with their own manifests and release versions.
+BB Mate is an experimental, fixture-driven authoring companion for plugins
+built for [bb](https://github.com/get-bb/bb), the agent IDE that builds itself.
 
-## Five-minute Fixture quickstart
+It gives plugin authors a fast browser workbench, passive compatibility
+diagnostics, and a small CLI for moving between deterministic fixture states and
+the real native bb development loop. BB Mate is a community project, not part of
+the upstream bb distribution.
 
-Prerequisites: repository access and the currently verified Bun 1.3.14. Newer
-engine-compatible Bun versions are best-effort until added to CI. npm is needed
-only for the local-artifact workflow. Native bb, Connect, credentials, and the
-unpublished plugin SDK are not required for Fixture stories.
+> [!IMPORTANT]
+> BB Mate does not replace bb, the bb CLI, or `@bb/plugin-sdk`. Native bb remains
+> the source of truth for plugin contracts, scaffolding, builds, installation,
+> reload, runtime behavior, and the final in-app result.
 
-From a fresh checkout:
+## Why BB Mate exists
+
+A native bb plugin can contribute backend services, tools, commands, skills,
+settings, and frontend UI. The official bb toolchain owns how those plugins are
+created and run. BB Mate focuses on a narrower authoring problem: making plugin
+structure and UI states easier to inspect, discuss, and test before handing the
+plugin back to live bb.
+
+Today BB Mate can:
+
+- discover an ordinary bb plugin workspace without adding a BB Mate manifest;
+- inspect `package.json`, native `dist/*.meta.json`, engine ranges, and passive
+  bb status without importing or executing the plugin;
+- render deterministic stories for the public plugin UI surface catalog;
+- run accessibility and visual-regression checks against those fixture states;
+- delegate compatible build and development commands to the native `bb` CLI;
+- explain what is available in Fixture, official SDK Harness, and Live bb modes.
+
+## bb, the plugin SDK, and BB Mate
+
+| Layer                              | What it owns                                                                                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [bb](https://github.com/get-bb/bb) | Plugin scaffolding, declaration refresh, build, install, update, dev/reload, host UI, routing, state, and live runtime                                  |
+| `@bb/plugin-sdk`                   | The typed backend and frontend contracts plugins compile against, plus the official testing contracts when they are available to the plugin             |
+| BB Mate                            | Passive discovery and compatibility reports, deterministic fixture stories, visual/a11y tooling, thin native-command orchestration, and Live bb handoff |
+
+The native loop still looks like this:
 
 ```sh
-bun install --frozen-lockfile
-bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61000
+bb plugin new my-plugin --app
+cd bb-plugin-my-plugin
+bb plugin install . --yes
+bb plugin dev .
 ```
 
-Open
-<http://127.0.0.1:61000/?story=surfaces--sidebar-thread-list--catalog-fixtures>.
-That story is deterministic browser state. Starting it executes BB Mate's
-checked-out development dependencies and opens a loopback server, but it does
-not import or execute a selected plugin, contact bb/Connect, or mutate native
-plugin state.
-
-Continue with the [external plugin-author guide](docs/plugin-author-guide.md),
-then read the [trust and operation model](docs/trust-model.md) before pointing
-BB Mate at third-party code. Project expectations live in
-[CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and
-[SUPPORT.md](SUPPORT.md).
-
-## Commands
+BB Mate can sit beside that loop, but it never becomes the runtime:
 
 ```sh
-bun install
+bb-mate inspect .
+bb-mate dev .
+bb-mate check .
+bb-mate live .
+```
+
+- `inspect` is passive and does not execute plugin code.
+- `dev` opens the Fixture lab.
+- `check` reports compatibility, delegates `bb plugin build .`, and reports
+  again.
+- `live` delegates `bb plugin dev .` only when native bb confirms the same
+  plugin path is installed. Otherwise it prints the native install command.
+
+The official SDK testing subpaths are the behavioral authority. BB Mate does not
+copy them or import private bb source as a fallback. Until the selected plugin
+can resolve the official testing package and BB Mate has an upstream-backed
+adapter, Harness mode remains unavailable. Publication of those testing
+subpaths is tracked upstream in
+[get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134).
+
+## Install the alpha
+
+Prerequisites:
+
+- [bb](https://github.com/get-bb/bb#use-bb) for native build, install, and Live
+  handoffs;
+- Bun 1.3.14 or a newer engine-compatible version to run `bb-mate`;
+- an existing bb plugin when you want to inspect or hand off a real workspace.
+
+Install the current public prerelease:
+
+```sh
+npm install --global bb-mate@alpha
+bb-mate --help
+```
+
+Then, from a plugin directory:
+
+```sh
+bb-mate inspect .
+bb-mate dev .
+```
+
+The installed `dev` command serves a packaged, loopback-only static lab. It
+does not install, build, reload, or run the selected plugin.
+
+> [!NOTE]
+> This is an early alpha. Commands, fixtures, and package contents may change
+> between prereleases. npm currently points both `alpha` and `latest` at the
+> only published version, so use `bb-mate@alpha` when you want the intended
+> channel explicitly.
+
+## Develop BB Mate from source
+
+```sh
+git clone https://github.com/galligan/bb-mate.git
+cd bb-mate
+bun install --frozen-lockfile
+bun run bb-mate --help
 bun run dev
+```
+
+Useful checks:
+
+```sh
+bun run format:check
 bun run check
 bun run test
 bun run build
+bun run visual:test
 ```
 
-## Surface story lab
-
-The workbench includes one linkable Ladle story group for every public plugin
-surface in the catalog. It runs entirely from deterministic fixtures: no bb
-server, Connect process, plugin entrypoint, sibling checkout, or secret is
-required.
+The source workbench discovers plugin packages under `plugins/`. Pass an
+explicit external plugin path to the CLI when needed:
 
 ```sh
-bun --filter @bb-mate/workbench stories
-bun --filter @bb-mate/workbench stories:build
-bun --filter @bb-mate/workbench stories:preview
+bun run bb-mate inspect /absolute/path/to/plugin
+bun run bb-mate dev /absolute/path/to/plugin
 ```
 
-The static lab is emitted under `apps/workbench/dist/ladle`. Plugin-owned
-components are rendered as fixture approximations; bb-owned actions show their
-declared inputs and expected outcomes without imitating host chrome. Content
-script stories remain inert and never mount plugin code. Live bb remains the
-visual authority.
+No sibling bb checkout is required. Contributors may keep one nearby for
+read-only upstream comparison, but BB Mate must build and test without it.
 
-The bounded [visual regression and accessibility workflow](docs/visual-regression.md)
-runs deterministic Chromium screenshots, axe, keyboard/focus, reduced-motion,
-and measured sidebar/composer checks. Baseline updates use the explicit
-`bun run visual:update` command; Fixture screenshots never replace manual Live
-bb comparison.
+## Preview confidence
 
-## Native plugin loop
+BB Mate keeps three claims separate:
 
-The private `bb-mate` CLI keeps fixture work and compatibility guidance in this
-repository while delegating build, install, reload, and live runtime behavior
-to native bb:
-
-```sh
-bun run bb-mate --help
-bun run bb-mate inspect plugins/linear
-bun run bb-mate check plugins/linear
-bun run bb-mate plugins/linear
-bun run bb-mate live plugins/linear
-```
-
-The bare form aliases `dev` and launches the existing workbench on
-`127.0.0.1:5173` with strict port binding. `--host` and `--port` can make that
-fixture server reachable beyond localhost; BB Mate only reports the existing
-Connect status and never exposes or pairs Connect on your behalf. A remote URL
-is shown only when `bb connect status --json` already reports a share for the
-selected workbench port on the invoking host; the account's base Connect URL
-and another host's same-port share are not workbench exposure.
-
-`check` runs the compatibility report, delegates exactly `bb plugin build .`,
-then refreshes the report. `live` delegates `bb plugin dev .` only when native
-bb reports the selected real path as installed. Otherwise it prints the exact
-path-install command without running it. Set `BB_CLI` to select a specific bb
-executable; an executable on `PATH` is used as the fallback.
-
-## Local alpha package
-
-Build and inspect the private, versioned local artifact without publishing:
-
-```sh
-bun run package:artifact
-bun run package:inspect
-bun run package:test
-```
-
-The artifact bundles the Bun CLI and static 13-story surface lab behind an
-explicit package allowlist. Its installed `dev` command serves only loopback
-Fixture assets; source-checkout `dev` retains the interactive workbench. The
-[clean-room package workflow](docs/local-package.md) documents contents,
-runtime support, missing-capability behavior, temporary install/uninstall, and
-the no-publish boundary. The
-[shareable-alpha release handoff](docs/release-handoff.md) records the exact
-candidate, known limitations, recovery path, draft copy, and owner go/no-go
-decisions.
-
-## Layout
-
-```text
-apps/workbench/  Browser-only design studio with deterministic fake bb state
-packages/        Shared authoring contracts with at least two real consumers
-plugins/         Independently installable and publishable bb plugin packages
-docs/            Architecture, product notes, and release guidance
-.agents/plans/   Durable implementation plans and decision records
-```
-
-The canonical bb source checkout is intentionally separate at `../bb`. It is reference material, not a workspace dependency.
-
-## Relationship to bb
-
-BB Mate is a downstream authoring companion, not an alternate plugin runtime.
-
-| bb owns                                    | BB Mate owns                               |
-| ------------------------------------------ | ------------------------------------------ |
-| Plugin SDK contracts and testing harnesses | Workspace discovery and inspection         |
-| Scaffolding and declaration refresh        | Deterministic fixtures and stories         |
-| Build, install, reload, and runtime        | Thin native-command orchestration          |
-| Host layout, styling, routing, and state   | Compatibility diagnostics and live handoff |
-
-This distinction keeps BB Mate deletable at every seam: when bb improves a
-native workflow, BB Mate should consume it instead of maintaining a competing
-implementation.
-
-## Preview fidelity
-
-BB Mate names three different levels of confidence:
-
-- **Fixture** — deterministic browser state for fast visual iteration. It is an
+- **Fixture** — deterministic browser state for quick visual iteration. It is an
   approximation and runs without bb.
-- **Harness** — behavioral validation through the official
-  `@bb/plugin-sdk/testing` packages. It checks public contracts, not host CSS or
-  layout.
+- **Harness** — public behavior validated by the official
+  `@bb/plugin-sdk/testing` contracts. It does not reproduce bb layout or CSS.
 - **Live bb** — the plugin running inside bb. This is the visual and integration
   authority.
 
-The workbench discovers the only plugin under `plugins/` automatically. When a
-workspace contains more than one plugin, `bun run bb-mate dev` still opens the Fixture
-lab and the overlay requires an explicit selection. Plugin, surface, scenario,
-mode, theme, and viewport are stored in the URL, so a selected lab state is
-reload-stable and shareable without a BB Mate manifest. An explicit CLI target
-remains available:
+A Fixture screenshot is useful regression evidence; it is never proof that a
+plugin looks or behaves exactly the same inside bb.
 
-```sh
-BB_MATE_PLUGIN=plugins/<name> bun run dev
+## Repository map
+
+```text
+apps/cli/        The published bb-mate CLI package
+apps/workbench/  Browser-only fixture workbench
+packages/        Shared inspection and authoring contracts
+plugins/         Independently versioned native bb plugins
+docs/            Architecture, authoring, trust, and compatibility guides
 ```
 
-The overlay reads `package.json`, native `dist/*.meta.json`, and native bb CLI
-JSON output. Discovery never imports or executes plugin code. Inspection reports
-whether the selected plugin can resolve the official
-`@bb/plugin-sdk/testing` and `@bb/plugin-sdk/testing/app` contracts, but the
-launcher keeps Harness disabled until BB Mate has an upstream-backed adapter.
-BB Mate does not copy the harness or import it from `../bb`. Selecting Live bb
-shows a handoff-only canvas and exact native command; it never relabels Fixture
-output as Live or embeds Connect.
+Start with:
 
-## Compatibility report
+- [Plugin-author guide](docs/plugin-author-guide.md)
+- [Architecture and upstream boundary](docs/architecture.md)
+- [Trust and operation model](docs/trust-model.md)
+- [Compatibility target](docs/compatibility-target.md)
+- [Contributing](CONTRIBUTING.md)
+- [Support](SUPPORT.md)
+- [Security policy](SECURITY.md)
 
-The workbench exposes a browser-safe passive session at
-`/bb-mate-session.json`. The server maps opaque candidate keys to discovered
-plugin roots; browser query values are never resolved as filesystem paths. The
-session redacts absolute target, realpath, provenance, and native-diagnostic
-paths, includes exact copyable `bun run bb-mate` launch, build/check, and live
-commands,
-and keeps Fixture, Harness-contract, launcher, and Live capability claims
-separate. Native actions run only after the developer pastes a command into a
-terminal, preserving native output and making artifact/runtime mutation
-explicit. Repo-local commands use the proven `bun run bb-mate` entrypoint. If
-the inspected workspace is outside this repository, the browser withholds
-copyable handoffs instead of exposing local path hierarchy or claiming that an
-uninstalled global binary exists. The compatibility report checks
-manifests, native build metadata, declared bb and SDK engine ranges, native
-plugin state, npm SDK publication, and native provenance. Registry publication
-is reported separately from selected-plugin dependency resolution, so a missing
-official package is not confused with a broken local install. Actionable checks
-include a concrete next action; failed native checks retain their command, exit
-status, and bounded stdout/stderr evidence.
+## Project status
 
-Passive Connect metadata keeps the account base URL and global status shares
-separate from the invoking host returned by `bb connect shares --json`. Typed
-shares retain `hostId`, `hostName`, `port`, `url`, availability, and any
-unavailable reason. Consumers can report whether a specific local port is
-already usable without calling expose, unexpose, or pair.
+BB Mate is an independent experimental project. The current compatibility target
+is recorded in `compatibility/bb-target.json` and checked with:
 
-The same shared package provides a concise terminal formatter for the bb-mate
-CLI. Reports always disclose that plugins are full-trust local code. They only
-summarize settings, capabilities, services, skills, themes, and entrypoints
-that supported metadata actually exposes; general filesystem, network, secret,
-and external-service access remains explicitly undisclosed rather than inferred
-from source.
+```sh
+bun run compatibility:check
+```
 
-The broader native/version target is recorded in
-`compatibility/bb-target.json`. Run `bun run compatibility:check` for an
-actionable human report or add `--json` for the machine report. The manual live
-verification and update workflow is documented in
-[`docs/compatibility-target.md`](docs/compatibility-target.md).
+When a native bb capability replaces a BB Mate seam, this project should adopt
+the upstream path and delete the duplicate. The goal is a useful companion that
+remains removable—not a second plugin platform.
 
-Current upstream dependencies:
+## Contributing and support
 
-- [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) tracks the missing
-  external `@bb/plugin-sdk` distribution required for Harness mode.
-- [get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) and draft
-  [PR #1135](https://github.com/get-bb/bb/pull/1135) own the native scaffold
-  development-dependency fix. BB Mate does not patch generated scaffolds.
+Bug reports and focused feature proposals are welcome in
+[GitHub Issues](https://github.com/galligan/bb-mate/issues). Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+Problems with native bb scaffolding, installation, runtime, host UI, or the SDK
+contract itself generally belong in the
+[upstream bb issue tracker](https://github.com/get-bb/bb/issues). BB Mate issues
+should concern its inspection, fixtures, diagnostics, orchestration, or
+documentation.
+
+Security reports follow [SECURITY.md](SECURITY.md). Please do not put
+vulnerability details or secrets in a public issue.
+
+## License
+
+BB Mate is available under the [MIT License](LICENSE). bb and its plugin SDK are
+separate upstream software governed by their own repository and license.

@@ -3,6 +3,17 @@
 BB Mate is an alpha. This changelog records reviewable candidates and public
 prereleases; it does not imply a stable API or support promise.
 
+## Unreleased
+
+### Changed
+
+- Open the source repository under MIT with public contribution, support, issue,
+  and private vulnerability-reporting paths.
+- Rewrite the public documentation around plugin authors and clarify the
+  boundary between native bb, `@bb/plugin-sdk`, and BB Mate.
+- Add repository, homepage, and issue-tracker metadata to the next packaged CLI
+  artifact. The existing npm `0.1.0-alpha.1` bytes remain unchanged.
+
 ## 0.1.0-alpha.1 — public npm alpha
 
 ### Changed
@@ -11,17 +22,17 @@ prereleases; it does not imply a stable API or support promise.
   `bb-mate` package under npm's `alpha` dist-tag.
 - License BB Mate under MIT while keeping bundled third-party notices and
   licenses explicit.
-- Keep the GitHub repository private; public support intake and announcements
-  are not part of this release.
+- Publish from a private source repository; the repository was opened in a
+  later documentation-only change.
 
 ### Known limitations
 
 - Fixture is a deterministic approximation; Live bb remains the visual and
   integration authority.
-- Harness and the remaining OS-639–OS-644 capabilities stay unavailable until
-  their upstream contracts ship.
-- This prerelease supports Bun as its CLI runtime and carries no stable API,
-  response-time SLA, or public issue tracker.
+- Harness remains unavailable until its upstream testing distribution and the
+  BB Mate adapter are both usable.
+- This prerelease supports Bun as its CLI runtime and carries no stable API or
+  response-time SLA.
 - npm's first-package bootstrap also points its mandatory `latest` tag at this
   only published version; install `bb-mate@alpha` to select the intended channel
   explicitly.

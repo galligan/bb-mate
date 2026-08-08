@@ -332,6 +332,20 @@ try {
     "Artifact must use the approved alpha.1 version.",
   );
   assert(
+    stagedManifest.homepage === "https://github.com/galligan/bb-mate#readme" &&
+      JSON.stringify(stagedManifest.repository) ===
+        JSON.stringify({
+          type: "git",
+          url: "git+https://github.com/galligan/bb-mate.git",
+          directory: "apps/cli",
+        }) &&
+      JSON.stringify(stagedManifest.bugs) ===
+        JSON.stringify({
+          url: "https://github.com/galligan/bb-mate/issues",
+        }),
+    "Artifact must link to the public source and issue tracker.",
+  );
+  assert(
     JSON.stringify(stagedManifest.publishConfig) ===
       JSON.stringify({ access: "public", tag: "alpha" }),
     "Artifact must publish publicly under the alpha dist-tag.",
