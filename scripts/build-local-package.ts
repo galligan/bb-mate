@@ -52,4 +52,4 @@ if (storyCount !== 13) {
   throw new Error(`Expected 13 packaged surface stories, found ${storyCount}.`);
 }
 
-console.log(`Built private BB Mate CLI and ${storyCount}-story surface lab.`);
+console.log(`Built BB Mate CLI and ${storyCount}-story surface lab.`);

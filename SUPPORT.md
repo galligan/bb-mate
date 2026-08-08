@@ -1,14 +1,15 @@
 # Support and compatibility policy
 
-BB Mate is a private `0.1.0-alpha.0` development tool. It has no public support
-commitment, stable API guarantee, or response-time SLA. Access does not imply a
-license grant or permission to redistribute it.
+BB Mate `0.1.0-alpha.1` is an MIT-licensed public npm alpha. It has no public
+support commitment, stable API guarantee, or response-time SLA. The GitHub
+repository remains private, so publication does not provide a public issue
+tracker or grant repository access.
 
 ## Supported line
 
 - Source: the current green `main` snapshot.
-- Local package: the exact private alpha artifact produced and verified by that
-  snapshot.
+- npm package: the exact `bb-mate@0.1.0-alpha.1` artifact published under the
+  `alpha` dist-tag and reproduced from the recorded release commit.
 - Toolchain: Bun 1.3.14, pinned by `packageManager`, and the npm installer path
   documented in [docs/local-package.md](docs/local-package.md). Newer versions
   accepted by the package engine are best-effort until added to CI.
@@ -49,8 +50,8 @@ implementation.
 
 ## Changes and deprecation
 
-Private alpha commands, fixtures, and package contents may change between green
-`main` snapshots. When a supported BB Mate path is replaced, changes should:
+Alpha commands, fixtures, and package contents may change between prereleases.
+When a supported BB Mate path is replaced, changes should:
 
 1. name the replacement in the issue, changelog/release handoff, or command
    diagnostic;
@@ -65,31 +66,30 @@ designed to be removable, not to freeze older native workflows.
 
 ## Asking for help
 
-If you have Outfitter Linear access, use the linked Linear issue for private
-project work. Otherwise open a private issue in this GitHub repository; a
-maintainer will triage it into Linear and keep the repository issue as the
-author-facing thread. Include the BB Mate commit, artifact version if
-applicable, `bun --version`, native `bb --version` when used, the selected
-plugin's engine ranges, the exact command and exit status, and sanitized
-diagnostics. Do not attach secrets, authenticated state, customer data, or
-unredacted local paths.
+If you have Outfitter Linear or private repository access, use the linked issue
+for project work. Public npm users should contact an npm-listed maintainer
+through an existing private channel; this alpha does not yet offer a public
+support queue. Include the BB Mate version, `bun --version`, native
+`bb --version` when used, the selected plugin's engine ranges, the exact command
+and exit status, and sanitized diagnostics. Do not attach secrets,
+authenticated state, customer data, or unredacted local paths.
 
 Potential vulnerabilities follow [SECURITY.md](SECURITY.md), not the ordinary
 support queue.
 
-## Release and license gate
+## Release boundary
 
-The repository and local package are currently private and `UNLICENSED`. No
-public-use, modification, redistribution, or publication permission is granted.
-Before any repository-visibility or registry-publication change, the owner must
-explicitly approve:
+The npm package is public under MIT while the repository remains private. Each
+later registry version, repository-visibility change, tag, GitHub release, or
+announcement remains an explicit owner decision. Before one of those actions,
+record:
 
-- a public license and corresponding repository/package metadata;
+- the package and license metadata;
 - supported versions and platforms;
 - release channel, version, provenance, and rollback plan;
 - security contact and disclosure expectations;
 - announcement text and audience.
 
-Until those decisions are recorded, do not publish, tag, create a release,
-change visibility, or announce availability. The alpha release handoff may make
-these decisions ready for approval, but it does not approve or execute them.
+OS-645 records the owner-approved `bb-mate@0.1.0-alpha.1` npm release under the
+`alpha` dist-tag. It does not authorize moving `latest`, creating a Git tag or
+GitHub release, changing visibility, or announcing availability.

@@ -53,19 +53,25 @@ const stagedManifest = Object.fromEntries(
   [
     "name",
     "version",
-    "private",
+    "description",
     "license",
+    "keywords",
     "type",
     "bin",
     "files",
     "engines",
     "bbMate",
+    "publishConfig",
   ].map((key) => [key, sourceManifest[key]]),
 );
 await Promise.all([
   fs.writeFile(
     path.join(stagingRoot, "package.json"),
     `${JSON.stringify(stagedManifest, null, 2)}\n`,
+  ),
+  fs.copyFile(
+    path.join(repositoryRoot, "LICENSE"),
+    path.join(stagingRoot, "LICENSE"),
   ),
   fs.copyFile(
     path.join(cliRoot, "README.md"),
@@ -103,6 +109,7 @@ const paths = result.files.map((file) => file.path);
 const unexpected = paths.filter(
   (file) =>
     file !== "package.json" &&
+    file !== "LICENSE" &&
     file !== "README.md" &&
     file !== "THIRD_PARTY_NOTICES.md" &&
     file !== "THIRD_PARTY_LICENSES.md" &&
@@ -114,6 +121,7 @@ if (unexpected.length > 0) {
 }
 for (const required of [
   "package.json",
+  "LICENSE",
   "README.md",
   "THIRD_PARTY_NOTICES.md",
   "THIRD_PARTY_LICENSES.md",

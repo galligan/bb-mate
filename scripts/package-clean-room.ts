@@ -93,7 +93,7 @@ function verifyResidueDetector(packageName: string) {
     { packages: { "": { bin: { [packageName]: "dist/cli.js" } } } },
     {
       packages: {
-        "": { resolved: `file:../${packageName}-0.1.0-alpha.0.tgz` },
+        "": { resolved: `file:../${packageName}-0.1.0-alpha.1.tgz` },
       },
     },
   ]) {
@@ -178,6 +178,7 @@ let server: ReturnType<typeof Bun.spawn> | null = null;
 try {
   verifyResidueDetector(sourceManifest.name);
   const installRoot = path.join(temporaryRoot, "install");
+  const globalInstallRoot = path.join(temporaryRoot, "global-install");
   const homeRoot = path.join(temporaryRoot, "home");
   const cacheRoot = path.join(temporaryRoot, "cache");
   const configRoot = path.join(temporaryRoot, "config");
@@ -188,6 +189,7 @@ try {
   await Promise.all(
     [
       homeRoot,
+      globalInstallRoot,
       cacheRoot,
       configRoot,
       dataRoot,
@@ -289,6 +291,7 @@ try {
   const unexpected = paths.filter(
     (file) =>
       file !== "package.json" &&
+      file !== "LICENSE" &&
       file !== "README.md" &&
       file !== "THIRD_PARTY_NOTICES.md" &&
       file !== "THIRD_PARTY_LICENSES.md" &&
@@ -316,14 +319,35 @@ try {
   const stagedManifest = JSON.parse(
     await fs.readFile(path.join(extractedPackage, "package.json"), "utf8"),
   ) as Record<string, unknown>;
-  assert(stagedManifest.private === true, "Artifact must remain private.");
   assert(
-    stagedManifest.license === "UNLICENSED",
-    "Artifact must remain unlicensed.",
+    !("private" in stagedManifest),
+    "Public artifact must not retain the private publication guard.",
+  );
+  assert(
+    stagedManifest.license === "MIT",
+    "Public artifact must declare the approved MIT license.",
+  );
+  assert(
+    stagedManifest.version === "0.1.0-alpha.1",
+    "Artifact must use the approved alpha.1 version.",
+  );
+  assert(
+    JSON.stringify(stagedManifest.publishConfig) ===
+      JSON.stringify({ access: "public", tag: "alpha" }),
+    "Artifact must publish publicly under the alpha dist-tag.",
   );
   assert(
     !("dependencies" in stagedManifest),
     "Artifact must not retain workspace dependencies.",
+  );
+  const packageLicense = await fs.readFile(
+    path.join(extractedPackage, "LICENSE"),
+    "utf8",
+  );
+  assert(
+    packageLicense.startsWith("MIT License") &&
+      packageLicense.includes("Copyright (c) 2026 Matt Galligan"),
+    "Artifact must ship the approved MIT license text.",
   );
   const thirdPartyLicenses = await fs.readFile(
     path.join(extractedPackage, "THIRD_PARTY_LICENSES.md"),
@@ -379,6 +403,59 @@ try {
 
   const copiedArtifact = path.join(temporaryRoot, artifactName);
   await fs.copyFile(artifactPath, copiedArtifact);
+  await run(
+    [
+      "npm",
+      "install",
+      "--global",
+      "--prefix",
+      globalInstallRoot,
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund",
+      copiedArtifact,
+    ],
+    { env: lifecycleEnv },
+  );
+  const globalBin = path.join(globalInstallRoot, "bin", "bb-mate");
+  const globalPackage = path.join(
+    globalInstallRoot,
+    "lib",
+    "node_modules",
+    sourceManifest.name,
+  );
+  await Promise.all([
+    fs.access(globalBin, constants.X_OK),
+    fs.access(globalPackage, constants.R_OK),
+  ]);
+  const globalHelp = await run([globalBin, "--help"], {
+    cwd: temporaryRoot,
+    env: lifecycleEnv,
+  });
+  assert(
+    globalHelp.stdout.includes("Usage: bb-mate"),
+    "Global installed bin help failed.",
+  );
+  await run(
+    [
+      "npm",
+      "uninstall",
+      "--global",
+      "--prefix",
+      globalInstallRoot,
+      sourceManifest.name,
+    ],
+    { env: lifecycleEnv },
+  );
+  for (const residue of [globalBin, globalPackage]) {
+    await fs.access(residue).then(
+      () => {
+        throw new Error(`npm global uninstall left ${residue} behind.`);
+      },
+      () => undefined,
+    );
+  }
+
   await run(
     [
       "npm",

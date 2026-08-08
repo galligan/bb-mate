@@ -103,15 +103,14 @@ Set `BB_CLI` to an exact executable when you need to override the `bb` found on
 BB_CLI=/absolute/path/to/bb bun run bb-mate inspect "$plugin"
 ```
 
-## Use the local alpha artifact
+## Install the public alpha
 
-The private package supports Fixture exploration outside the source checkout:
+The public package supports Fixture exploration outside the source checkout:
 
 ```sh
-bun run package:artifact
 plugin="/absolute/path/to/plugin"
 prefix="$(mktemp -d)"
-npm install --prefix "$prefix" --no-save --package-lock=false ./artifacts/bb-mate-0.1.0-alpha.0.tgz
+npm install --prefix "$prefix" --no-save --package-lock=false bb-mate@alpha
 "$prefix/node_modules/.bin/bb-mate" --help
 "$prefix/node_modules/.bin/bb-mate" dev "$plugin"
 ```
@@ -125,8 +124,8 @@ npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
 
 The installed `dev` serves the packaged static lab rather than the source Vite
 workbench. It binds only to loopback and does not serve inspection data. The
-archive remains private, `UNLICENSED`, and unsupported for registry publication.
-The reproducible artifact and clean-room lifecycle are specified in
+package is an MIT-licensed prerelease with no stable API or support SLA. The
+reproducible artifact and clean-room lifecycle are specified in
 [local-package.md](local-package.md).
 Release-candidate maintainers can reproduce the source, packaged, and isolated
 native lanes with the [clean-room alpha trial runbook](alpha-trial-runbook.md).
