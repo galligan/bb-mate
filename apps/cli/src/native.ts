@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { ProcessExit } from "./commands.ts";
 
-export { runCapturedCommand } from "@bb-mate/inspection";
+export { nativeCommandEnv, runCapturedCommand } from "@bb-mate/inspection";
 
 async function executablePath(candidate: string): Promise<string | null> {
   try {

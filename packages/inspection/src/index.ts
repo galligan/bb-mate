@@ -2,6 +2,7 @@ export { inspectPlugin } from "./inspect.ts";
 export { discoverPluginRoots } from "./manifest.ts";
 export { runCapturedCommand } from "./captured-command.ts";
 export type { CapturedCommandOptions } from "./captured-command.ts";
+export { nativeCommandEnv } from "./native-env.ts";
 export {
   formatInspection,
   inspectionOutcome,

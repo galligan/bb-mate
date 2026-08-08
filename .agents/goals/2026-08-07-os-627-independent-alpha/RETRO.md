@@ -192,6 +192,48 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Review: Standing `tmp/reviews/standing/os-636-round-2.json`; targeted `tmp/reviews/targeted-os636/round-2.json`.
 - Next: Commit the approved corrections, open the draft PR, follow hosted CI and review threads, then land and reconcile OS-636 before starting OS-637.
 - Blockers: None.
+
+2026-08-07 - OS-636 landed and OS-637 started
+- Changed: Promoted and merged PR #11, reconciled GitButler to a clean lane-free main, closed OS-636, and opened the Linear-recommended OS-637 branch.
+- Verified: PR CI 31230755681 and post-merge main CI 31230856034 both passed verify and visual; GitGuardian passed; PR #11 had no reviews, inline comments, or unresolved review threads.
+- Result: OS-636 is Done at merge commit `b2d5c203e7ee2f69314a5babbe2097260c87a4d0`. OS-637 is unblocked and scoped to disposable clean-room state only.
+- Next: Execute the external-author trial from a fresh temporary profile, fix all P0/P1 friction, and rerun before review.
+- Blockers: None inside the private-alpha scope.
+
+2026-08-07 - OS-637 clean-room trial found and fixed native re-exec loop
+- Changed: Ran the source, packaged, browser, compatibility, native build, and guarded Live journey from disposable state. Added an explicit environment boundary so BB Mate consumes `BB_CLI` without forwarding bb's own re-exec selector into the resolved child.
+- Verified: Before the fix, all four native probes timed out at five seconds while the same bb 0.35.1 executable succeeded directly. After the fix, the isolated native host reported bb 0.35.1 and unpaired Connect, `check` built server/app metadata at SDK 0.4.1, and `live` refused the uninstalled plugin with the exact path-install handoff.
+- Result: Trial finding F-1 (P1) is fixed with focused tests for selector removal and captured-child environment preservation. All 13 surfaces, ownership classifications, inert content-script behavior, and Vite HMR were verified in Chrome.
+- Next: Commit the correction and report, rerun the entire journey from a new clean archive, then complete standing and targeted review.
+- Blockers: None; Harness remains expected upstream-dependent.
+
+2026-08-07 - OS-637 independent scratch rerun green
+- Changed: Exported committed candidate e9b0f60 into a second Git-less source root with new profile, install prefix, plugin, bb data, ports, and browser servers. Repeated every source, artifact, compatibility, native, Live, and cleanup step without reusing first-run state.
+- Verified: Frozen install completed in 11.8 seconds; Chrome discovered all 13 stories, ownership classes, inert content-script behavior, and fixture HMR. The artifact reproduced SHA-256 `fc99a5161ad0890706d03306de32248174aa3ead67b3daf334932f6868214a07`; isolated bb 0.35.1 inspection and check passed; Live refused the uninstalled path with the exact handoff; packaged preview and uninstall passed.
+- Result: The F-1 P1 correction survives a true first-run environment. No P0/P1 finding remains, no plugin was installed, Connect stayed unpaired, and normal bb/plugin state was not used.
+- Next: Run the repository aggregate and standing/fresh-targeted reviews, fix all findings, then open the draft PR.
+- Blockers: None inside the private-alpha scope.
+
+2026-08-07 - OS-637 round-one review found a source native-selection regression
+- Changed: Standing and fresh targeted reviewers traced the full production runtime and reproduced that the first F-1 correction stripped canonical `BB_CLI` from the non-native source Vite child. Both also found that the durable report did not fully define the isolated native setup; targeted review additionally requested explicit uninstall-residue evidence.
+- Verified: Both reviewers scored the branch 2/5 and blocked readiness. Standing reproduced terminal bb 0.35.1 preflight followed by blocked browser inspection with no bb version. Targeted confirmed the aggregate remained green at 174 tests, 40 files, 13 stories, and SHA-256 `fc99a5161ad0890706d03306de32248174aa3ead67b3daf334932f6868214a07`.
+- Review: Standing `tmp/reviews/standing/os-637-round-1.json`; targeted `tmp/reviews/targeted-os637/round-1.json`.
+- Next: Consume selectors only at native invocations, preserve canonical bb for Vite, commit the complete clean-room runbook and uninstall evidence, rerun isolated source/native paths, and request round two.
+- Blockers: OS-637 remains blocked by the open P1 until the corrected production path and reviews pass.
+
+2026-08-07 - OS-637 review corrections and isolated rerun green
+- Changed: Moved selector consumption into the shared native invocation boundary, preserved a freshly resolved canonical `BB_CLI` for the source Vite child, added direct source/check/live environment assertions, and committed the complete clean-profile/native runbook plus uninstall-residue evidence.
+- Verified: With `BB_CLI_REEXEC=1` deliberately present, terminal preflight and the source `/bb-mate-session.json` both reported isolated bb 0.35.1 and unpaired Connect. Native check rebuilt SDK 0.4.1 metadata; Live refused the uninstalled plugin with the exact handoff; isolated inventory remained eight builtins only. The aggregate passed 175 tests, all builds, all 14 Playwright/axe checks, and produced a 40-file/13-story artifact at SHA-256 `0e5503f371a1ffc57c4f4fc333828f4b40affe146b82c7f2c7980f925c48d00e`.
+- Result: Both round-one P1/P2 findings and the targeted P3 are corrected in code, tests, durable procedure, and current runtime evidence. No normal plugin or Connect state was used or changed.
+- Next: Commit the corrections and request standing plus fresh-targeted round-two approval.
+- Blockers: None pending independent review.
+
+2026-08-07 - OS-637 final standing and targeted review clean
+- Changed: Iterated the executable clean-room runbook through literal clean-archive probes: exact GitButler branch provenance, complete empty-shell tool paths, five endpoint assignments, source/package readiness polling, hidden npm lock semantics, and reliable process-tree teardown with TERM grace plus KILL fallback.
+- Verified: Standing round three and targeted round four approved exact head `0fefc5535320ae3f0b01398c9520d673e1ca2700` at 5/5 with zero P0-P3 findings. Both reproduced the 13-story Bun/Ladle lane and verified the wrapper/child exited, `wait` settled, and port 61047 closed. All six OS-637 acceptance criteria pass; the unchanged production tree remains green at 175 tests, all builds, 14 Playwright/axe checks, and artifact SHA-256 `0e5503f371a1ffc57c4f4fc333828f4b40affe146b82c7f2c7980f925c48d00e`.
+- Review: Standing `tmp/reviews/standing/os-637-round-3.json`; targeted `tmp/reviews/targeted-os637/round-4.json`.
+- Next: Open the draft PR, follow hosted CI and all review threads, then ready/land and reconcile Linear.
+- Blockers: None.
 ```
 
 ## Preparation Audits
@@ -288,6 +330,17 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | Git-less export Playwright/axe and link audit                                   | OS-636 clean source  | pass                 | 14 browser checks; 21 Markdown files                       |
 | `bun run format:check && bun run check && bun run test && bun run build`        | OS-636 final         | pass                 | 172 tests; package SHA `b8b2f756…c2479`                    |
 | macOS Playwright/axe matrix (14 tests)                                          | OS-636 final         | pass                 | unchanged visual and accessibility baselines               |
+| Hosted CI 31230755681                                                           | OS-636 PR            | pass                 | verify, visual, and GitGuardian green                      |
+| Hosted CI 31230856034                                                           | OS-636 main          | pass                 | post-merge verify and visual green                         |
+| OS-637 clean source/browser trial                                               | OS-637 first run     | pass                 | 13 stories; ownership; inert lifecycle; HMR observed       |
+| OS-637 native probe before correction                                           | OS-637 first run     | expected failure     | leaked `BB_CLI`; four five-second native timeouts          |
+| OS-637 fixed isolated native lane                                               | OS-637 correction    | pass                 | bb 0.35.1; build green; guarded Live handoff               |
+| OS-637 second scratch rerun                                                     | OS-637 final trial   | pass                 | new roots; 13 stories; HMR; native build; uninstall        |
+| OS-637 standing review round one                                                | OS-637 review        | changes requested    | 2/5; P1 source selector; P2 missing runbook                |
+| OS-637 targeted review round one                                                | OS-637 review        | changes requested    | 2/5; same P1/P2 plus P3 uninstall evidence                 |
+| OS-637 corrected production source/native rerun                                 | OS-637 correction    | pass                 | browser bb 0.35.1; 175 tests; SHA `0e5503f…d00e`           |
+| OS-637 standing review round three                                              | OS-637 final review  | 5/5 clean            | zero P0-P3; literal process-tree shutdown passed           |
+| OS-637 targeted review round four                                               | OS-637 final review  | 5/5 clean            | all six acceptance criteria passed                         |
 
 ## Prompt / Goal Alignment
 
@@ -308,8 +361,8 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-634 | Done        | PR #8 merged at `f14afd3`; main CI 31222879164 green  |
 | OS-632 | Done        | PR #9 merged at `9f2aa0c`; main CI 31226118637 green  |
 | OS-635 | Done        | PR #10 merged at `544d9b1`; main CI 31229355120 green |
-| OS-636 | In Progress | Final local candidate approved; PR and CI remain      |
-| OS-637 | Todo        | Blocked by OS-632/634/635/636                         |
+| OS-636 | Done        | PR #11 merged at `b2d5c20`; main CI 31230856034 green |
+| OS-637 | In Progress | Clean-room external-author trial                      |
 | OS-638 | Todo        | Blocked by OS-629/637; final ready PR only            |
 
 ## Follow-Ups

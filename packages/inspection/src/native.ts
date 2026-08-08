@@ -4,6 +4,7 @@ import {
   runCapturedCommand,
   type CapturedCommandOptions,
 } from "./captured-command.ts";
+import { nativeCommandEnv } from "./native-env.ts";
 import type {
   CommandResult,
   InspectPluginOptions,
@@ -144,7 +145,10 @@ export function defaultRunBb(
   options: CapturedCommandOptions = {},
 ): Promise<CommandResult> {
   const executable = process.env.BB_CLI?.trim() || "bb";
-  return runCapturedCommand(executable, args, process.cwd(), options);
+  return runCapturedCommand(executable, args, process.cwd(), {
+    ...options,
+    env: nativeCommandEnv(options.env ?? process.env),
+  });
 }
 
 function boundUtf8(value: string): string {

@@ -7,10 +7,16 @@ import { defaultRunBb, readNativeState } from "./native.ts";
 
 const temporaryRoots: string[] = [];
 const originalBbCli = process.env.BB_CLI;
+const originalBbCliReexec = process.env.BB_CLI_REEXEC;
+const originalSentinel = process.env.BB_MATE_SENTINEL;
 
 afterEach(async () => {
   if (originalBbCli === undefined) delete process.env.BB_CLI;
   else process.env.BB_CLI = originalBbCli;
+  if (originalBbCliReexec === undefined) delete process.env.BB_CLI_REEXEC;
+  else process.env.BB_CLI_REEXEC = originalBbCliReexec;
+  if (originalSentinel === undefined) delete process.env.BB_MATE_SENTINEL;
+  else process.env.BB_MATE_SENTINEL = originalSentinel;
   await Promise.all(
     temporaryRoots
       .splice(0)
@@ -61,6 +67,8 @@ esac
       { mode: 0o755 },
     );
     process.env.BB_CLI = executable;
+    process.env.BB_CLI_REEXEC = "1";
+    process.env.BB_MATE_SENTINEL = "preserved";
 
     const native = await readNativeState("/workspace/plugins/notes");
 
@@ -68,6 +76,25 @@ esac
     expect(native.connect).toMatchObject({
       state: "disconnected",
       paired: false,
+    });
+  });
+
+  test("consumes native selectors before invoking the selected bb", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-bb-env-"));
+    temporaryRoots.push(root);
+    const executable = path.join(root, "selected-bb");
+    await fs.writeFile(
+      executable,
+      '#!/bin/sh\nprintf \'%s|%s|%s\' "${BB_CLI-unset}" "${BB_CLI_REEXEC-unset}" "${BB_MATE_SENTINEL-unset}"\n',
+      { mode: 0o755 },
+    );
+    process.env.BB_CLI = executable;
+    process.env.BB_CLI_REEXEC = "1";
+    process.env.BB_MATE_SENTINEL = "preserved";
+
+    expect(await defaultRunBb(["--version"])).toMatchObject({
+      stdout: "unset|unset|preserved",
+      exitCode: 0,
     });
   });
 

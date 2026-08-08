@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCli, type CliRuntime } from "./commands.ts";
 import {
+  nativeCommandEnv,
   resolveBbExecutable,
   runCapturedCommand,
   runInheritedCommand,
@@ -40,7 +41,10 @@ const runtime: CliRuntime = {
   stderr: (value) => process.stderr.write(value),
   resolveBb: () =>
     resolveBbExecutable({ cwd: process.cwd(), env: process.env }),
-  runCaptured: runCapturedCommand,
+  runCaptured: (executable, args, cwd) =>
+    runCapturedCommand(executable, args, cwd, {
+      env: nativeCommandEnv(process.env),
+    }),
   runInherited: runInheritedCommand,
 };
 
