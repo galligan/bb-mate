@@ -2,16 +2,21 @@
 
 This runbook reproduces the OS-637 source, package, and isolated native lanes
 without a sibling bb checkout or normal bb state. It targets the verified macOS
-arm64 environment. Use two unused loopback ports and keep every generated file
+arm64 environment. Use five unused loopback ports and keep every generated file
 under one disposable root.
 
 ## 1. Export the candidate
 
-Run this from a BB Mate checkout. Record the candidate commit before exporting
-a Git-less source tree:
+Run this from the GitButler BB Mate checkout. Resolve the exact committed branch
+head rather than GitButler's synthetic workspace commit, then export a Git-less
+source tree:
 
 ```sh
-candidate="$(git rev-parse HEAD)"
+candidate_branch="${BB_MATE_CANDIDATE_BRANCH:-os-637-run-a-clean-room-external-developer-bb-mate-alpha-trial}"
+candidate="$(but status --json | jq -r --arg branch "$candidate_branch" \
+  '[.stacks[].branches[] | select(.name == $branch) | .commits[0].commitId][0] // empty')"
+test -n "$candidate"
+git cat-file -e "$candidate^{commit}"
 trial_root="$(mktemp -d "${TMPDIR:-/tmp}/bb-mate-alpha-trial.XXXXXX")"
 source_dir="$trial_root/source"
 profile="$trial_root/profile"
@@ -29,16 +34,17 @@ directory.
 
 ## 2. Enter an empty profile
 
-Capture the directory containing Bun before starting a shell that loads no user
-configuration:
+Capture the directories containing both Bun and npm before starting a shell
+that loads no user configuration:
 
 ```sh
-tool_bin="$(dirname "$(command -v bun)")"
+bun_bin="$(dirname "$(command -v bun)")"
+npm_bin="$(dirname "$(command -v npm)")"
 env -i \
   USER="${USER:-trial}" \
   LOGNAME="${LOGNAME:-trial}" \
   SHELL=/bin/zsh \
-  PATH="$tool_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  PATH="$bun_bin:$npm_bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   TRIAL_ROOT="$trial_root" \
   CANDIDATE="$candidate" \
   /bin/zsh --no-rcs
@@ -64,6 +70,7 @@ export npm_config_cache="$profile/cache/npm"
 mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" \
   "$XDG_STATE_HOME" "$XDG_DATA_HOME" "$TMPDIR"
 unset BB_CLI BB_CLI_REEXEC BB_SERVER_URL BB_DATA_DIR
+command -v bun npm git tar shasum curl perl >/dev/null
 ```
 
 The empty shell must not contain saved credentials, dotenv values, or a path to
@@ -176,6 +183,7 @@ Bind every native command to that process and wait for the isolated inventory:
 
 ```sh
 export BB_CLI="$bb"
+export BB_CLI_REEXEC=1
 export BB_SERVER_URL="http://127.0.0.1:$server_port"
 export BB_DATA_DIR="$bb_data"
 "$bb" --version
@@ -198,8 +206,19 @@ the isolated bb instance:
 
 ```sh
 cd "$source_dir"
-bun run bb-mate dev "$plugin" --host 127.0.0.1 --port 61048
-curl -fsS http://127.0.0.1:61048/bb-mate-session.json
+bun run bb-mate dev "$plugin" --host 127.0.0.1 --port 61048 \
+  >"$profile/source-dev.log" 2>&1 &
+source_dev_pid=$!
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  curl -fsS http://127.0.0.1:61048/bb-mate-session.json \
+    >"$profile/source-session.json" && break
+  test "$attempt" -lt 10 || exit 1
+  sleep 0.5
+done
+jq '{bbVersion:.inspection.native.bbVersion, connect:.inspection.native.connect.paired}' \
+  "$profile/source-session.json"
+kill -INT "$source_dev_pid" 2>/dev/null || true
+wait "$source_dev_pid" || true
 ```
 
 The session JSON must report bb 0.35.1 and unpaired Connect. Stop the source
@@ -209,13 +228,24 @@ server, then exercise the installed artifact:
 "$mate" inspect "$plugin"
 "$mate" check "$plugin"
 "$mate" live "$plugin"
-"$mate" dev "$plugin" --host 127.0.0.1 --port 61049
+"$mate" dev "$plugin" --host 127.0.0.1 --port 61049 \
+  >"$profile/package-dev.log" 2>&1 &
+package_dev_pid=$!
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  curl -fsS http://127.0.0.1:61049/meta.json \
+    >"$profile/package-meta.json" && break
+  test "$attempt" -lt 10 || exit 1
+  sleep 0.5
+done
+jq '.stories | length' "$profile/package-meta.json"
+kill -INT "$package_dev_pid" 2>/dev/null || true
+wait "$package_dev_pid" || true
 ```
 
 `check` must delegate `bb plugin build .` and refresh metadata. Because the
 plugin was intentionally not installed, `live` must exit 1 and print the exact
 `bb plugin install <path> --yes` handoff without running it. The packaged dev
-server must expose all 13 static stories. Stop it with Control-C.
+server must expose all 13 static stories.
 
 ## 8. Uninstall and teardown
 
@@ -228,7 +258,7 @@ test ! -e "$prefix/node_modules/.bin/bb-mate"
 test ! -e "$prefix/package-lock.json"
 ```
 
-Verify all four chosen ports are closed and review the trial root before
+Verify all five chosen ports are closed and review the trial root before
 removing that exact temporary directory. The only plugin mutation should be
 `plugin/dist` from the native build. Do not install the plugin, pair or expose
 Connect, publish the artifact, or reuse normal bb state during this trial.
