@@ -57,7 +57,7 @@ release blocker.
 
 - [x] Build the reproducible clean-room trial harness and sanitized report.
 - [x] Run the first-time author journey and triage every finding.
-- [ ] Fix all P0/P1 and reasonable P2/P3 friction, then rerun from scratch.
+- [x] Fix all P0/P1 and reasonable P2/P3 friction, then rerun from scratch.
 - [ ] Complete aggregate gates and standing/fresh-targeted review.
 - [ ] Land the PR, verify main CI, and move OS-637 to Done.
 

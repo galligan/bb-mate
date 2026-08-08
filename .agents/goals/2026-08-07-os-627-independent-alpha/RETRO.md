@@ -206,6 +206,13 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 - Result: Trial finding F-1 (P1) is fixed with focused tests for selector removal and captured-child environment preservation. All 13 surfaces, ownership classifications, inert content-script behavior, and Vite HMR were verified in Chrome.
 - Next: Commit the correction and report, rerun the entire journey from a new clean archive, then complete standing and targeted review.
 - Blockers: None; Harness remains expected upstream-dependent.
+
+2026-08-07 - OS-637 independent scratch rerun green
+- Changed: Exported committed candidate e9b0f60 into a second Git-less source root with new profile, install prefix, plugin, bb data, ports, and browser servers. Repeated every source, artifact, compatibility, native, Live, and cleanup step without reusing first-run state.
+- Verified: Frozen install completed in 11.8 seconds; Chrome discovered all 13 stories, ownership classes, inert content-script behavior, and fixture HMR. The artifact reproduced SHA-256 `fc99a5161ad0890706d03306de32248174aa3ead67b3daf334932f6868214a07`; isolated bb 0.35.1 inspection and check passed; Live refused the uninstalled path with the exact handoff; packaged preview and uninstall passed.
+- Result: The F-1 P1 correction survives a true first-run environment. No P0/P1 finding remains, no plugin was installed, Connect stayed unpaired, and normal bb/plugin state was not used.
+- Next: Run the repository aggregate and standing/fresh-targeted reviews, fix all findings, then open the draft PR.
+- Blockers: None inside the private-alpha scope.
 ```
 
 ## Preparation Audits
@@ -307,6 +314,7 @@ Refs: `.agents/goals/2026-08-07-os-627-independent-alpha/REFS.md`
 | OS-637 clean source/browser trial                                               | OS-637 first run     | pass                 | 13 stories; ownership; inert lifecycle; HMR observed       |
 | OS-637 native probe before correction                                           | OS-637 first run     | expected failure     | leaked `BB_CLI`; four five-second native timeouts          |
 | OS-637 fixed isolated native lane                                               | OS-637 correction    | pass                 | bb 0.35.1; build green; guarded Live handoff               |
+| OS-637 second scratch rerun                                                     | OS-637 final trial   | pass                 | new roots; 13 stories; HMR; native build; uninstall        |
 
 ## Prompt / Goal Alignment
 

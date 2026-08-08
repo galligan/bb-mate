@@ -65,8 +65,8 @@ host, so no normal plugin inventory or Connect state was used or changed.
 
 | Milestone                | Result               | Evidence                                                                                                 |
 | ------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| Fresh dependency install | pass                 | frozen lockfile; 1,536 packages; 11.0 s                                                                  |
-| First Fixture preview    | pass                 | documented story visible about 12 s after beginning install                                              |
+| Fresh dependency install | pass                 | frozen lockfile; 1,536 packages; 11.8 s                                                                  |
+| First Fixture preview    | pass                 | documented story visible about 13 s after beginning install                                              |
 | Catalog discovery        | pass                 | all 13 story IDs returned by `meta.json`                                                                 |
 | Ownership vocabulary     | pass                 | plugin component, host action, mixed/bb-owned seam, and content-script lifecycle inspected in-browser    |
 | Fixture edit/reload      | pass                 | disposable `Agent focus` name changed; Vite reported HMR and Chrome showed the new value without restart |
