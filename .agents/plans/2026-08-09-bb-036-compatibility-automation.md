@@ -42,7 +42,7 @@ and a repeatable project skill. Tracked by GitHub issue #51.
       release exists. It must not edit code or upgrade bb.
 - [x] Run the skill validator, workflow/static checks, targeted tests, and the
       full formatting/check/test/build/visual gates.
-- [ ] Complete a local review pass, commit the scoped files on a GitButler
+- [x] Complete a local review pass, commit the scoped files on a GitButler
       branch, and open a draft PR linked to #51. Move it to ready only after
       hosted CI is green.
 
@@ -95,4 +95,8 @@ and a repeatable project skill. Tracked by GitHub issue #51.
   `PATH`.
 - Local full-stack review: round 1 was clean before hosted CI. Round 2 rechecks
   the narrow hosted fix and complete diff; scratch reports live under
-  `/tmp/agent-reviews/bb-036-compatibility/root/`. Hosted rerun is pending.
+  `/tmp/agent-reviews/bb-036-compatibility/root/`. Round 2 is clean 5/5 with
+  `BB036-CI-001` fixed and no open P0-P3 findings.
+- Hosted CI at code head `11ff441fdd3235880b0ec8a539bcbccfbfc40098`:
+  `verify` passed in 1m13s, `visual` passed in 1m9s, and GitGuardian passed.
+  PR: <https://github.com/galligan/bb-mate/pull/52>.
