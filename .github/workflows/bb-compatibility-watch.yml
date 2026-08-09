@@ -1,0 +1,93 @@
+name: BB compatibility watch
+
+on:
+  schedule:
+    - cron: "23 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Compare the compatibility target with npm stable
+        id: release
+        shell: bash
+        run: |
+          set +e
+          bun scripts/check-latest-bb.ts --json > bb-release-report.json
+          status=$?
+          set -e
+          if [ "$status" -eq 10 ]; then
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" -eq 0 ]; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            test ! -s bb-release-report.json || cat bb-release-report.json
+            exit "$status"
+          fi
+      - name: Create or update the compatibility issue
+        if: steps.release.outputs.drift == 'true'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require("node:fs");
+            const report = JSON.parse(
+              fs.readFileSync("bb-release-report.json", "utf8"),
+            );
+            const marker = "<!-- bb-mate-compatibility-watch -->";
+            const title = `Adopt bb ${report.latestVersion}`;
+            const body = [
+              marker,
+              "",
+              "## Compatibility drift detected",
+              "",
+              `npm's stable \`bb-app\` release is **${report.latestVersion}**;`,
+              `BB Mate currently targets **${report.targetVersion}**.`,
+              "",
+              "Use `$update-bb-mate-compatibility` from this repository to audit",
+              "the immutable upstream release, run the isolated native and visual",
+              "gates, and prepare a reviewable target update.",
+              "",
+              "This issue was created by the scheduled compatibility watch. The",
+              "automation does not edit code, upgrade bb, publish, or touch the",
+              "upstream repository.",
+            ].join("\n");
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                per_page: 100,
+              },
+            );
+            const existing = issues.find(
+              (issue) => !issue.pull_request && issue.body?.includes(marker),
+            );
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["bb", "dx", "tooling"],
+              });
+            }

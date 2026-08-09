@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update BB Mate Compatibility"
+  short_description: "Audit and adopt new stable bb releases"
+  default_prompt: "Use $update-bb-mate-compatibility to check the latest stable bb release and prepare a verified compatibility update."

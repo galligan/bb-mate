@@ -3,17 +3,17 @@
   "schemaVersion": 1,
   "acceptedDecision": null,
   "target": {
-    "bbVersion": "0.35.1",
+    "bbVersion": "0.36.0",
     "pluginSdkVersion": "0.4.1",
     "pluginSdkEngineRange": "^0.4.1",
-    "upstreamRef": "desktop-v0.35.1"
+    "upstreamRef": "desktop-v0.36.0"
   },
   "publicArtifacts": {
-    "appPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/apps/app/package.json",
-    "pluginSdkPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/packages/plugin-sdk/package.json",
-    "themeCssUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/apps/app/src/components/ui/theme.css",
+    "appPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/apps/app/package.json",
+    "pluginSdkPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/packages/plugin-sdk/package.json",
+    "themeCssUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/apps/app/src/components/ui/theme.css",
     "registry": {
-      "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/packages/plugin-registry/r/index.json",
+      "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/packages/plugin-registry/r/index.json",
       "sha256": "ae65ae093d2435540e445707529337598cfa9f3446a8535986affef0939fe1e2",
       "items": [
         "accordion",

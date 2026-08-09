@@ -5,12 +5,54 @@ import { surfaceCatalog } from "../apps/workbench/src/surface-catalog";
 import {
   evaluateCompatibility,
   formatCompatibilityReport,
+  observeBbVersion,
   parseCompatibilityTarget,
   resolveCompatibilityDecisionPath,
   validCompatibilityDecision,
   type CompatibilityObservations,
   type CompatibilityTarget,
 } from "./compatibility-check";
+
+describe("native bb version probe", () => {
+  test("sanitizes re-exec selectors and parses the bounded command result", async () => {
+    const version = await observeBbVersion(
+      "/fake/bb",
+      async (executable, args, _cwd, options) => {
+        expect(executable).toBe("/fake/bb");
+        expect(args).toEqual(["--version"]);
+        expect(options?.env?.BB_CLI).toBeUndefined();
+        expect(options?.env?.BB_CLI_REEXEC).toBeUndefined();
+        return { stdout: "bb 0.36.0\n", stderr: "", exitCode: 0 };
+      },
+    );
+    expect(version).toBe("0.36.0");
+  });
+
+  test("reports bounded native failures instead of accepting partial output", async () => {
+    await expect(
+      observeBbVersion("/fake/bb", async () => ({
+        stdout: "0.36.0\n",
+        stderr: "Native command timed out after 10000ms.",
+        exitCode: 124,
+      })),
+    ).rejects.toThrow("timed out");
+  });
+
+  test("falls back to the workspace pin when bb is absent from PATH", async () => {
+    const candidates: string[] = [];
+    const version = await observeBbVersion("", async (executable) => {
+      candidates.push(executable);
+      return executable === "bb"
+        ? { stdout: "", stderr: "spawn bb ENOENT", exitCode: 1 }
+        : { stdout: "0.36.0\n", stderr: "", exitCode: 0 };
+    });
+    expect(candidates).toEqual([
+      "bb",
+      path.resolve("plugins/linear/node_modules/.bin/bb"),
+    ]);
+    expect(version).toBe("0.36.0");
+  });
+});
 
 const target: CompatibilityTarget = {
   schemaVersion: 1,

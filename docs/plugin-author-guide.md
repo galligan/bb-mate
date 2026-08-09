@@ -10,7 +10,7 @@ declaration refresh, build, install, dev/reload, and the live runtime.
   are best-effort until added to CI;
 - npm for installing the public alpha;
 - an existing bb plugin when you want inspection or native handoff guidance;
-- native bb 0.35.1, the currently recorded target, for supported native
+- native bb 0.36.0, the currently recorded target, for supported native
   inspection, build, or Live handoffs. Other versions may still produce useful
   diagnostics but are best-effort until the compatibility target is updated.
 

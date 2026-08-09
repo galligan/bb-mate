@@ -1,12 +1,10 @@
-import { execFile as execFileCallback } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lstat, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 import { surfaceCatalog } from "../apps/workbench/src/surface-catalog.ts";
-
-const execFile = promisify(execFileCallback);
+import { runCapturedCommand } from "../packages/inspection/src/captured-command.ts";
+import { nativeCommandEnv } from "../packages/inspection/src/native-env.ts";
 const repositoryRoot = path.resolve(
   fileURLToPath(new URL("..", import.meta.url)),
 );
@@ -288,31 +286,39 @@ function parseBbVersion(output: string): string | undefined {
   return /\b(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/.exec(output)?.[1];
 }
 
-async function observeBbVersion(): Promise<string> {
-  const explicit = process.env.BB_CLI?.trim();
+export async function observeBbVersion(
+  explicit = process.env.BB_CLI?.trim(),
+  run = runCapturedCommand,
+): Promise<string> {
   const candidates = explicit
     ? [explicit]
     : ["bb", path.join(repositoryRoot, "plugins/linear/node_modules/.bin/bb")];
-  let missingError: unknown;
+  let missingError: string | undefined;
   for (const candidate of candidates) {
-    try {
-      const { stdout, stderr } = await execFile(candidate, ["--version"], {
-        cwd: repositoryRoot,
-        timeout: 10_000,
-      });
-      const version = parseBbVersion(`${stdout}\n${stderr}`);
-      if (!version)
+    const result = await run(candidate, ["--version"], repositoryRoot, {
+      timeoutMs: 10_000,
+      env: nativeCommandEnv(process.env),
+    });
+    if (result.exitCode === 0) {
+      const version = parseBbVersion(`${result.stdout}\n${result.stderr}`);
+      if (!version) {
         throw new Error(`${candidate} --version returned no semantic version.`);
-      return version;
-    } catch (error) {
-      if (!explicit && (error as NodeJS.ErrnoException).code === "ENOENT") {
-        missingError = error;
-        continue;
       }
-      throw error;
+      return version;
     }
+    const detail = [result.stderr.trim(), result.stdout.trim()]
+      .filter(Boolean)
+      .join("\n");
+    const failure = `${candidate} --version exited ${result.exitCode}${
+      detail ? `: ${detail}` : ""
+    }`;
+    if (!explicit && /\bENOENT\b/.test(result.stderr)) {
+      missingError = failure;
+      continue;
+    }
+    throw new Error(failure);
   }
-  throw missingError ?? new Error("No bb executable is available.");
+  throw new Error(missingError ?? "No bb executable is available.");
 }
 
 export async function collectCompatibilityObservations(

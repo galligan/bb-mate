@@ -15,6 +15,7 @@
     "build": "bun --filter '*' build",
     "check": "bun --filter '*' check && tsc -p scripts/tsconfig.json && bun run compatibility:check",
     "compatibility:check": "bun scripts/compatibility-check.ts",
+    "compatibility:latest": "bun scripts/check-latest-bb.ts",
     "test": "bun --filter '*' test && bun test scripts && bun run package:test",
     "visual:test": "bun --filter @bb-mate/workbench visual:test",
     "visual:update": "bun --filter @bb-mate/workbench visual:update",

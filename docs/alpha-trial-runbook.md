@@ -156,7 +156,7 @@ cat >"$plugin/package.json" <<'JSON'
   "name": "bb-plugin-alpha-trial",
   "version": "1.0.0",
   "private": true,
-  "engines": { "bb": ">=0.35.1", "bbPluginSdk": ">=0.4.1" },
+  "engines": { "bb": ">=0.36.0", "bbPluginSdk": ">=0.4.1" },
   "dependencies": { "@bb/plugin-sdk": "^0.4.1" },
   "bb": {
     "name": "Alpha Trial",
@@ -187,7 +187,7 @@ BB Mate archive.
 
 ```sh
 npm install --prefix "$prefix" --no-save --package-lock=false \
-  bb-app@0.35.1 "$artifact"
+  bb-app@0.36.0 "$artifact"
 bb="$prefix/node_modules/.bin/bb"
 bb_app="$prefix/node_modules/.bin/bb-app"
 bb_data="$profile/bb-data"
@@ -224,7 +224,7 @@ done
 "$bb" connect status --json
 ```
 
-The version must be 0.35.1, the inventory must contain builtins only, and
+The version must be 0.36.0, the inventory must contain builtins only, and
 Connect must be unpaired. Stop if any normal plugin or paired Connect state is
 visible.
 
@@ -249,7 +249,7 @@ jq '{bbVersion:.inspection.native.bbVersion, connect:.inspection.native.connect.
 stop_trial_process "$source_dev_pid"
 ```
 
-The session JSON must report bb 0.35.1 and unpaired Connect. Stop the source
+The session JSON must report bb 0.36.0 and unpaired Connect. Stop the source
 server, then exercise the installed artifact:
 
 ```sh

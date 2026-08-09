@@ -7,6 +7,7 @@ check is an alarm, not an updater.
 ```sh
 bun run compatibility:check
 bun run compatibility:check --json
+bun run compatibility:latest --json
 ```
 
 The check reads local manifests, the surface catalog, and the small named token
@@ -20,6 +21,13 @@ fails the command rather than silently passing.
 The target is validated before any network request. Guard lists must be
 non-empty and unique, and artifact URLs must be exact immutable paths on
 `raw.githubusercontent.com/get-bb/bb`. Redirects are rejected.
+
+`compatibility:latest` compares the committed target with npm's stable
+`bb-app` release. It exits 0 when current, 10 when a newer release is
+available, and 1 for an invalid or unverified state. It never edits the target
+or upgrades bb. The scheduled compatibility watch uses that result to maintain
+one deduplicated GitHub issue. Perform the resulting work with the repository's
+`$update-bb-mate-compatibility` skill.
 
 ## Updating the target
 
