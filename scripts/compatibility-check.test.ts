@@ -38,20 +38,23 @@ describe("native bb version probe", () => {
     ).rejects.toThrow("timed out");
   });
 
-  test("falls back to the workspace pin when bb is absent from PATH", async () => {
-    const candidates: string[] = [];
-    const version = await observeBbVersion("", async (executable) => {
-      candidates.push(executable);
-      return executable === "bb"
-        ? { stdout: "", stderr: "spawn bb ENOENT", exitCode: 1 }
-        : { stdout: "0.36.0\n", stderr: "", exitCode: 0 };
-    });
-    expect(candidates).toEqual([
-      "bb",
-      path.resolve("plugins/linear/node_modules/.bin/bb"),
-    ]);
-    expect(version).toBe("0.36.0");
-  });
+  test.each(["spawn bb ENOENT", 'Executable not found in $PATH: "bb"'])(
+    "falls back to the workspace pin for missing executable: %s",
+    async (stderr) => {
+      const candidates: string[] = [];
+      const version = await observeBbVersion("", async (executable) => {
+        candidates.push(executable);
+        return executable === "bb"
+          ? { stdout: "", stderr, exitCode: 1 }
+          : { stdout: "0.36.0\n", stderr: "", exitCode: 0 };
+      });
+      expect(candidates).toEqual([
+        "bb",
+        path.resolve("plugins/linear/node_modules/.bin/bb"),
+      ]);
+      expect(version).toBe("0.36.0");
+    },
+  );
 });
 
 const target: CompatibilityTarget = {

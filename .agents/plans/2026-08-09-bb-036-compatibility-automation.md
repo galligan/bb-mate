@@ -76,8 +76,8 @@ and a repeatable project skill. Tracked by GitHub issue #51.
 - Live visual authority: isolated bb 0.36 inspected at 1280x633; representative
   sidebar and composer geometry remain compatible with the recorded Fixture
   surfaces. Fixture remains an approximation; Harness remains unavailable.
-- Targeted script tests: 32 passed. Aggregate tests: inspection 48, CLI 34,
-  workbench 53, plugin 21, scripts 32; the clean-room package test passed with
+- Targeted script tests: 33 passed. Aggregate tests: inspection 48, CLI 34,
+  workbench 53, plugin 21, scripts 33; the clean-room package test passed with
   41 files, 13 stories, and SHA-256
   `de6174f733c8a76fdc4b7e117ff2499a47d55e918e02150fecb9337384e0e843`.
 - Formatting, type/compatibility checks, builds, skill validation, and
@@ -88,6 +88,11 @@ and a repeatable project skill. Tracked by GitHub issue #51.
   tag, public-contract comparisons, isolated profile, native/Fixture/Live
   sequence, and stop boundaries. It exposed and prompted a fix for resuming an
   already-dirty adoption when `compatibility:latest` reads the updated target.
-- Local full-stack review: clean 5/5 with zero P0-P3 findings; scratch report
-  `/tmp/agent-reviews/bb-036-compatibility/root/round-1.json`. Hosted CI is
-  pending.
+- First hosted CI: visual passed; verify exposed Linux/Bun's missing-executable
+  diagnostic (`Executable not found in $PATH`) as a second spelling not covered
+  by the `ENOENT` fallback. The matcher and regression matrix now cover both;
+  the full local check/test/build gate passes with global `bb` removed from
+  `PATH`.
+- Local full-stack review: round 1 was clean before hosted CI. Round 2 rechecks
+  the narrow hosted fix and complete diff; scratch reports live under
+  `/tmp/agent-reviews/bb-036-compatibility/root/`. Hosted rerun is pending.

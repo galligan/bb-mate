@@ -286,6 +286,12 @@ function parseBbVersion(output: string): string | undefined {
   return /\b(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/.exec(output)?.[1];
 }
 
+function executableIsMissing(stderr: string): boolean {
+  return (
+    /\bENOENT\b/.test(stderr) || /Executable not found in \$PATH/i.test(stderr)
+  );
+}
+
 export async function observeBbVersion(
   explicit = process.env.BB_CLI?.trim(),
   run = runCapturedCommand,
@@ -312,7 +318,7 @@ export async function observeBbVersion(
     const failure = `${candidate} --version exited ${result.exitCode}${
       detail ? `: ${detail}` : ""
     }`;
-    if (!explicit && /\bENOENT\b/.test(result.stderr)) {
+    if (!explicit && executableIsMissing(result.stderr)) {
       missingError = failure;
       continue;
     }
