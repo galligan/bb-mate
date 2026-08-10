@@ -107,6 +107,17 @@ run check && bun run test && bun run build`. The aggregate test lane contains
   113, runtime 115, Linear plugin 21, CLI 42, Workbench 53, and scripts 43. The
   legacy package clean room remains 41 files/13 stories with SHA-256
   `dd6e1966905ea2e3c848d9cfedaaa341c23f1a606d98892312856700c08c757d`.
+- Slice 57A round-two remediation preserves each root's reserved scan share,
+  then redistributes unused entry/candidate capacity without exceeding the
+  global 2,048/128 bounds. Discovery rejects invalid engine shapes and
+  malformed plugin-owned SVG bytes through bounded no-follow reads. Exact
+  inspection candidates are WeakMap-issued and revalidate candidate-directory
+  identity plus bounded manifest inode/hash before a runtime bridge derives
+  conservative absent/false native capability state. The fresh aggregate gate
+  passes with 396 tests: inspection 120, runtime 116, Linear plugin 21, CLI 42,
+  Workbench 53, and scripts 44. The legacy package clean room remains 41
+  files/13 stories with SHA-256
+  `27b0418115264df75edb01b4cc4bf33c8baa7e7829a3f693d6fab392abc1fc83`.
 - 2026-08-10: created the packet from the accepted design record and four
   bounded preparation audits.
 - 2026-08-10: activated the direct execution goal. Found one unresolved P2 on
@@ -372,6 +383,16 @@ and all builds.
   read diagnostics; issued candidates are module-private identity capabilities
   bound to canonical path/device/inode; and stored private rows are strictly
   parsed and fail closed without repair.
+- Source-catalog round 2: targeted scored 4/5 and standing 3/5 at exact head
+  `36d886e02cc5bb7cabe048f45c8b890c7f431593`. `LR-003` / `SC-SG-005`
+  found that immutable per-root shares stranded unused global capacity;
+  `SC-SG-004` kept manifest-contract alignment open because discovery accepted
+  invalid engines and malformed plugin-owned SVG bytes. Both are fixed with
+  bounded reserved-first redistribution and canonical compact-SVG validation.
+  The remediation also strengthens the previously accepted internal bridge:
+  raw target/native claims have no issuance path, inspection and runtime use
+  two exact capability stages, and directory/manifest changes between
+  discovery and persistence fail closed. Fresh exact-head review remains.
 
 ## Verification Log
 
