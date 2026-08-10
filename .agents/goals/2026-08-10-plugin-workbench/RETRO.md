@@ -6,14 +6,15 @@ Status: Active
 ## Summary
 
 The execution goal is active. Compatibility baseline #52 and spec/goal PR #53
-are merged. Released-capability Gate 0 is locally complete with all six rows
-passing; its review and merge gate is active.
+are merged. Released-capability Gate 0 is complete with all six rows passing and
+both independent reviewers at 5/5; PR #68 is at its final ready/merge gate.
 
 ## Readiness
 
 Active. Prompt/doctor/formatting and packet reviews pass; #52 and #53 are
-merged. Gate 0 admits all released host-plugin rows to downstream execution,
-subject to its own 5/5 review, hosted CI, and merge gate.
+merged. Gate 0 admits all released host-plugin rows to downstream execution.
+Its exact-head review and hosted CI gates pass; only the ready/merge transition
+and reconciliation remain.
 
 ## Baseline
 
@@ -153,7 +154,12 @@ only representation.
   required exact dependency prose for #62/#65. `PW-GATE0-001` remained open
   because C/D used plain npm installs while only E used `--include dev`, and
   the durable C–E command transcript was still summarized. Both corrections
-  are in progress before round 3.
+  were completed before round 3.
+- Gate 0 round 3: standing and targeted reviews both reached 5/5 at exact head
+  `ae542f7c6c9ae94ed8d2a15a32170b182b8a7576` with zero findings. They
+  independently corroborated C–F evidence, exact GitHub dependency/prose state,
+  issue/PR status, full local and hosted gates, clean mergeability, no review
+  threads, and clean GitButler state.
 
 ## Verification Log
 
@@ -187,5 +193,6 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active; next gate is Gate 0 exact-head review, hosted CI, and merge,
-then the domain and standalone-runtime foundation lanes.
+Execution active; next gate is PR #68 ready transition, exact-head pin, async
+merge, and reconciliation, then the domain and standalone-runtime foundation
+lanes.

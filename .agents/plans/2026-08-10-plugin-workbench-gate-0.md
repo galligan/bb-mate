@@ -1,7 +1,7 @@
 # Plugin Workbench released-capability Gate 0
 
 Date: 2026-08-10
-Status: Review changes requested; corrections in progress
+Status: Complete
 Issue: [#54](https://github.com/galligan/bb-mate/issues/54)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
@@ -73,7 +73,7 @@ Discovered caveats are requirements for later work, not failed rows:
 3. [x] Add one bounded contract example per row using only generated declarations.
 4. [x] Run native types/build and inspect server/app metadata and package contents.
 5. [x] Run lifecycle commands only after isolated server/profile proof.
-6. [ ] Cross-check the matrix with a standing reviewer and a fresh targeted
+6. [x] Cross-check the matrix with a standing reviewer and a fresh targeted
        reviewer; fix P0–P2 and reasonable P3 findings to 5/5.
 7. [x] Append exact evidence and scope amendments to the goal `RETRO.md`, update #54
        and #21, then create/amend the next focused issues.
