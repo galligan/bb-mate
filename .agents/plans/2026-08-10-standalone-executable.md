@@ -1,7 +1,7 @@
 # Self-contained bb-mate executable
 
 Date: 2026-08-10
-Status: In progress
+Status: Implementation complete; review pending
 Issue: [#56](https://github.com/galligan/bb-mate/issues/56)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
@@ -31,22 +31,22 @@ a separate compatibility lane.
 
 ## Implementation
 
-1. [ ] Introduce a focused lab asset provider with filesystem containment and
+1. [x] Introduce a focused lab asset provider with filesystem containment and
        exact-key embedded implementations.
-2. [ ] Make the static lab handler consume the provider while retaining
+2. [x] Make the static lab handler consume the provider while retaining
        GET/HEAD, MIME, traversal/symlink, loopback, and shutdown behavior.
-3. [ ] Split entrypoint construction from the shebang wrapper; make source and
+3. [x] Split entrypoint construction from the shebang wrapper; make source and
        standalone modes explicit and make standalone incapable of re-executing
        itself as Bun.
-4. [ ] Generate a sorted, validated static-import entry from the 13-story Ladle
+4. [x] Generate a sorted, validated static-import entry from the 13-story Ladle
        output and compile `bun-darwin-arm64` with dotenv/bunfig autoload disabled.
-5. [ ] Emit an exact two-file artifact directory (`bb-mate`, `manifest.json`)
+5. [x] Emit an exact two-file artifact directory (`bb-mate`, `manifest.json`)
        recording mode, arch, size, SHA-256, story count, and sorted asset hashes.
-6. [ ] Add a separate empty-PATH clean-room lane that builds twice, compares
+6. [x] Add a separate empty-PATH clean-room lane that builds twice, compares
        unsigned bytes, moves the binary, makes checkout lab assets unavailable,
        proves help/passive inspect/Fixture GET+HEAD/all stories, and confirms
        process/listener cleanup.
-7. [ ] Add focused unit/integration tests and a native arm64 macOS CI job while
+7. [x] Add focused unit/integration tests and a native arm64 macOS CI job while
        preserving the legacy package lane unchanged.
 8. [ ] Run focused, standalone, legacy-package, aggregate, exact-head review,
        hosted CI, issue, merge, and clean GitButler reconciliation gates.

@@ -123,6 +123,32 @@ blocked by every integrated input; #63 blocks on #65; and #64 blocks on #63.
 Issue dependency sections match the native graph rather than serving as its
 only representation.
 
+## Standalone executable #56
+
+Implementation head `02be708155cf3e7f66165cfe092bedbc361ade5e` builds a
+separate unsigned `bun-darwin-arm64` executable without changing the published
+npm/shebang package. A generated, sorted static-import entry embeds the exact
+Ladle bytes behind stable routes; source/package and standalone entrypoint modes
+are explicit, and standalone has no Bun interpreter fallback.
+
+The pre-review clean-room artifact is mode `0755`, 64,420,322 bytes, SHA-256
+`479df4999ef6e6d340134a6dae61e85b11bc1a98f0c085754b152485ce7b0ec3`,
+with 35 hashed assets and 13 stories. Two complete pinned Bun 1.3.14 builds were
+byte-identical. The moved executable passed with empty `PATH`, isolated
+HOME/TMP/XDG state, cleared Bun override variables, ambient `.env` and
+`bunfig.toml`, and the checkout lab renamed out of reach. It passed help,
+passive inspection without target-plugin execution, GET/HEAD, every asset hash,
+story metadata, SIGTERM, and post-exit listener unreachability. Printable
+payload inspection and the clean-room assertion found no absolute repository
+path.
+
+The legacy package lane remained separate and green: 41 files, 13 stories, and
+clean-room SHA-256
+`77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`.
+Focused tests, format, typecheck, compatibility, aggregate tests/build, and 14
+visual/accessibility checks passed. A dedicated `macos-15` arm64 hosted job is
+added but remains pending until the draft PR is pushed.
+
 ## Review Log
 
 - Runtime/packaging, public bb seam, security/MCP, and goal-scope audits
@@ -206,6 +232,6 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0 is merged and reconciled. The standalone-runtime #56
-lane is in progress from the clean post-#68 base; the domain #55 lane remains
-independent and prepared for a separate branch.
+Execution active. Gate 0 is merged and reconciled. Standalone-runtime #56
+implementation is locally green and entering review from the clean post-#68
+base; domain #55 remains independent and prepared for a separate branch.
