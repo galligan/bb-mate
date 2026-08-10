@@ -427,6 +427,19 @@ and all builds.
   `/tmp/bb-mate-plugin-workbench-reviews-20260810/source-catalog/` after their
   findings and dispositions were preserved here. Prompt validation and the
   canonical goal-loop doctor then passed with 17 active review reports.
+- Source-catalog final docs review found one P2 wording mismatch at
+  `7e2cec6c928a00c2ec655c0c172ad37855af440f`: the RETRO said the docs-only
+  head remained even though it was already current. Exact head
+  `cb8c3f362390e1985db671b4a8ed2b0c1f7fc1d7` fixed that statement; standing
+  and targeted round 6 each reached 5/5 with zero P0-P3, hosted checks were
+  terminal green, and the goal doctor passed after the superseded scratch
+  report was archived.
+- PR #72 was made ready only after the exact final head was re-pinned as clean,
+  mergeable, fully green, thread-free, and GitButler-clean. GitHub async request
+  `f0a90de8-4a3c-425d-92cb-313ff0b6f70d` merged it as
+  `52a3274f9981f94a37d296e3f0bfa46bafd7b867`. `but pull` removed the integrated
+  57A branch and advanced the workspace base without uncommitted changes. #57
+  remains open for native reconciliation and the browser adapter.
 
 ## Verification Log
 
@@ -460,9 +473,8 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0, standalone-runtime #56, and runtime foundation #55
-are merged, closed, and reconciled. Source-catalog slice 57A implementation
-and code review are complete on draft PR #72; this docs-only readiness head
-still needs its narrow exact-head review, ready transition, merge, and
-reconciliation before 57B starts. All release/upstream/Connect/normal-profile
+Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
+source-catalog slice 57A are merged and reconciled. Issue #57 remains open;
+57B1 native reconciliation/private host evidence is next, followed by the 57B2
+opaque-target Workbench adapter. All release/upstream/Connect/normal-profile
 stop boundaries remain intact.
