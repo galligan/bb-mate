@@ -12,19 +12,24 @@ import {
 import { RuntimeError } from "../errors.ts";
 import type { RuntimeStore } from "../persistence/store.ts";
 
+const GenericObjectKindSchema = ObjectKindSchema.exclude([
+  "development-target",
+]);
+type GenericObjectKind = Exclude<ObjectKind, "development-target">;
+
 const CreateObjectInputSchema = z.strictObject({
-  kind: ObjectKindSchema,
+  kind: GenericObjectKindSchema,
   payload: z.unknown(),
 });
 
 const GetObjectInputSchema = z.strictObject({
   id: ObjectIdSchema,
-  kind: ObjectKindSchema,
+  kind: GenericObjectKindSchema,
 });
 
 const UpdateObjectInputSchema = z.strictObject({
   id: ObjectIdSchema,
-  kind: ObjectKindSchema,
+  kind: GenericObjectKindSchema,
   expectedRevision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   payload: z.unknown(),
 });
@@ -35,7 +40,6 @@ const PullEventsInputSchema = z.strictObject({
 });
 
 const READ_SCOPE = {
-  "development-target": "targets:read",
   session: "sessions:read",
   surface: "surfaces:read",
   annotation: "annotations:read",
@@ -43,10 +47,9 @@ const READ_SCOPE = {
   comparison: "comparisons:read",
   "plugin-brief": "plugin-briefs:read",
   review: "reviews:read",
-} as const satisfies Record<ObjectKind, Scope>;
+} as const satisfies Record<GenericObjectKind, Scope>;
 
 const WRITE_SCOPE = {
-  "development-target": "targets:write",
   session: "sessions:write",
   surface: "surfaces:write",
   annotation: "annotations:write",
@@ -54,7 +57,7 @@ const WRITE_SCOPE = {
   comparison: "comparisons:write",
   "plugin-brief": "plugin-briefs:write",
   review: "reviews:write",
-} as const satisfies Record<ObjectKind, Scope>;
+} as const satisfies Record<GenericObjectKind, Scope>;
 
 function parseDto<T>(schema: z.ZodType<T>, input: unknown): T {
   try {

@@ -16,9 +16,8 @@ import {
   type EventPage,
   type PullEventsInput,
 } from "../events/feed.ts";
-import { EVENT_MIGRATIONS } from "../events/schema.ts";
 import { openRuntimeDatabase } from "./database.ts";
-import { OBJECT_MIGRATIONS } from "./schema.ts";
+import { RUNTIME_MIGRATIONS } from "./runtime-migrations.ts";
 
 export interface OpenRuntimeStoreOptions {
   readonly dataRoot: string;
@@ -74,7 +73,7 @@ export async function openRuntimeStore(
 ): Promise<RuntimeStore> {
   const runtimeDatabase = await openRuntimeDatabase({
     dataRoot: options.dataRoot,
-    migrations: [...OBJECT_MIGRATIONS, ...EVENT_MIGRATIONS],
+    migrations: RUNTIME_MIGRATIONS,
   });
   const { database } = runtimeDatabase;
   const clock = options.clock ?? Date.now;

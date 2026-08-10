@@ -1,7 +1,7 @@
 # Workbench runtime foundation
 
 Date: 2026-08-10
-Status: Implementation and local verification complete; review and merge pending
+Status: Complete
 Issue: [#55](https://github.com/galligan/bb-mate/issues/55)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
@@ -68,7 +68,7 @@ transport.
 7. [x] Add schema, canonicalization, IDOR, migration/corruption, event,
        file-mode, HTTP policy, and forbidden-surface tests. Audit exports/routes
        for every deferred feature.
-8. [ ] Run focused and aggregate checks, two independent 5/5 review lanes,
+8. [x] Run focused and aggregate checks, two independent 5/5 review lanes,
        hosted CI, issue/PR/thread gates, SHA-pinned merge, and clean GitButler
        reconciliation.
 

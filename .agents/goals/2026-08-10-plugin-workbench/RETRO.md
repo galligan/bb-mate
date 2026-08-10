@@ -7,8 +7,10 @@ Status: Active
 
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
-The narrowed runtime domain/security foundation #55 is implemented and locally
-green; its exact-head review and merge gate is the active milestone.
+The narrowed runtime domain/security foundation #55 is merged through PR #71
+and reconciled. Source-first development-target discovery #57 is the active
+milestone. Slice 57A implementation and local verification are complete on
+draft PR #72; exact-head review, hosted CI, merge, and reconciliation remain.
 
 ## Readiness
 
@@ -16,14 +18,15 @@ Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
 Standalone #69 passed green local, hosted, and two-lane exact-head review
 evidence and is reconciled. The transport-neutral runtime foundation #55 has
-passed focused and aggregate local verification; browser bootstrap/topology is
-isolated in #70.
+passed focused/aggregate verification, two independent exact-head reviews, and
+hosted CI, then merged and reconciled. Browser bootstrap/topology is isolated
+in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Runtime branch: `feat/runtime/domain-security-foundation`; issue #55.
-- Current merge base: `3d37aaece878fd099854d4190df78d9ce45cb98a`.
+- Active branch: `feat/runtime/development-target-discovery`; issue #57.
+- Current merge base: `ac419ae1c87f7c5186b848bc937591cf45f57560`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -38,7 +41,14 @@ isolated in #70.
   `d4dff55faa80231519daa2217d920cee73eb8a48` through GitHub async request
   `ed06e024-dbcc-4e9a-86e2-8560b05166a6` to merge commit
   `3d37aaece878fd099854d4190df78d9ce45cb98a`; issue #56 is closed.
-- GitButler reconciled to clean `main` with no active lanes.
+- Runtime PR #71 merged from exact reviewed head
+  `b4327b73ba8d8e1acd6c43572df417a126d71922` through GitHub async request
+  `690f515a-0651-47ef-aa7a-852e9efe02cd` to merge commit
+  `ac419ae1c87f7c5186b848bc937591cf45f57560`; issue #55 is closed.
+- GitButler reconciled to clean `main`; a fresh #57 branch was then applied.
+- Source-catalog PR #72 was opened from merge base
+  `ac419ae1c87f7c5186b848bc937591cf45f57560`; its implementation head is not
+  yet frozen because exact-head review and merge remain pending.
 
 ## Preparation findings
 
@@ -73,6 +83,41 @@ isolated in #70.
 
 ## Execution Log
 
+- 2026-08-10: slice 57A added strict self-bound development-target codecs,
+  private/public SQLite catalog persistence, dedicated target authorization,
+  server-admitted source roots, bounded passive discovery, canonical path and
+  symlink-race attestations, no-execution sentinels, and a real cross-package
+  reopen integration test. Generic object CRUD rejects development targets;
+  direct catalog calls independently reject forged source capabilities.
+- Slice 57A focused proof passed: inspection 87 tests/191 assertions, runtime
+  113 tests/598 assertions, and the cross-package catalog plus public-export
+  checks 3 tests/18 assertions. The first aggregate build exposed Node
+  strip-only syntax in a discovery error class; a focused regression fixed it.
+- Slice 57A aggregate proof then passed exactly: `bun run format:check && bun
+run check && bun run test && bun run build`. The aggregate test lane contains
+  359 tests: inspection 87, runtime 113, Linear plugin 21, CLI 42, Workbench 53,
+  and scripts 43. The legacy package clean room remained 41 files/13 stories
+  with SHA-256
+  `22e87071a14f060029f77500449991005de5eb88c06f7a29fa749f83848e7fb1`.
+- Slice 57A round-one remediation tightened root admission, fixed bounded
+  manifest reads, made scan budgets fair across admitted roots, validates the
+  released manifest shape, reports unreadable directories, binds issued
+  source candidates to filesystem identity, and attests every private source
+  row on reopen. The fresh aggregate gate passes with 387 tests: inspection
+  113, runtime 115, Linear plugin 21, CLI 42, Workbench 53, and scripts 43. The
+  legacy package clean room remains 41 files/13 stories with SHA-256
+  `dd6e1966905ea2e3c848d9cfedaaa341c23f1a606d98892312856700c08c757d`.
+- Slice 57A round-two remediation preserves each root's reserved scan share,
+  then redistributes unused entry/candidate capacity without exceeding the
+  global 2,048/128 bounds. Discovery rejects invalid engine shapes and
+  malformed plugin-owned SVG bytes through bounded no-follow reads. Exact
+  inspection candidates are WeakMap-issued and revalidate candidate-directory
+  identity plus bounded manifest inode/hash before a runtime bridge derives
+  conservative absent/false native capability state. The fresh aggregate gate
+  passes with 396 tests: inspection 120, runtime 116, Linear plugin 21, CLI 42,
+  Workbench 53, and scripts 44. The legacy package clean room remains 41
+  files/13 stories with SHA-256
+  `27b0418115264df75edb01b4cc4bf33c8baa7e7829a3f693d6fab392abc1fc83`.
 - 2026-08-10: created the packet from the accepted design record and four
   bounded preparation audits.
 - 2026-08-10: activated the direct execution goal. Found one unresolved P2 on
@@ -291,7 +336,7 @@ and all builds.
   review rounds found and fixed ancestor-symlink admission, incomplete live-
   schema attestation, raw cursor errors, migration attestation ordering, and
   WAL/sidecar admission; round 3 reached 5/5 with zero P0-P3 and 40 focused
-  tests. Full exact-head standing and targeted PR review remains the merge gate.
+  tests. Full exact-head standing and targeted PR review then governed merge.
 - Runtime full review round 1: standing scored 3/5 and targeted 2/5 at exact
   head `f5c04a8ba2784143e023d44f603945e3f6111d6c`. Their shared P1
   (`RT-SG-001` / `PW-RUNTIME-001`) reproduced privilege escalation by spreading
@@ -319,6 +364,69 @@ and all builds.
   aggregate tests even though the exact-head run contains 304. The count is
   corrected for the final docs-only exact-head recheck; no runtime behavior or
   prior verification result changed.
+- Runtime full review round 4: standing and targeted both reached 5/5 with zero
+  P0-P3 at docs-only head `b4327b73ba8d8e1acd6c43572df417a126d71922`.
+  Hosted verify, visual, standalone-arm64, and security checks were green; the
+  PR was cleanly mergeable with no review threads. PR #71 merged through async
+  request `690f515a-0651-47ef-aa7a-852e9efe02cd` to
+  `ac419ae1c87f7c5186b848bc937591cf45f57560`; #55 closed and GitButler
+  reconciled without dirt or a residual lane.
+- Source-catalog round 1: standing and targeted both scored 2/5 at exact head
+  `5df4564d5673dafe54311b590dc5380e80d310ac`. Their security findings covered
+  broad or ignored roots, an unbounded manifest-growth race, private-source
+  rows that accepted invalid root identity, a forgeable/retargetable runtime
+  candidate bridge, cross-root scan starvation, released-manifest drift, and
+  swallowed directory-read failures. All are fixed for round 2: root policy
+  rejects filesystem/home ancestors and ignored components; manifest reads use
+  a fixed 256 KiB + 1 buffer; global budgets are partitioned across admitted
+  roots; discovery mirrors the released manifest contract and emits bounded
+  read diagnostics; issued candidates are module-private identity capabilities
+  bound to canonical path/device/inode; and stored private rows are strictly
+  parsed and fail closed without repair.
+- Source-catalog round 2: targeted scored 4/5 and standing 3/5 at exact head
+  `36d886e02cc5bb7cabe048f45c8b890c7f431593`. `LR-003` / `SC-SG-005`
+  found that immutable per-root shares stranded unused global capacity;
+  `SC-SG-004` kept manifest-contract alignment open because discovery accepted
+  invalid engines and malformed plugin-owned SVG bytes. Both are fixed with
+  bounded reserved-first redistribution and canonical compact-SVG validation.
+  The remediation also strengthens the previously accepted internal bridge:
+  raw target/native claims have no issuance path, inspection and runtime use
+  two exact capability stages, and directory/manifest changes between
+  discovery and persistence fail closed.
+- Source-catalog round 3: standing and targeted both scored 2/5 at exact head
+  `71f2fffc0108b7427f12ba07a1226e2f8c2cf5cc`. `SC-SG-006` / `LR-001`
+  reproduced a transition race after inspection returned plain facts but
+  before runtime captured them; in-place manifest mutation, manifest inode
+  replacement, and whole-directory replacement all admitted stale claims.
+  `SC-SG-004` also remained open because discovery treated `.\\icon.svg` as a
+  plugin-owned path while the released validator treats only `./` paths that
+  way. `LR-006` noted a stale budget comment.
+- The round-3 remediation replaces the plain-facts reader with an exact,
+  one-use transition capability. Inspection pre/post-attests the candidate
+  directory and bounded manifest around runtime issuance; runtime independently
+  verifies the same canonical path, device, inode, and SHA-256 evidence, keeps
+  that identity on its own capability, and revalidates it before catalog
+  persistence. Focused attacks for all three transition races and a
+  post-issuance manifest mutation now fail closed with no catalog mutation.
+  Windows-style `.\\icon.svg` is again a host icon name, matching the released
+  validator, and the budget comment now describes reserved-first
+  redistribution. The remediation gate passes 401 repository tests, all
+  type/compatibility checks, formatting, every build, and the 41-file/13-story
+  package clean room at SHA-256
+  `622b4c8148f0b449c6321c8625b27ac24a84f8a0b662a4b0efcad7997715bed4`.
+  Fresh exact-head review remained at that point.
+- Source-catalog round 4: standing and targeted both reached 5/5 with zero
+  P0-P3 at exact head `f8fe4765394527b03f421717bcd7780220b952a6`.
+  Each lane independently rejected all three transition-time mutations and the
+  post-issuance/pre-persistence mutation with an empty catalog, verified
+  Windows-style icon parity and true global scan bounds, and found the full
+  security/persistence/export/no-execution boundary clean. Hosted verify,
+  visual, standalone-arm64, and security checks passed; PR #72 was cleanly
+  mergeable with no review threads and GitButler had no uncommitted changes.
+  Superseded source-catalog rounds 1-3 were scratch-archived under
+  `/tmp/bb-mate-plugin-workbench-reviews-20260810/source-catalog/` after their
+  findings and dispositions were preserved here. Prompt validation and the
+  canonical goal-loop doctor then passed with 17 active review reports.
 
 ## Verification Log
 
@@ -352,8 +460,9 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0 and standalone-runtime #56 are merged, closed, and
-reconciled on clean `main`. Runtime foundation #55 is implemented and locally
-green on a separate merge-first branch; exact-head review, hosted CI, merge,
-and reconciliation remain. All release/upstream/Connect/normal-profile stop
-boundaries remain intact.
+Execution active. Gate 0, standalone-runtime #56, and runtime foundation #55
+are merged, closed, and reconciled. Source-catalog slice 57A implementation
+and code review are complete on draft PR #72; this docs-only readiness head
+still needs its narrow exact-head review, ready transition, merge, and
+reconciliation before 57B starts. All release/upstream/Connect/normal-profile
+stop boundaries remain intact.
