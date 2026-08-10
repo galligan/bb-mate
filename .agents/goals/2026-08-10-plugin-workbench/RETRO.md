@@ -9,11 +9,8 @@ The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
 and reconciled. Source-first development-target discovery #57 is the active
-milestone. Slice 57A is merged and reconciled. Slice 57B1 native inventory,
-reconciliation, and private-host persistence have passed local verification,
-hosted CI, and two 5/5 exact-head review lanes on draft PR #74. Final
-docs-only exact-head review, ready/merge, and reconciliation remain before the
-57B2 Workbench adapter begins.
+milestone. Slices 57A and 57B1 are merged and reconciled. Slice 57B2, the
+catalog-backed opaque-target Workbench adapter, is now active.
 
 ## Readiness
 
@@ -23,17 +20,15 @@ Standalone #69 passed green local, hosted, and two-lane exact-head review
 evidence and is reconciled. The transport-neutral runtime foundation #55 has
 passed focused/aggregate verification, two independent exact-head reviews, and
 hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
-and reconciled. Slice 57B1 has passed its local implementation gate; it is not
-done until the final docs-only exact head is re-pinned clean, then ready/merge
-and GitButler reconciliation pass. Browser bootstrap/topology is isolated in
-#70.
+and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
+GitButler reconciliation gates. Slice 57B2 is active; browser
+bootstrap/topology remains isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/runtime/native-target-reconciliation`; issue #57; draft
-  PR #74.
-- Current merge base: `52a3274f9981f94a37d296e3f0bfa46bafd7b867`.
+- Active branch: `feat/workbench/opaque-target-adapter`; issue #57; no PR yet.
+- Current merge base: `73e6865e2a135dfd02dc2429ebc3debaa179d79d`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -455,6 +450,13 @@ and all builds.
   `52a3274f9981f94a37d296e3f0bfa46bafd7b867`. `but pull` removed the integrated
   57A branch and advanced the workspace base without uncommitted changes. #57
   remains open for native reconciliation and the browser adapter.
+- PR #74 was made ready only after final exact head
+  `3f271c462b750cf78e5640be8f797bcf04f25b25` passed two 5/5 review lanes,
+  terminal hosted checks, zero threads, and clean mergeability. GitHub async
+  request `41db3969-c528-49e3-89d2-63d2935b40af` merged it as
+  `73e6865e2a135dfd02dc2429ebc3debaa179d79d`. `but pull` removed the integrated
+  57B1 branch and advanced the workspace base; the unrelated PR #73 lane was
+  only rebased locally and remains unpushed.
 
 ## Verification Log
 
@@ -531,8 +533,6 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
-source-catalog slice 57A are merged and reconciled. Slice 57B1 implementation
-and review are complete on draft PR #74; final docs-only exact-head review,
-ready/merge, and reconciliation remain. Issue #57 stays open for 57B1 and the
-later 57B2 opaque-target Workbench adapter. All
+source-catalog slices 57A and 57B1 are merged and reconciled. Issue #57 stays
+open for the active 57B2 opaque-target Workbench adapter. All
 release/upstream/Connect/normal-profile stop boundaries remain intact.

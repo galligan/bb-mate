@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slice 57A merged; slice 57B1 implementation and review complete; merge pending
+Status: Slices 57A and 57B1 merged; slice 57B2 active
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
@@ -99,7 +99,7 @@ decision; #70 owns that gate.
 5. [x] Add a one-use bounded native-inventory capability, pure reconciliation
        fixtures for every required state, and atomic private host observations
        without lifecycle mutation, candidate seeding, or topology conclusions.
-6. [ ] Run aggregate gates and two 5/5 lanes, then merge and reconcile 57B1.
+6. [x] Run aggregate gates and two 5/5 lanes, then merge and reconcile 57B1.
 7. [ ] Adapt one-authorized-target inspection and Workbench selection to
        opaque target IDs; reverse the prior external-symlink acceptance test.
 8. [ ] Run visual/accessibility and aggregate gates, two 5/5 reviews, hosted
