@@ -67,6 +67,95 @@ describe("DevelopmentTargetService native reconciliation persistence", () => {
     }
   });
 
+  test("rejects equal and older observations without regressing persisted state", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => 3_000,
+    });
+    const service = createDevelopmentTargetService(catalog);
+    const created = await service.refreshFromTrustedCandidate(
+      context(),
+      await candidate(fixture.pluginRoot),
+    );
+    const accepted = await service.reconcileFromTrustedInventory(context(), {
+      targetId: created.id,
+      sourceCandidate: await candidate(fixture.pluginRoot),
+      inventory: await issueNativeInventory(fixture.pluginRoot, {
+        observedAt: 2_500,
+        runtimeInstanceId: OpaqueIdSchema.parse("j".repeat(32)),
+        hostname: "newer.local",
+      }),
+      expectedRevision: 1,
+    });
+    const acceptedHost = {
+      runtimeInstanceId: OpaqueIdSchema.parse("j".repeat(32)),
+      hostname: "newer.local",
+      observedAt: 2_500,
+    };
+    const database = new Database(
+      path.join(fixture.dataRoot, "workbench.sqlite3"),
+    );
+    const events = database
+      .query("SELECT * FROM runtime_events ORDER BY sequence")
+      .all();
+
+    try {
+      for (const observedAt of [2_500, 1_500]) {
+        await expect(
+          service.reconcileFromTrustedInventory(context(), {
+            targetId: created.id,
+            sourceCandidate: await candidate(fixture.pluginRoot),
+            inventory: await issueNativeInventory(fixture.pluginRoot, {
+              observedAt,
+              runtimeInstanceId: OpaqueIdSchema.parse("k".repeat(32)),
+              hostname: "replayed.local",
+            }),
+            expectedRevision: 2,
+          }),
+        ).rejects.toMatchObject({ code: "invalid_request" });
+        expect(service.getTarget(context(), created.id)).toEqual(accepted);
+        expect(
+          catalog.resolvePrivateHostObservation({
+            principalId,
+            bbContextId,
+            id: objectId,
+          }),
+        ).toEqual(acceptedHost);
+        expect(
+          database
+            .query("SELECT * FROM runtime_events ORDER BY sequence")
+            .all(),
+        ).toEqual(events);
+      }
+    } finally {
+      database.close();
+      catalog.close();
+    }
+
+    const reopened = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    try {
+      expect(
+        createDevelopmentTargetService(reopened).getTarget(
+          context(),
+          created.id,
+        ),
+      ).toEqual(accepted);
+      expect(
+        reopened.resolvePrivateHostObservation({
+          principalId,
+          bbContextId,
+          id: objectId,
+        }),
+      ).toEqual(acceptedHost);
+    } finally {
+      reopened.close();
+    }
+  });
+
   test("rolls back the public target, private host row, and redacted event on either private or event failure", async () => {
     const fixture = await makeFixture();
     const catalog = await openDevelopmentTargetCatalog({

@@ -221,6 +221,14 @@ export async function openDevelopmentTargetCatalog(
         if (host.observedAt !== native.observedAt) {
           throw new RuntimeError("invalid_request");
         }
+        const existingHost = storage.resolvePrivateHostObservation(
+          input.principalId,
+          input.bbContextId,
+          input.id,
+        );
+        if (existingHost && host.observedAt <= existingHost.observedAt) {
+          throw new RuntimeError("invalid_request");
+        }
         const envelope = parseDevelopmentTargetEnvelope({
           ...existing,
           revision: existing.revision + 1,

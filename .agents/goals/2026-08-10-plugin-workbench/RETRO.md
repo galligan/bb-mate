@@ -461,7 +461,7 @@ and all builds.
 - `bun run format:check`: passed for the reviewed packet and design record.
 - Slice 57B1 local implementation gate passed `bun run format:check`, `bun run
 check`, `bun run test`, `bun run build`, and `git diff --check`. The aggregate
-  run passed 469 tests: inspection 136, runtime 168, CLI 42, Workbench 53,
+  run passed 470 tests: inspection 136, runtime 169, CLI 42, Workbench 53,
   Linear plugin 21, and scripts 49. The package clean room passed with 41
   files, 13 stories, and SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
@@ -475,8 +475,8 @@ test && bun run build && bun run compatibility:latest` passed; package clean
 - 57B1 normalizes only released bb 0.36 `plugin list --json` evidence through a
   fixed no-shell command, 1 MiB output bound, 256-row bound, and UTF-8 field
   bounds. It canonicalizes only direct path rows; npm/Git/builtin/catalog roots
-  are never read. One-use inspection and runtime capabilities reject clones,
-  replays, forged facts, and failed transitions.
+  are never read. One-use inspection transitions reject reuse, and runtime
+  capabilities reject clones, forged facts, and failed transitions.
 - The pure reconciler covers malformed, duplicate, future/stale, exact path,
   other path, npm/Git managed, builtin/catalog conflict, and absent precedence.
   A safely canonicalized malformed root hint protects a matching target while
@@ -494,6 +494,11 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   classified as malformed and committed even though the next integrity check
   correctly rejected its timestamp. The catalog now rejects that capability
   before mutation; focused persistence proof reopens the unchanged target.
+- Round-one standing and targeted review independently found that an older or
+  equal issued inventory could overwrite newer accepted host evidence. Native
+  persistence now requires a strictly newer per-target observation; replay
+  tests prove the public target, private host row, event ledger, and reopened
+  database remain unchanged.
 - The coordinator walking skeleton proves passive source discovery to stable
   catalog target to released-shape managed inventory to reconciliation and
   reopen. The inventory invokes only `bb plugin list --json`, creates no
