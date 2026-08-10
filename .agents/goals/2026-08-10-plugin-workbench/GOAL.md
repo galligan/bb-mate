@@ -110,9 +110,10 @@ state; and a forbidden-action audit.
 
 ## Next Move
 
-Validate and merge the preparation baseline, then run Gate 0. Narrow failures
-to the owning slice, change approach after three failed attempts, and continue
-all work not affected by a conditional upstream seam.
+Implement and merge the narrowed runtime foundation #55, then dispatch source
+discovery and object/host lanes according to the live GitHub dependency graph.
+Narrow failures to the owning slice, change approach after three failed
+attempts, and continue all work not affected by a conditional upstream seam.
 
 ## Waiting State
 

@@ -6,16 +6,16 @@ Status: Active
 ## Summary
 
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
-and released-capability Gate 0 PR #68 are merged. Standalone-runtime #56 is
-implemented and independently reviewed at 5/5; PR #69 is at its final
-ready/merge gate.
+released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
+The narrowed runtime domain/security foundation #55 is the active milestone.
 
 ## Readiness
 
 Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
-Standalone #69 has green local, hosted, and two-lane exact-head review evidence;
-only its ready/merge transition and reconciliation remain.
+Standalone #69 passed green local, hosted, and two-lane exact-head review
+evidence and is reconciled. The transport-neutral runtime foundation #55 is
+next; browser bootstrap/topology is isolated in #70.
 
 ## Baseline
 
@@ -32,7 +32,11 @@ only its ready/merge transition and reconciliation remain.
 - Gate 0 PR #68 merged from exact reviewed head
   `87066b4f62f82283fec8f25a912bd48a682f72cb` to merge commit
   `d40aef0b7b04e6f76982b7203927905fd380c5a8`; issue #54 is closed.
-- GitButler is clean with only the standalone branch active.
+- Standalone PR #69 merged from exact reviewed head
+  `d4dff55faa80231519daa2217d920cee73eb8a48` through GitHub async request
+  `ed06e024-dbcc-4e9a-86e2-8560b05166a6` to merge commit
+  `3d37aaece878fd099854d4190df78d9ce45cb98a`; issue #56 is closed.
+- GitButler reconciled to clean `main` with no active lanes.
 
 ## Preparation findings
 
@@ -233,6 +237,15 @@ visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
   original symlink-parent attack now rejects without touching its target;
   transactional rollback, moved empty-PATH execution, legacy package,
   aggregate, visual, hosted CI, thread, tracker, and clean-workspace gates pass.
+- Standalone round 5: standing and targeted both reached 5/5 on the final
+  docs-only head `d4dff55faa80231519daa2217d920cee73eb8a48`; fresh hosted
+  verify, visual, native arm64, and security checks were green with no review
+  threads. PR #69 then left draft and merged through the SHA-pinned async
+  endpoint as `3d37aaece878fd099854d4190df78d9ce45cb98a`.
+- Runtime planning decomposed the old cross-cutting #55 body. #55 now owns only
+  versioned contracts, authorization, SQLite, pull events, and loopback policy;
+  #57/#59/#61/#62/#66/#67 own their concrete lanes. New child #70 owns secure
+  browser bootstrap and same-instance topology and blocks integrated trial #65.
 
 ## Verification Log
 
@@ -266,7 +279,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0 is merged and reconciled. Standalone-runtime #56 has
-completed implementation and two independent review lanes; PR #69 is ready for
-its final merge transition. Domain #55 remains independent and prepared for a
-separate branch.
+Execution active. Gate 0 and standalone-runtime #56 are merged, closed, and
+reconciled on clean `main`. Runtime foundation #55 is active on a separate
+merge-first branch; all release/upstream/Connect/normal-profile stop boundaries
+remain intact.
