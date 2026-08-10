@@ -3,7 +3,10 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { prepareStandaloneOutputRoot } from "./build-standalone.ts";
+import {
+  prepareStandaloneOutputRoot,
+  promoteStandaloneOutputRoot,
+} from "./build-standalone.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const roots: string[] = [];
@@ -25,19 +28,36 @@ afterEach(async () => {
 });
 
 describe("standalone output ownership", () => {
-  test("replaces only the two owned artifact files", async () => {
-    const root = await temporaryRoot();
+  test("preserves the previous artifact until complete staged output is promoted", async () => {
+    const parent = await temporaryRoot();
+    const root = path.join(parent, "output");
+    const stage = path.join(parent, "stage");
+    await Promise.all([fs.mkdir(root), fs.mkdir(stage)]);
     await Promise.all([
       fs.writeFile(path.join(root, "bb-mate"), "old binary"),
       fs.writeFile(path.join(root, "manifest.json"), "old manifest"),
+      fs.writeFile(path.join(stage, "bb-mate"), "new binary"),
+      fs.writeFile(path.join(stage, "manifest.json"), "new manifest"),
     ]);
 
     expect(await prepareStandaloneOutputRoot(root)).toBe(root);
-    expect(await fs.readdir(root)).toEqual([]);
+    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
+      "old binary",
+    );
+    await promoteStandaloneOutputRoot(root, stage);
+    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
+      "new binary",
+    );
+    expect(await fs.readFile(path.join(root, "manifest.json"), "utf8")).toBe(
+      "new manifest",
+    );
+    await expect(fs.access(stage)).rejects.toThrow();
   });
 
   test("rejects unexpected entries without deleting owned files", async () => {
-    const root = await temporaryRoot();
+    const parent = await temporaryRoot();
+    const root = path.join(parent, "output");
+    await fs.mkdir(root);
     await Promise.all([
       fs.writeFile(path.join(root, "bb-mate"), "old binary"),
       fs.writeFile(path.join(root, "keep.txt"), "user data"),
@@ -63,7 +83,10 @@ describe("standalone output ownership", () => {
     ).rejects.toThrow("Refusing unsafe");
     await expect(
       prepareStandaloneOutputRoot(path.join(repositoryRoot, "apps")),
-    ).rejects.toThrow("unexpected entry");
+    ).rejects.toThrow("Refusing unsafe");
+    await expect(prepareStandaloneOutputRoot(os.tmpdir())).rejects.toThrow(
+      "Refusing unsafe",
+    );
 
     const root = await temporaryRoot();
     const destination = await temporaryRoot();
@@ -71,6 +94,62 @@ describe("standalone output ownership", () => {
     await fs.symlink(destination, link);
     await expect(prepareStandaloneOutputRoot(link)).rejects.toThrow(
       "real directory",
+    );
+  });
+
+  test("rejects incomplete staged output without touching the previous artifact", async () => {
+    const parent = await temporaryRoot();
+    const root = path.join(parent, "output");
+    const stage = path.join(parent, "stage");
+    await Promise.all([fs.mkdir(root), fs.mkdir(stage)]);
+    await Promise.all([
+      fs.writeFile(path.join(root, "bb-mate"), "old binary"),
+      fs.writeFile(path.join(root, "manifest.json"), "old manifest"),
+      fs.writeFile(path.join(stage, "bb-mate"), "incomplete binary"),
+    ]);
+
+    await expect(promoteStandaloneOutputRoot(root, stage)).rejects.toThrow(
+      "must contain exactly",
+    );
+    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
+      "old binary",
+    );
+    expect(await fs.readFile(path.join(root, "manifest.json"), "utf8")).toBe(
+      "old manifest",
+    );
+  });
+
+  test("restores the previous pair when staged promotion fails partway", async () => {
+    const parent = await temporaryRoot();
+    const root = path.join(parent, "output");
+    const stage = path.join(parent, "stage");
+    await Promise.all([fs.mkdir(root), fs.mkdir(stage)]);
+    await Promise.all([
+      fs.writeFile(path.join(root, "bb-mate"), "old binary"),
+      fs.writeFile(path.join(root, "manifest.json"), "old manifest"),
+      fs.writeFile(path.join(stage, "bb-mate"), "new binary"),
+      fs.writeFile(path.join(stage, "manifest.json"), "new manifest"),
+    ]);
+    let renameCount = 0;
+
+    await expect(
+      promoteStandaloneOutputRoot(root, stage, {
+        async rename(source, destination) {
+          renameCount += 1;
+          if (renameCount === 2) throw new Error("injected promotion failure");
+          await fs.rename(source, destination);
+        },
+      }),
+    ).rejects.toThrow("injected promotion failure");
+    expect(renameCount).toBe(3);
+    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
+      "old binary",
+    );
+    expect(await fs.readFile(path.join(root, "manifest.json"), "utf8")).toBe(
+      "old manifest",
+    );
+    expect(await fs.readFile(path.join(stage, "bb-mate"), "utf8")).toBe(
+      "new binary",
     );
   });
 });

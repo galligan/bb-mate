@@ -209,6 +209,15 @@ visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
   `ST-SA-002` / `PW-STANDALONE-002` corrected the plan's package filter to
   `bb-mate`. `PW-STANDALONE-003` corrected hosted CI state from pending to
   green. All findings are fixed for round 2.
+- Standalone round 2: standing reached 5/5; targeted reached 4/5 and kept
+  `PW-STANDALONE-001` open because allowlisted replacement still removed the
+  prior valid pair before a new build succeeded, and the system temp root was
+  rejected only incidentally. The builder now structurally permits only the
+  canonical artifact root or a leaf beneath `os.tmpdir()`, builds both files in
+  a sibling staging directory, validates the exact pair before promotion,
+  restores the old directory if promotion fails, and removes only a validated
+  backup. Five ownership tests now include incomplete-stage and injected
+  partway-promotion failures that prove the prior pair stays byte-identical.
 
 ## Verification Log
 
