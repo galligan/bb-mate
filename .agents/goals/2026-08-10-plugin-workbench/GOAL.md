@@ -110,9 +110,11 @@ state; and a forbidden-action audit.
 
 ## Next Move
 
-Validate and merge the preparation baseline, then run Gate 0. Narrow failures
-to the owning slice, change approach after three failed attempts, and continue
-all work not affected by a conditional upstream seam.
+Complete exact-head review and merge of the implemented runtime foundation
+#55, then dispatch source discovery and object/host lanes according to the live
+GitHub dependency graph.
+Narrow failures to the owning slice, change approach after three failed
+attempts, and continue all work not affected by a conditional upstream seam.
 
 ## Waiting State
 

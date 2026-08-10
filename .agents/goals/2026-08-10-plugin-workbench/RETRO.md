@@ -6,22 +6,24 @@ Status: Active
 ## Summary
 
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
-and released-capability Gate 0 PR #68 are merged. Standalone-runtime #56 is
-implemented and independently reviewed at 5/5; PR #69 is at its final
-ready/merge gate.
+released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
+The narrowed runtime domain/security foundation #55 is implemented and locally
+green; its exact-head review and merge gate is the active milestone.
 
 ## Readiness
 
 Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
-Standalone #69 has green local, hosted, and two-lane exact-head review evidence;
-only its ready/merge transition and reconciliation remain.
+Standalone #69 passed green local, hosted, and two-lane exact-head review
+evidence and is reconciled. The transport-neutral runtime foundation #55 has
+passed focused and aggregate local verification; browser bootstrap/topology is
+isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Standalone branch: `feat/cli/standalone-executable`; issue #56; PR #69.
-- Current merge base: `d40aef0b7b04e6f76982b7203927905fd380c5a8`.
+- Runtime branch: `feat/runtime/domain-security-foundation`; issue #55.
+- Current merge base: `3d37aaece878fd099854d4190df78d9ce45cb98a`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -32,7 +34,11 @@ only its ready/merge transition and reconciliation remain.
 - Gate 0 PR #68 merged from exact reviewed head
   `87066b4f62f82283fec8f25a912bd48a682f72cb` to merge commit
   `d40aef0b7b04e6f76982b7203927905fd380c5a8`; issue #54 is closed.
-- GitButler is clean with only the standalone branch active.
+- Standalone PR #69 merged from exact reviewed head
+  `d4dff55faa80231519daa2217d920cee73eb8a48` through GitHub async request
+  `ed06e024-dbcc-4e9a-86e2-8560b05166a6` to merge commit
+  `3d37aaece878fd099854d4190df78d9ce45cb98a`; issue #56 is closed.
+- GitButler reconciled to clean `main` with no active lanes.
 
 ## Preparation findings
 
@@ -149,8 +155,44 @@ The legacy package lane remained separate and green: 41 files, 13 stories, and
 clean-room SHA-256
 `77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`.
 Focused tests, format, typecheck, compatibility, aggregate tests/build, and 14
-visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
-`macos-15` arm64 job, Linux verification, visual, and security checks are green.
+visual/accessibility checks passed. PR #69 merged after its dedicated
+`macos-15` arm64 job, Linux verification, visual, and security checks passed.
+
+## Runtime foundation #55
+
+The pre-review implementation head `2f5588ac0d213b926bc71b7afb9bac92ae860ee9`
+adds one private `@bb-mate/runtime` package. Its curated public entry point
+exports strict v1 identifiers, envelopes, codecs, request contexts,
+authorization, the canonical store/service, and the injectable Fetch handler;
+an exact export test keeps low-level database, migration, event-feed, and schema
+internals private.
+
+The service uses exact module-private issued-context identity, explicit least-
+privilege scopes, and derives principal,
+bb-context, target, and optional session bindings only from a branded server-
+created request context. SQLite persistence stores those bindings outside
+canonical payload JSON, uses optimistic revisions, and commits minimal redacted
+pull events atomically with object mutations. Stored payload bytes must exactly
+match their recomputed canonical form. The explicit private data root
+fails closed for unsafe modes, ownership, links, sidecars, WAL databases,
+corruption, newer schemas, migration drift, or live-schema drift without
+repairing or deleting caller data.
+
+Generic JSON is bounded to 8,192-character strings/property names, 100 array
+items/object properties, and a 256 KiB complete canonical UTF-8 envelope. The HTTP slice is
+handler-only: exact numerical loopback Host/URL/Origin,
+authenticated non-browser absent-Origin access, a constant public health route,
+authenticated capabilities with every deferred feature false, a 256 KiB body
+bound, 32-request concurrency limit, typed redacted failures, and restrictive
+security headers. Route/export tests prove the absence of bootstrap, target-
+path, artifact, generic object-write, event-stream, MCP, URL-fetch, shell/eval,
+native-lifecycle, destructive, import/export, and remote-bind surfaces.
+
+Focused runtime verification passes 98 tests with 536 assertions. The full
+remediation gate passes formatting, type/compatibility checks, 304 aggregate
+tests, the 41-file/13-story legacy package clean room at SHA-256
+`77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`,
+and all builds.
 
 ## Review Log
 
@@ -233,6 +275,50 @@ visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
   original symlink-parent attack now rejects without touching its target;
   transactional rollback, moved empty-PATH execution, legacy package,
   aggregate, visual, hosted CI, thread, tracker, and clean-workspace gates pass.
+- Standalone round 5: standing and targeted both reached 5/5 on the final
+  docs-only head `d4dff55faa80231519daa2217d920cee73eb8a48`; fresh hosted
+  verify, visual, native arm64, and security checks were green with no review
+  threads. PR #69 then left draft and merged through the SHA-pinned async
+  endpoint as `3d37aaece878fd099854d4190df78d9ce45cb98a`.
+- Runtime planning decomposed the old cross-cutting #55 body. #55 now owns only
+  versioned contracts, authorization, SQLite, pull events, and loopback policy;
+  #57/#59/#61/#62/#66/#67 own their concrete lanes. New child #70 owns secure
+  browser bootstrap and same-instance topology and blocks integrated trial #65.
+- Runtime implementation subreviews exercised each security-critical lane.
+  HTTP review first found absent-Origin authentication/order and forbidden-
+  surface inventory gaps; the corrected lane reached 5/5 with 26 tests and 288
+  assertions. The service lane reached 5/5 with zero findings. Persistence
+  review rounds found and fixed ancestor-symlink admission, incomplete live-
+  schema attestation, raw cursor errors, migration attestation ordering, and
+  WAL/sidecar admission; round 3 reached 5/5 with zero P0-P3 and 40 focused
+  tests. Full exact-head standing and targeted PR review remains the merge gate.
+- Runtime full review round 1: standing scored 3/5 and targeted 2/5 at exact
+  head `f5c04a8ba2784143e023d44f603945e3f6111d6c`. Their shared P1
+  (`RT-SG-001` / `PW-RUNTIME-001`) reproduced privilege escalation by spreading
+  the enumerable request-context symbol and replacing the principal/scopes.
+  Request contexts now use a module-private `WeakSet` of exact issued objects;
+  spread, inherited, and reflected-key clones all fail unauthenticated. Shared
+  P2s (`RT-SG-002` / `PW-RUNTIME-002` and `RT-SG-003` /
+  `PW-RUNTIME-003`) added mandatory JSON text/collection/byte bounds and exact
+  canonical stored-byte verification. A two-open-store regression also proves
+  optimistic stale-writer conflict across SQLite connections. All three
+  findings are fixed for round 2.
+- Runtime full review round 2: standing scored 3/5 at exact head
+  `2bb5d6523398b031211ef23f0bbb5563de68aa8f`; the targeted lane independently
+  reproduced the same remaining boundary defect before its report finalization.
+  `RT-SG-004` found that `parse` bounded only the 261,911-byte payload while
+  `serialize` bounded the 262,199-byte full envelope, breaking the registry's
+  round-trip contract. `parse` now validates the same complete canonical
+  envelope that `serialize` emits, and a generated near-limit regression proves
+  payload-only admission cannot exceed the envelope ceiling. Round 1 findings
+  remain fixed; this new finding is fixed for round 3.
+- Runtime full review round 3: standing reached 5/5 with zero P0-P3 at exact
+  head `2696d61941002e3fa7fe89c0d6aaa8c1d42de9f6`, independently proving the
+  262,144-byte complete-envelope boundary and rejecting 262,145 bytes. The
+  targeted lane found one P2 evidence defect: this retrospective counted 303
+  aggregate tests even though the exact-head run contains 304. The count is
+  corrected for the final docs-only exact-head recheck; no runtime behavior or
+  prior verification result changed.
 
 ## Verification Log
 
@@ -266,7 +352,8 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0 is merged and reconciled. Standalone-runtime #56 has
-completed implementation and two independent review lanes; PR #69 is ready for
-its final merge transition. Domain #55 remains independent and prepared for a
-separate branch.
+Execution active. Gate 0 and standalone-runtime #56 are merged, closed, and
+reconciled on clean `main`. Runtime foundation #55 is implemented and locally
+green on a separate merge-first branch; exact-head review, hosted CI, merge,
+and reconciliation remain. All release/upstream/Connect/normal-profile stop
+boundaries remain intact.

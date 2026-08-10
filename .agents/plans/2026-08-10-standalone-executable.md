@@ -1,7 +1,7 @@
 # Self-contained bb-mate executable
 
 Date: 2026-08-10
-Status: Implementation and review complete; merge pending
+Status: Complete
 Issue: [#56](https://github.com/galligan/bb-mate/issues/56)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
@@ -48,7 +48,7 @@ a separate compatibility lane.
        process/listener cleanup.
 7. [x] Add focused unit/integration tests and a native arm64 macOS CI job while
        preserving the legacy package lane unchanged.
-8. [ ] Run focused, standalone, legacy-package, aggregate, exact-head review,
+8. [x] Run focused, standalone, legacy-package, aggregate, exact-head review,
        hosted CI, issue, merge, and clean GitButler reconciliation gates.
 
 ## Verification

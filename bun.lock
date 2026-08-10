@@ -78,6 +78,18 @@
         "typescript": "^5.9.2",
       },
     },
+    "packages/runtime": {
+      "name": "@bb-mate/runtime",
+      "version": "0.0.0",
+      "dependencies": {
+        "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.4",
+        "@types/node": "^26.1.2",
+        "typescript": "^5.9.2",
+      },
+    },
     "plugins/linear": {
       "name": "bb-plugin-linear",
       "version": "0.1.0",
@@ -214,6 +226,8 @@
     "@base-ui/utils": ["@base-ui/utils@0.3.2", "", { "dependencies": { "@babel/runtime": "^7.29.2", "@floating-ui/utils": "^0.2.12", "reselect": "^5.2.0", "use-sync-external-store": "^1.6.0" }, "peerDependencies": { "@types/react": "^17 || ^18 || ^19", "react": "^17 || ^18 || ^19", "react-dom": "^17 || ^18 || ^19" }, "optionalPeers": ["@types/react"] }, "sha512-oWy1aq/I2GmYjpl4PhEAhzflF8VPGKgZeq0xAWTbfD5KBWyxcN0ZP2+WHSUm/5Z6lVMBDLReLcoXwSYoRc/zNQ=="],
 
     "@bb-mate/inspection": ["@bb-mate/inspection@workspace:packages/inspection"],
+
+    "@bb-mate/runtime": ["@bb-mate/runtime@workspace:packages/runtime"],
 
     "@bb-mate/workbench": ["@bb-mate/workbench@workspace:apps/workbench"],
 
