@@ -1,0 +1,188 @@
+import path from "node:path";
+import type { SourceCandidate, TrustedRoot } from "./discovery-types.ts";
+import { DiscoveryFailure } from "./discovery-errors.ts";
+import { readBoundedManifest } from "./discovery-manifest-reader.ts";
+import {
+  displayPathFor,
+  validateDeclaredPath,
+} from "./discovery-path-safety.ts";
+
+const MAX_MANIFEST_STRING_CHARACTERS = 8192;
+const MAX_DISPLAY_NAME_CHARACTERS = 128;
+const MAX_PACKAGE_NAME_CHARACTERS = 214;
+const MAX_VERSION_CHARACTERS = 64;
+const MAX_PLUGIN_ID_CHARACTERS = 64;
+
+export async function candidateAtRoot(
+  root: TrustedRoot,
+  candidateRoot: string,
+  relativeRoot: string,
+): Promise<SourceCandidate | null> {
+  const source = await readBoundedManifest(
+    path.join(candidateRoot, "package.json"),
+  );
+  if (source === null) return null;
+  const packageJson = record(JSON.parse(source) as unknown);
+  if (!packageJson) throw invalid("package.json must contain an object");
+  const bb = record(packageJson.bb);
+  if (!bb) return null;
+  const packageName = requiredString(
+    packageJson.name,
+    "name",
+    MAX_PACKAGE_NAME_CHARACTERS,
+  );
+  const version = requiredString(
+    packageJson.version,
+    "version",
+    MAX_VERSION_CHARACTERS,
+  );
+  const displayName = requiredString(
+    bb.name,
+    "bb.name",
+    MAX_DISPLAY_NAME_CHARACTERS,
+  );
+  await validateDeclaredPath(
+    candidateRoot,
+    requiredString(bb.server, "bb.server"),
+    "bb.server",
+    "file",
+  );
+  const app =
+    bb.app === undefined ? undefined : requiredString(bb.app, "bb.app");
+  if (app) await validateDeclaredPath(candidateRoot, app, "bb.app", "file");
+  await validateSkills(candidateRoot, bb.skills);
+  await validateBranding(candidateRoot, bb.branding);
+  await validateThemes(candidateRoot, bb.themes);
+
+  const pluginId = derivePluginId(packageName);
+  const candidate: SourceCandidate = {
+    rootKey: root.rootKey,
+    canonicalRoot: candidateRoot,
+    displayPath: displayPathFor(root, relativeRoot),
+    packageName,
+    version,
+    pluginId,
+    displayName,
+    hasServer: true,
+    hasApp: app !== undefined,
+  };
+  Object.defineProperty(candidate, "toJSON", {
+    enumerable: false,
+    value: () => {
+      throw new TypeError("source candidates are server-private");
+    },
+  });
+  return Object.freeze(candidate);
+}
+
+async function validateSkills(
+  candidateRoot: string,
+  value: unknown,
+): Promise<void> {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) throw invalid("bb.skills must be an array");
+  for (const [index, entry] of value.entries()) {
+    const skillRoot = requiredString(entry, `bb.skills.${index}`).replace(
+      /[\\/]\*$/u,
+      "",
+    );
+    await validateDeclaredPath(
+      candidateRoot,
+      skillRoot,
+      `bb.skills.${index}`,
+      "directory",
+    );
+  }
+}
+
+async function validateBranding(
+  candidateRoot: string,
+  value: unknown,
+): Promise<void> {
+  if (value === undefined) return;
+  const branding = record(value);
+  if (!branding) throw invalid("bb.branding must be an object");
+  if (branding.icon !== undefined) {
+    const icon = requiredString(branding.icon, "bb.branding.icon");
+    if (icon.startsWith("./") || icon.startsWith(".\\")) {
+      await validateDeclaredPath(
+        candidateRoot,
+        icon,
+        "bb.branding.icon",
+        "file",
+      );
+    }
+  }
+  if (branding.logo === undefined) return;
+  const logo = record(branding.logo);
+  if (!logo) throw invalid("bb.branding.logo must be an object");
+  for (const variant of ["light", "dark"] as const) {
+    if (logo[variant] === undefined) continue;
+    await validateDeclaredPath(
+      candidateRoot,
+      requiredString(logo[variant], `bb.branding.logo.${variant}`),
+      `bb.branding.logo.${variant}`,
+      "file",
+    );
+  }
+}
+
+async function validateThemes(
+  candidateRoot: string,
+  value: unknown,
+): Promise<void> {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) throw invalid("bb.themes must be an array");
+  for (const [index, entry] of value.entries()) {
+    const theme = record(entry);
+    if (!theme) throw invalid(`bb.themes.${index} must be an object`);
+    await validateDeclaredPath(
+      candidateRoot,
+      requiredString(theme.css, `bb.themes.${index}.css`),
+      `bb.themes.${index}.css`,
+      "file",
+    );
+  }
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function requiredString(
+  value: unknown,
+  label: string,
+  maxCharacters = MAX_MANIFEST_STRING_CHARACTERS,
+): string {
+  if (typeof value !== "string") {
+    throw invalid(`${label} must be a bounded non-empty string`);
+  }
+  const normalized = value.trim();
+  if (normalized.length === 0 || normalized.length > maxCharacters) {
+    throw invalid(`${label} must be a bounded non-empty string`);
+  }
+  return normalized;
+}
+
+function derivePluginId(packageName: string): string {
+  const base = packageName.split("/").at(-1) ?? packageName;
+  const pluginId = base
+    .replace(/^bb-plugin-/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (
+    pluginId.length === 0 ||
+    pluginId.length > MAX_PLUGIN_ID_CHARACTERS ||
+    !/^[a-z0-9][a-z0-9-]*$/u.test(pluginId)
+  ) {
+    throw invalid("package name cannot produce a bounded plugin id");
+  }
+  return pluginId;
+}
+
+function invalid(message: string): DiscoveryFailure {
+  return new DiscoveryFailure("manifest-invalid", message);
+}
