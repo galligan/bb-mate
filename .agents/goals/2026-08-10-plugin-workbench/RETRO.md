@@ -113,11 +113,13 @@ domain/executable foundation (#55–#56), source discovery and host shell
 and education (#60/#67/#66), then integrated trial/review/handoff
 (#65/#63/#64).
 
-GitHub's native dependency graph now mirrors that order. Gate #54 blocks the
-three foundation issues; #55 blocks the domain consumers; #57 explicitly
-blocks host shell #62; the object/adapter issues carry their direct blockers;
-#65 is blocked by every integrated input; #63 blocks on #65; and #64 blocks on
-#63. Prose dependency sections remain explanatory rather than the only graph.
+GitHub's native dependency graph now mirrors that order without serializing
+independent foundation work. Domain #55 and executable #56 can dispatch in
+parallel; discovery #57 blocks on #55; Gate #54 and #57 both explicitly block
+host shell #62. The object/adapter issues carry their direct blockers; #65 is
+blocked by every integrated input; #63 blocks on #65; and #64 blocks on #63.
+Issue dependency sections match the native graph rather than serving as its
+only representation.
 
 ## Review Log
 
@@ -146,6 +148,12 @@ blocks host shell #62; the object/adapter issues carry their direct blockers;
   merges. Native edges and epic state are corrected; exact evidence is being
   expanded before round 2. Historical non-clean reports remain active until
   their dispositions are recorded and then move to scratch archive.
+- Gate 0 round 2: standing and targeted reviews both scored 4/5. Prior findings
+  were fixed. `G0-SG-004` removed the unnecessary #55 → #56 serialization and
+  required exact dependency prose for #62/#65. `PW-GATE0-001` remained open
+  because C/D used plain npm installs while only E used `--include dev`, and
+  the durable C–E command transcript was still summarized. Both corrections
+  are in progress before round 3.
 
 ## Verification Log
 

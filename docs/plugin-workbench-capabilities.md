@@ -29,14 +29,14 @@ The probes used the published `bb-app@0.36.0` package and generated declarations
 only. They did not resolve `@bb/plugin-sdk` from npm, use a workspace link,
 import `../bb`, or copy SDK/runtime/testing code.
 
-Build probes used fresh scaffold directories and isolated npm/Bun caches. The
-A/B probe ran the scaffold-documented plain install; the C–E probes explicitly
-included development dependencies:
+Build probes used fresh scaffold directories and isolated npm/Bun caches. Rows
+A–D used a plain install, while E explicitly included development dependencies
+after its scaffold step left no local TypeScript binary:
 
 ```sh
 bb plugin new <name> --app
-npm install --no-fund --no-audit                 # A/B
-npm install --include=dev --no-fund --no-audit   # C-E
+npm install --no-fund --no-audit                 # A-D
+npm install --include=dev --no-fund --no-audit   # E
 bb plugin types <path> --check
 tsc --project <path>/tsconfig.json --noEmit
 bb plugin build <path>
@@ -111,6 +111,45 @@ No repository command or deliverable refers to them.
 - Every native metadata file records SDK `0.4.1`, artifact format `1`, and bb
   `0.36.0`. Package manifests/locks contain no `@bb/plugin-sdk` package,
   workspace link, sibling path, or private SDK reference.
+
+The exact C–E command transcript used root
+`/tmp/bb-mate-gate0-cde.5sNLy6` and released binary
+`toolchain/node_modules/.bin/bb`. `<C>`, `<D>`, and `<E>` below are exactly
+`<root>/scaffold/bb-plugin-gate-c`, `<root>/scaffold/bb-plugin-gate-d`, and
+`<root>/scaffold/bb-plugin-gate-cde`:
+
+- Toolchain, from the repository cwd:
+  `npm install --prefix <root>/toolchain --ignore-scripts --no-audit --no-fund bb-app@0.36.0`.
+- C, from the repository cwd:
+  `npm install --prefix <root>/scaffold/bb-plugin-gate-c --no-audit --no-fund`.
+  From the root cwd: `bb plugin types <C> --check`,
+  `<C>/node_modules/.bin/tsc --project <C>/tsconfig.json --noEmit`, and
+  `bb plugin build <C>`.
+- D, from the repository cwd:
+  `npm install --prefix <root>/scaffold/bb-plugin-gate-d --no-audit --no-fund`.
+  From the root cwd: `bb plugin types <D> --check`,
+  `<D>/node_modules/.bin/tsc --project <D>/tsconfig.json --noEmit`, and
+  `bb plugin build <D>`.
+- E's first local-tsc invocation, from the root cwd, failed with `no such file
+or directory`. The passing setup used
+  `npm install --prefix <root>/scaffold/bb-plugin-gate-cde --include=dev --no-audit --no-fund`,
+  with canonical cwd `/private/tmp/bb-mate-gate0-cde.5sNLy6`. From the logical
+  root cwd, the probe then ran `bb plugin types <E> --check`,
+  `<E>/node_modules/.bin/tsc --project <E>/tsconfig.json --noEmit`, and
+  `bb plugin build <E>` successfully.
+- From each plugin cwd, the initial packaging argv was
+  `npm pack --dry-run --json --ignore-scripts`. After the temporary manifest
+  gained exactly `files: ["dist", "skills"]`, the final argv was
+  `npm pack --json --ignore-scripts --pack-destination <root>/packs`.
+
+The preserved npm debug logs record C/D's plain `--prefix` installs and E's
+`--include dev` install plus their working directories. All installs selected
+`HOME=<root>/home`, `XDG_CONFIG_HOME=<root>/xdg-config`,
+`XDG_DATA_HOME=<root>/xdg-data`, `XDG_CACHE_HOME=<root>/xdg-cache`, and
+`npm_config_cache=<root>/npm-cache`. The types/build commands used the root cwd,
+the same HOME/XDG selectors, and `BB_DATA_DIR=<root>/bb-data`. Pack commands
+used the plugin cwd and no explicit isolation selectors; they only inspected or
+created local archives and did not contact or mutate a bb server/profile.
 
 ### Row F
 
