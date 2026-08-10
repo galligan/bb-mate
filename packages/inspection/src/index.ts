@@ -6,6 +6,11 @@ export { runCapturedCommand } from "./captured-command.ts";
 export type { CapturedCommandOptions } from "./captured-command.ts";
 export { nativeCommandEnv } from "./native-env.ts";
 export {
+  consumeIssuedNativeInventory,
+  observeNativePluginInventory,
+  readNativeInventoryTransition,
+} from "./native-inventory.ts";
+export {
   formatInspection,
   inspectionOutcome,
   provenanceKind,
@@ -34,6 +39,18 @@ export type {
   SdkPublicationState,
   TrustReport,
 } from "./types.ts";
+export type {
+  NativeInventoryEntry,
+  NativeInventoryMalformedRow,
+  NativeInventoryObservation,
+  NativeInventoryPluginStatus,
+  NativeInventoryProvenance,
+  NativeInventoryRowIssue,
+  NativeInventorySourceKind,
+  NativeInventoryTopLevelStatus,
+  NativeInventoryTransitionFacts,
+  ObserveNativePluginInventoryOptions,
+} from "./native-inventory.ts";
 export type {
   DiscoveryDiagnostic,
   SourceCandidate,

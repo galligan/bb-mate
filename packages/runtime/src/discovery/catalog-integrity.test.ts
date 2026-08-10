@@ -80,6 +80,63 @@ afterEach(async () => {
 });
 
 describe("development-target private-source integrity", () => {
+  test("rejects a reconciliation event whose private host row is missing", async () => {
+    const temporaryRoot = await fs.realpath(os.tmpdir());
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-mate-private-host-integrity-"),
+    );
+    temporaryRoots.push(parent);
+    const pluginRoot = path.join(parent, "plugin");
+    await fs.mkdir(pluginRoot);
+    await fs.writeFile(
+      path.join(pluginRoot, "package.json"),
+      JSON.stringify({ name: "bb-plugin-notes", version: "1.2.3" }),
+    );
+    const dataRoot = path.join(parent, "data");
+    const id = ObjectIdSchema.parse("t".repeat(32));
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot,
+      id: () => id,
+      clock: () => 1_000,
+    });
+    await catalog.refresh({
+      principalId,
+      bbContextId,
+      candidate: await issueInspectionCandidate(
+        candidate(await fs.realpath(pluginRoot)),
+      ),
+    });
+    catalog.close();
+
+    const databasePath = path.join(dataRoot, "workbench.sqlite3");
+    const tamper = new Database(databasePath);
+    tamper
+      .query(
+        `INSERT INTO runtime_events (
+          event_type, object_id, object_kind, revision, occurred_at,
+          principal_id, bb_context_id, target_id, session_id
+        ) VALUES ('target.native-reconciled', ?, 'development-target', 1, 1000, ?, ?, ?, NULL)`,
+      )
+      .run(id, principalId, bbContextId, id);
+    tamper.close();
+
+    await expect(
+      openDevelopmentTargetCatalog({ dataRoot }),
+    ).rejects.toMatchObject({ code: "corrupt_data" });
+    const inspect = new Database(databasePath, { readonly: true });
+    try {
+      expect(
+        inspect
+          .query(
+            "SELECT COUNT(*) AS count FROM development_target_host_observations",
+          )
+          .get(),
+      ).toEqual({ count: 0 });
+    } finally {
+      inspect.close();
+    }
+  });
+
   test("rejects invalid private field encodings without repairing them", async () => {
     for (const [column, corruptValue] of [
       ["root_key", "configured-label"],

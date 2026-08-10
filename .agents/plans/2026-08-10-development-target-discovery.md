@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slice A implementation and review complete; merge pending
+Status: Slice 57A merged; slice 57B1 implementation and review complete; merge pending
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
@@ -15,18 +15,21 @@ discovery, and browser/model projections never receive a raw source path.
 
 ## Delivery shape
 
-Deliver #57 as two independently reviewable, merge-first slices:
+Deliver #57 as three independently reviewable, merge-first slices:
 
 1. **57A — secure persisted source catalog.** Admit bounded trusted roots,
    discover passive manifests, persist a self-bound target plus its private
    canonical root atomically, reopen it with a stable ID, and expose an
    allowlist-built redacted projection.
-2. **57B — native reconciliation and Workbench adapter.** Classify exact path,
-   other path, managed, builtin conflict, absent, duplicate, malformed, and
-   stale states from a bounded read-only inventory; adapt inspection and the
-   browser Workbench to server-issued target IDs.
+2. **57B1 — native reconciliation.** Normalize a bounded read-only released
+   bb 0.36 inventory, classify exact path, other path, managed, builtin
+   conflict, absent, duplicate, malformed, and stale states, and atomically
+   persist only the public result plus bounded private host evidence.
+3. **57B2 — Workbench adapter.** Adapt inspection and the browser Workbench to
+   server-issued target IDs, resolve roots only in server composition, and
+   remove the former external-symlink acceptance path.
 
-Issue #57 closes only after both slices merge and reconcile.
+Issue #57 closes only after all three slices merge and reconcile.
 
 ## Contract decisions
 
@@ -92,14 +95,15 @@ decision; #70 owns that gate.
 3. [x] Add atomic private/public catalog persistence, target-unbound dedicated
        authorization, stable reopen/refresh IDs, optimistic revisions, and
        redacted events.
-4. [ ] Review, verify, merge, and reconcile slice 57A with two 5/5 lanes.
-5. [ ] Add bounded native inventory and pure reconciliation fixtures for all
-       required states without lifecycle mutation or candidate seeding.
-6. [ ] Adapt one-authorized-target inspection and Workbench selection to
+4. [x] Review, verify, merge, and reconcile slice 57A with two 5/5 lanes.
+5. [x] Add a one-use bounded native-inventory capability, pure reconciliation
+       fixtures for every required state, and atomic private host observations
+       without lifecycle mutation, candidate seeding, or topology conclusions.
+6. [ ] Run aggregate gates and two 5/5 lanes, then merge and reconcile 57B1.
+7. [ ] Adapt one-authorized-target inspection and Workbench selection to
        opaque target IDs; reverse the prior external-symlink acceptance test.
-7. [ ] Record bounded private host observations without topology conclusions.
 8. [ ] Run visual/accessibility and aggregate gates, two 5/5 reviews, hosted
-       CI, merge #57, close the issue, and reconcile GitButler.
+       CI, merge 57B2, close #57, and reconcile GitButler.
 
 ## Verification
 
@@ -123,6 +127,6 @@ leave the dependent behavior unavailable and track the exact unblock.
 
 ## Done
 
-Both slices are merged to `main`; #57 and #21 are current; exact local and
-hosted gates pass; two independent review lanes score 5/5 with zero P0-P2;
+All three slices are merged to `main`; #57 and #21 are current; exact local and
+hosted gates pass; two independent review lanes score 5/5 with zero P0-P3;
 GitButler is clean/reconciled; and the goal retrospective records exact proof.

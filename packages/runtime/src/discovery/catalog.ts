@@ -17,6 +17,12 @@ import {
   type DevelopmentTargetEnvelope,
 } from "./development-target.ts";
 import type { PrivateDevelopmentTargetSource } from "./private-source.ts";
+import type { PrivateHostObservation } from "./private-host-observation.ts";
+import {
+  readPrivateHostObservation,
+  type TrustedNativeInventory,
+} from "./native-inventory.ts";
+import { reconcileNativeTarget } from "./native-reconciliation.ts";
 import {
   validateTrustedDevelopmentTargetCandidate,
   type TrustedDevelopmentTargetCandidate,
@@ -37,9 +43,21 @@ export interface RefreshDevelopmentTargetInput {
   readonly expectedRevision?: number;
 }
 
+export interface ReconcileDevelopmentTargetNativeInput {
+  readonly principalId: PrincipalId;
+  readonly bbContextId: BbContextId;
+  readonly id: ObjectId;
+  readonly candidate: TrustedDevelopmentTargetCandidate;
+  readonly inventory: TrustedNativeInventory;
+  readonly expectedRevision: number;
+}
+
 export interface DevelopmentTargetCatalog {
   refresh(
     input: RefreshDevelopmentTargetInput,
+  ): Promise<DevelopmentTargetEnvelope>;
+  reconcileNative(
+    input: ReconcileDevelopmentTargetNativeInput,
   ): Promise<DevelopmentTargetEnvelope>;
   list(input: {
     readonly principalId: PrincipalId;
@@ -55,6 +73,11 @@ export interface DevelopmentTargetCatalog {
     readonly bbContextId: BbContextId;
     readonly id: ObjectId;
   }): PrivateDevelopmentTargetSource | undefined;
+  resolvePrivateHostObservation(input: {
+    readonly principalId: PrincipalId;
+    readonly bbContextId: BbContextId;
+    readonly id: ObjectId;
+  }): PrivateHostObservation | undefined;
   close(): void;
 }
 
@@ -100,11 +123,26 @@ export async function openDevelopmentTargetCatalog(
           if (existing.revision !== expectedRevision) {
             throw new RuntimeError("conflict");
           }
+          const privateHost = storage.resolvePrivateHostObservation(
+            input.principalId,
+            input.bbContextId,
+            existing.id,
+          );
+          if (
+            privateHost &&
+            existing.payload.manifest.pluginId !==
+              candidate.target.manifest.pluginId
+          ) {
+            throw new RuntimeError("invalid_request");
+          }
           const envelope = parseDevelopmentTargetEnvelope({
             ...existing,
             revision: existing.revision + 1,
             updatedAt: clock(),
-            payload: candidate.target,
+            payload: {
+              ...candidate.target,
+              ...(privateHost ? { native: existing.payload.native } : {}),
+            },
           });
           storage.persistUpdate(envelope, candidate, expectedRevision);
           return envelope;
@@ -135,6 +173,78 @@ export async function openDevelopmentTargetCatalog(
         storageError(error);
       }
     },
+    async reconcileNative(input) {
+      try {
+        storage.assertIntegrity();
+        const existing = storage.get(
+          input.principalId,
+          input.bbContextId,
+          input.id,
+        );
+        if (!existing) throw new RuntimeError("not_found");
+        if (existing.revision !== input.expectedRevision) {
+          throw new RuntimeError("conflict");
+        }
+        const privateSource = storage.resolvePrivate(
+          input.principalId,
+          input.bbContextId,
+          input.id,
+        );
+        if (!privateSource) throw new RuntimeError("corrupt_data");
+
+        const candidate = await validateTrustedDevelopmentTargetCandidate(
+          input.candidate,
+        );
+        if (
+          candidate.canonicalRoot !== privateSource.canonicalRoot ||
+          candidate.target.manifest.pluginId !==
+            existing.payload.manifest.pluginId ||
+          candidate.target.manifest.packageName !==
+            existing.payload.manifest.packageName ||
+          candidate.target.manifest.version !==
+            existing.payload.manifest.version
+        ) {
+          throw new RuntimeError("invalid_request");
+        }
+
+        const now = clock();
+        const native = reconcileNativeTarget({
+          inventory: input.inventory,
+          targetPluginId: existing.payload.manifest.pluginId,
+          canonicalSourceRoot: privateSource.canonicalRoot,
+          now,
+        });
+        const host = readPrivateHostObservation(input.inventory);
+        if (host.observedAt > now) {
+          throw new RuntimeError("invalid_request");
+        }
+        if (host.observedAt !== native.observedAt) {
+          throw new RuntimeError("invalid_request");
+        }
+        const existingHost = storage.resolvePrivateHostObservation(
+          input.principalId,
+          input.bbContextId,
+          input.id,
+        );
+        if (existingHost && host.observedAt <= existingHost.observedAt) {
+          throw new RuntimeError("invalid_request");
+        }
+        const envelope = parseDevelopmentTargetEnvelope({
+          ...existing,
+          revision: existing.revision + 1,
+          updatedAt: now,
+          payload: { ...existing.payload, native },
+        });
+        storage.persistNativeReconciliation(
+          envelope,
+          host,
+          input.expectedRevision,
+        );
+        return envelope;
+      } catch (error) {
+        storageError(error);
+      }
+    },
     list(input) {
       try {
         storage.assertIntegrity();
@@ -155,6 +265,18 @@ export async function openDevelopmentTargetCatalog(
       try {
         storage.assertIntegrity();
         return storage.resolvePrivate(
+          input.principalId,
+          input.bbContextId,
+          input.id,
+        );
+      } catch (error) {
+        storageError(error);
+      }
+    },
+    resolvePrivateHostObservation(input) {
+      try {
+        storage.assertIntegrity();
+        return storage.resolvePrivateHostObservation(
           input.principalId,
           input.bbContextId,
           input.id,

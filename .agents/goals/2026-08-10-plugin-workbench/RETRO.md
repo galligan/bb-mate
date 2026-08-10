@@ -9,8 +9,11 @@ The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
 and reconciled. Source-first development-target discovery #57 is the active
-milestone. Slice 57A implementation and local verification are complete on
-draft PR #72; exact-head review, hosted CI, merge, and reconciliation remain.
+milestone. Slice 57A is merged and reconciled. Slice 57B1 native inventory,
+reconciliation, and private-host persistence have passed local verification,
+hosted CI, and two 5/5 exact-head review lanes on draft PR #74. Final
+docs-only exact-head review, ready/merge, and reconciliation remain before the
+57B2 Workbench adapter begins.
 
 ## Readiness
 
@@ -19,14 +22,18 @@ merged. Gate 0 admits all released host-plugin rows to downstream execution.
 Standalone #69 passed green local, hosted, and two-lane exact-head review
 evidence and is reconciled. The transport-neutral runtime foundation #55 has
 passed focused/aggregate verification, two independent exact-head reviews, and
-hosted CI, then merged and reconciled. Browser bootstrap/topology is isolated
-in #70.
+hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
+and reconciled. Slice 57B1 has passed its local implementation gate; it is not
+done until the final docs-only exact head is re-pinned clean, then ready/merge
+and GitButler reconciliation pass. Browser bootstrap/topology is isolated in
+#70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/runtime/development-target-discovery`; issue #57.
-- Current merge base: `ac419ae1c87f7c5186b848bc937591cf45f57560`.
+- Active branch: `feat/runtime/native-target-reconciliation`; issue #57; draft
+  PR #74.
+- Current merge base: `52a3274f9981f94a37d296e3f0bfa46bafd7b867`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -45,10 +52,11 @@ in #70.
   `b4327b73ba8d8e1acd6c43572df417a126d71922` through GitHub async request
   `690f515a-0651-47ef-aa7a-852e9efe02cd` to merge commit
   `ac419ae1c87f7c5186b848bc937591cf45f57560`; issue #55 is closed.
-- GitButler reconciled to clean `main`; a fresh #57 branch was then applied.
-- Source-catalog PR #72 was opened from merge base
-  `ac419ae1c87f7c5186b848bc937591cf45f57560`; its implementation head is not
-  yet frozen because exact-head review and merge remain pending.
+- Source-catalog PR #72 merged from exact reviewed head
+  `cb8c3f362390e1985db671b4a8ed2b0c1f7fc1d7` through GitHub async request
+  `f0a90de8-4a3c-425d-92cb-313ff0b6f70d` to merge commit
+  `52a3274f9981f94a37d296e3f0bfa46bafd7b867`. GitButler removed the integrated
+  branch and a fresh 57B1 branch/PR #74 was opened from that base.
 
 ## Preparation findings
 
@@ -75,6 +83,13 @@ in #70.
 
 ## Goal Amendments
 
+- Source discovery #57 is delivered as three merge-first slices rather than a
+  single cross-layer change: 57A owns the secure persisted source catalog,
+  57B1 owns bounded native inventory and atomic reconciliation, and 57B2 owns
+  the opaque-target Workbench adapter. This preserves the merged completion
+  horizon and verification gates while making the storage/native and browser
+  boundaries independently reviewable. Issue #57 remains open until all three
+  slices merge.
 - Packet review clarified Gate 0 from one frontend verdict to a per-capability
   matrix. This preserves rather than narrows the original maximum-independent-
   work objective.
@@ -427,12 +442,31 @@ and all builds.
   `/tmp/bb-mate-plugin-workbench-reviews-20260810/source-catalog/` after their
   findings and dispositions were preserved here. Prompt validation and the
   canonical goal-loop doctor then passed with 17 active review reports.
+- Source-catalog final docs review found one P2 wording mismatch at
+  `7e2cec6c928a00c2ec655c0c172ad37855af440f`: the RETRO said the docs-only
+  head remained even though it was already current. Exact head
+  `cb8c3f362390e1985db671b4a8ed2b0c1f7fc1d7` fixed that statement; standing
+  and targeted round 6 each reached 5/5 with zero P0-P3, hosted checks were
+  terminal green, and the goal doctor passed after the superseded scratch
+  report was archived.
+- PR #72 was made ready only after the exact final head was re-pinned as clean,
+  mergeable, fully green, thread-free, and GitButler-clean. GitHub async request
+  `f0a90de8-4a3c-425d-92cb-313ff0b6f70d` merged it as
+  `52a3274f9981f94a37d296e3f0bfa46bafd7b867`. `but pull` removed the integrated
+  57A branch and advanced the workspace base without uncommitted changes. #57
+  remains open for native reconciliation and the browser adapter.
 
 ## Verification Log
 
 - `check-goal-prompt --no-placeholders`: passed at 3,216/4,000 characters.
 - `goal-loop-doctor`: passed with every active review report clean.
 - `bun run format:check`: passed for the reviewed packet and design record.
+- Slice 57B1 local implementation gate passed `bun run format:check`, `bun run
+check`, `bun run test`, `bun run build`, and `git diff --check`. The aggregate
+  run passed 470 tests: inspection 136, runtime 169, CLI 42, Workbench 53,
+  Linear plugin 21, and scripts 49. The package clean room passed with 41
+  files, 13 stories, and SHA-256
+  `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -440,9 +474,45 @@ test && bun run build && bun run compatibility:latest` passed; package clean
 
 ## Evidence ledger
 
-Append milestone entries with date/time, exact head/base, commands, results,
-review reports/findings/dispositions, PR/CI/thread state, issue changes, and
-merge/reconciliation proof.
+- 57B1 normalizes only released bb 0.36 `plugin list --json` evidence through a
+  fixed no-shell command, 1 MiB output bound, 256-row bound, and UTF-8 field
+  bounds. It canonicalizes only direct path rows; npm/Git/builtin/catalog roots
+  are never read. One-use inspection transitions reject reuse, and runtime
+  capabilities reject clones, forged facts, and failed transitions.
+- The pure reconciler covers malformed, duplicate, future/stale, exact path,
+  other path, npm/Git managed, builtin/catalog conflict, and absent precedence.
+  A safely canonicalized malformed root hint protects a matching target while
+  unrelated malformed rows do not hide a safe result.
+- The catalog service requires an unbound branded `targets:write` principal,
+  scoped target ID, freshly revalidated same-root source capability, trusted
+  inventory capability, and optimistic revision. Public native state, private
+  host evidence, and a redacted `target.native-reconciled` event commit in one
+  transaction; failure rolls all three back.
+- Reopen integrity attests strict schema, event/binding/revision consistency,
+  and exact equality between private `observedAt` and the canonical public
+  native timestamp. Missing, corrupt, or valid-looking divergent private rows
+  fail closed without repair.
+- Coordinator integration found that a future-dated observation could be
+  classified as malformed and committed even though the next integrity check
+  correctly rejected its timestamp. The catalog now rejects that capability
+  before mutation; focused persistence proof reopens the unchanged target.
+- Round-one standing and targeted review independently found that an older or
+  equal issued inventory could overwrite newer accepted host evidence. Native
+  persistence now requires a strictly newer per-target observation; replay
+  tests prove the public target, private host row, event ledger, and reopened
+  database remain unchanged.
+- Standing and targeted round two each awarded exact head
+  `990ea0be027347192f37f39527ef7e81d8b5e9c5` 5/5 with zero P0-P3 findings.
+  Hosted verify, visual, standalone-arm64, and GitGuardian checks were terminal
+  green; the PR was mergeable, thread-free, fully pushed, and GitButler-clean.
+  Superseded non-clean round-one scratch reports were archived only after their
+  findings and fixed dispositions were recorded here; the packet doctor then
+  passed with 21 active reports.
+- The coordinator walking skeleton proves passive source discovery to stable
+  catalog target to released-shape managed inventory to reconciliation and
+  reopen. The inventory invokes only `bb plugin list --json`, creates no
+  additional target, exposes no private root/hostname publicly, and executes
+  neither package scripts nor the target entrypoint.
 
 ## Prompt / Goal Alignment
 
@@ -460,9 +530,9 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0, standalone-runtime #56, and runtime foundation #55
-are merged, closed, and reconciled. Source-catalog slice 57A implementation
-and code review are complete on draft PR #72; this docs-only readiness head
-still needs its narrow exact-head review, ready transition, merge, and
-reconciliation before 57B starts. All release/upstream/Connect/normal-profile
-stop boundaries remain intact.
+Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
+source-catalog slice 57A are merged and reconciled. Slice 57B1 implementation
+and review are complete on draft PR #74; final docs-only exact-head review,
+ready/merge, and reconciliation remain. Issue #57 stays open for 57B1 and the
+later 57B2 opaque-target Workbench adapter. All
+release/upstream/Connect/normal-profile stop boundaries remain intact.
