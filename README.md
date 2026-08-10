@@ -168,6 +168,7 @@ Start with:
 - [Architecture and upstream boundary](docs/architecture.md)
 - [Trust and operation model](docs/trust-model.md)
 - [Compatibility target](docs/compatibility-target.md)
+- [Plugin Workbench released capabilities](docs/plugin-workbench-capabilities.md)
 - [Contributing](CONTRIBUTING.md)
 - [Support](SUPPORT.md)
 - [Security policy](SECURITY.md)

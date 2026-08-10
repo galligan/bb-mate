@@ -5,24 +5,31 @@ Status: Active
 
 ## Summary
 
-The execution goal is active. Compatibility baseline #52 is merged; spec/goal
-PR #53 is in its exact-head review and hosted-CI gate.
+The execution goal is active. Compatibility baseline #52 and spec/goal PR #53
+are merged. Released-capability Gate 0 implementation and review are complete
+with all six rows passing and both independent reviewers at 5/5; PR #68 is at
+its final ready/merge gate.
 
 ## Readiness
 
-Active. Prompt/doctor/formatting and packet reviews pass; #52 is merged. PR #53
-must clear exact-head 5/5 review and hosted gates before Gate 0 begins.
+Active. Prompt/doctor/formatting and packet reviews pass; #52 and #53 are
+merged. Gate 0 admits all released host-plugin rows to downstream execution.
+Its exact-head review and hosted CI gates pass; only the ready/merge transition
+and reconciliation remain.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Design branch: `docs/plugin-workbench/spec`; PR #53.
-- Current reviewed head before final fixes: `0e6a4ab93919a63273e2c508f3cd0efa3af84aea`.
-- Merge base: `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`.
+- Gate branch: `test/plugin-workbench/released-capability-gate`; issue #54.
+- Current merge base: `59479253b2c0f6b465d5da870958267f846f42de`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
-- GitButler is clean with only the spec branch active.
+- Spec PR #53 merged from exact reviewed head
+  `e48e0306f2eb01c167aca19ce349c5b54bfcfc80` through GitHub async request
+  `3227e20c-b82b-4b20-9138-e7b17bd95d77`. Merge commit:
+  `59479253b2c0f6b465d5da870958267f846f42de`.
+- GitButler is clean with only the Gate 0 branch active.
 
 ## Preparation findings
 
@@ -69,6 +76,52 @@ must clear exact-head 5/5 review and hosted gates before Gate 0 begins.
   `0e8c1b42-73b9-4d40-9980-242ab10cf1ce`. Merge commit:
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`. `but pull` removed the integrated
   compatibility branch and rebased the clean spec branch. Issue #51 closed.
+- 2026-08-10: pinned spec PR #53 at
+  `e48e0306f2eb01c167aca19ce349c5b54bfcfc80` after exact-head standing and
+  targeted reviews both reached 5/5 with hosted checks green. Merged through
+  GitHub async request `3227e20c-b82b-4b20-9138-e7b17bd95d77`; merge commit
+  `59479253b2c0f6b465d5da870958267f846f42de`. `but pull` reconciled to a clean
+  main workspace.
+- 2026-08-10: opened Gate 0 #54 and foundation issues #55–#57 beneath #21.
+  Disposable released-artifact probes classified rows A–F independently; all
+  six passed against `bb-app@0.36.0` and generated SDK declarations `0.4.1`.
+
+## Gate 0 released-capability matrix
+
+| Row                   | Result | Admission evidence                                                                                                           |
+| --------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| A frontend shell      | Pass   | `--app` scaffold, generated declarations, `navPanel`, type refresh, and stamped native frontend build                        |
+| B backend supervision | Pass   | `background.service` and `onDispose` compile and native backend build                                                        |
+| C native tools        | Pass   | Strict bounded Zod tool compiles, builds, and packs                                                                          |
+| D skills              | Pass   | Manifest skill root and context-gated `bb.agents.configure` compile, build, and pack                                         |
+| E thread/composer     | Pass   | Mention provider, thread/message actions, and composer quote/mention compile and build                                       |
+| F lifecycle/live      | Pass   | Isolated path install, source, reload, disable, enable, reload, remove, shutdown, and no normal-profile plugin contamination |
+
+The durable method and caveats are in
+[`docs/plugin-workbench-capabilities.md`](../../../docs/plugin-workbench-capabilities.md).
+The matrix admits the real plugin shell, supervisor, native tools/skill,
+released thread references, and isolated lifecycle into downstream scope.
+
+Gate 0 also fixed four implementation requirements: explicit scaffold dev-
+dependency installation, a package `files` allowlist that includes `dist/`,
+Node for the published isolated bb server entrypoint, and honest Harness
+unavailability while `@bb/plugin-sdk@0.4.1` remains npm E404. It does not admit
+automatic host-browser control, arbitrary live capture, generic thread
+attachments, or remote loopback tunneling.
+
+The executable graph is now #55–#67 beneath epic #21. The merge-first order is
+domain/executable foundation (#55–#56), source discovery and host shell
+(#57/#62), sessions/captures/thread references (#61/#59/#58), native tools/MCP
+and education (#60/#67/#66), then integrated trial/review/handoff
+(#65/#63/#64).
+
+GitHub's native dependency graph now mirrors that order without serializing
+independent foundation work. Domain #55 and executable #56 can dispatch in
+parallel; discovery #57 blocks on #55; Gate #54 and #57 both explicitly block
+host shell #62. The object/adapter issues carry their direct blockers; #65 is
+blocked by every integrated input; #63 blocks on #65; and #64 blocks on #63.
+Issue dependency sections match the native graph rather than serving as its
+only representation.
 
 ## Review Log
 
@@ -87,7 +140,32 @@ must clear exact-head 5/5 review and hosted gates before Gate 0 begins.
   `tmp/reviews/targeted-packet/round-3.json`. Superseded rounds 1–2 are scratch-
   archived at `/tmp/bb-mate-plugin-workbench-reviews-20260810/`.
 - PR #53 exact-head review round 4 found stale pre-activation/current-state
-  language in the plan and `RETRO.md`; fixes are in progress before re-review.
+  language in the plan and `RETRO.md`. Round 5 standing and targeted reviews
+  verified the correction at 5/5 with zero findings before merge.
+- Gate 0 round 1: standing and targeted reviews both scored 3/5 and requested
+  changes. Durable IDs `G0-SG-001`/`PW-GATE0-001` require exact C–F evidence
+  outside ephemeral summaries; `G0-SG-002`/`PW-GATE0-003`
+  require native GitHub dependency edges; and
+  `G0-SG-003`/`PW-GATE0-002` require #21 to keep #54 open until PR #68
+  merges. Native edges and epic state are corrected; exact evidence is being
+  expanded before round 2. Historical non-clean reports remain active until
+  their dispositions are recorded and then move to scratch archive.
+- Gate 0 round 2: standing and targeted reviews both scored 4/5. Prior findings
+  were fixed. `G0-SG-004` removed the unnecessary #55 → #56 serialization and
+  required exact dependency prose for #62/#65. `PW-GATE0-001` remained open
+  because C/D used plain npm installs while only E used `--include dev`, and
+  the durable C–E command transcript was still summarized. Both corrections
+  were completed before round 3.
+- Gate 0 round 3: standing and targeted reviews both reached 5/5 at exact head
+  `ae542f7c6c9ae94ed8d2a15a32170b182b8a7576` with zero findings. They
+  independently corroborated C–F evidence, exact GitHub dependency/prose state,
+  issue/PR status, full local and hosted gates, clean mergeability, no review
+  threads, and clean GitButler state.
+- Gate 0 round 4: a bookkeeping-only delta correctly checked the review step but
+  prematurely labeled the whole milestone complete before merge. Standing
+  `G0-SG-005` and targeted `PW-GATE0-004` both scored the head 4/5 and required
+  “implementation and review complete; merge pending.” The status is corrected;
+  completion remains reserved for post-merge reconciliation and #54 closure.
 
 ## Verification Log
 
@@ -112,10 +190,15 @@ forbidden actions, review model, verification, done/not-done, and persistence.
 
 ## Forbidden-action audit
 
-No npm publication/tag, Git tag/release, visibility change, announcement,
-upstream edit/submission, Connect exposure, or normal-profile mutation during
-preparation.
+Through Gate 0 there has been no npm publication/tag, Git tag/release,
+visibility change, announcement, upstream edit/submission, Connect pairing or
+share, automatic bunx execution, normal-profile plugin mutation, or private SDK
+fallback. The only lifecycle mutations occurred in an `env -i` disposable bb
+0.36 profile with explicit temporary HOME/XDG/cache/data roots and loopback
+ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active; next gate is PR #53 merge, then Gate 0.
+Execution active; next gate is PR #68 ready transition, exact-head pin, async
+merge, and reconciliation, then the domain and standalone-runtime foundation
+lanes.
