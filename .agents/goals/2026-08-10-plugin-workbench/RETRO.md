@@ -218,6 +218,13 @@ visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
   restores the old directory if promotion fails, and removes only a validated
   backup. Five ownership tests now include incomplete-stage and injected
   partway-promotion failures that prove the prior pair stays byte-identical.
+- Standalone round 3: standing and targeted both scored 4/5. Their shared P2
+  (`ST-SA-003` / continued `PW-STANDALONE-001`) reproduced a symlinked parent
+  beneath the lexical temporary root redirecting output into a separate
+  physical tree. The builder now walks every existing relative component and
+  rejects symlinks before creating the leaf, then verifies the real output root
+  remains beneath the real allowed base. A focused no-write test uses an
+  outside task-owned directory and proves the symlink target remains empty.
 
 ## Verification Log
 

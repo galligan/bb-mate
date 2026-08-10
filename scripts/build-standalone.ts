@@ -27,6 +27,39 @@ function containsPath(parent: string, candidate: string): boolean {
   return candidate === parent || candidate.startsWith(`${parent}${path.sep}`);
 }
 
+async function assertPhysicalContainment(
+  baseRoot: string,
+  outputRoot: string,
+): Promise<void> {
+  const relative = path.relative(baseRoot, outputRoot);
+  let current = baseRoot;
+  for (const component of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, component);
+    const stat = await fs.lstat(current).catch((error: unknown) => {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        return null;
+      }
+      throw error;
+    });
+    if (!stat) break;
+    if (stat.isSymbolicLink()) {
+      throw new Error(
+        `Standalone output path contains a symlink component: ${current}`,
+      );
+    }
+    if (!stat.isDirectory() && current !== outputRoot) {
+      throw new Error(
+        `Standalone output path contains a non-directory component: ${current}`,
+      );
+    }
+  }
+}
+
 export async function prepareStandaloneOutputRoot(
   root: string,
 ): Promise<string> {
@@ -43,6 +76,10 @@ export async function prepareStandaloneOutputRoot(
   ) {
     throw new Error(`Refusing unsafe standalone output root: ${outputRoot}`);
   }
+
+  const allowedBase =
+    outputRoot === defaultOutputRoot ? repositoryRoot : temporaryRoot;
+  await assertPhysicalContainment(allowedBase, outputRoot);
 
   const existing = await fs.lstat(outputRoot).catch((error: unknown) => {
     if (
@@ -61,6 +98,16 @@ export async function prepareStandaloneOutputRoot(
     );
   }
   if (!existing) await fs.mkdir(outputRoot, { recursive: true });
+
+  const [physicalBase, physicalOutput] = await Promise.all([
+    fs.realpath(allowedBase),
+    fs.realpath(outputRoot),
+  ]);
+  if (!containsPath(physicalBase, physicalOutput)) {
+    throw new Error(
+      `Standalone output root escapes its physical allowed base: ${outputRoot}`,
+    );
+  }
 
   const entries = await fs.readdir(outputRoot, { withFileTypes: true });
   for (const entry of entries) {

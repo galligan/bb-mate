@@ -19,6 +19,14 @@ async function temporaryRoot(): Promise<string> {
   return root;
 }
 
+async function temporaryHomeRoot(): Promise<string> {
+  const root = await fs.mkdtemp(
+    path.join(os.homedir(), ".bb-mate-standalone-outside-"),
+  );
+  roots.push(root);
+  return root;
+}
+
 afterEach(async () => {
   await Promise.all(
     roots
@@ -93,8 +101,22 @@ describe("standalone output ownership", () => {
     const link = path.join(root, "linked-output");
     await fs.symlink(destination, link);
     await expect(prepareStandaloneOutputRoot(link)).rejects.toThrow(
-      "real directory",
+      "symlink component",
     );
+  });
+
+  test("rejects a symlinked ancestor without writing through it", async () => {
+    const holder = await temporaryRoot();
+    const outside = await temporaryHomeRoot();
+    const linkedParent = path.join(holder, "parent-link");
+    const escapedOutput = path.join(linkedParent, "output");
+    await fs.symlink(outside, linkedParent);
+
+    await expect(prepareStandaloneOutputRoot(escapedOutput)).rejects.toThrow(
+      "symlink component",
+    );
+    await expect(fs.access(path.join(outside, "output"))).rejects.toThrow();
+    expect(await fs.readdir(outside)).toEqual([]);
   });
 
   test("rejects incomplete staged output without touching the previous artifact", async () => {
