@@ -7,8 +7,9 @@ Status: Active
 
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
-The narrowed runtime domain/security foundation #55 is implemented and locally
-green; its exact-head review and merge gate is the active milestone.
+The narrowed runtime domain/security foundation #55 is merged through PR #71
+and reconciled. Source-first development-target discovery #57 is the active
+milestone.
 
 ## Readiness
 
@@ -16,14 +17,15 @@ Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
 Standalone #69 passed green local, hosted, and two-lane exact-head review
 evidence and is reconciled. The transport-neutral runtime foundation #55 has
-passed focused and aggregate local verification; browser bootstrap/topology is
-isolated in #70.
+passed focused/aggregate verification, two independent exact-head reviews, and
+hosted CI, then merged and reconciled. Browser bootstrap/topology is isolated
+in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Runtime branch: `feat/runtime/domain-security-foundation`; issue #55.
-- Current merge base: `3d37aaece878fd099854d4190df78d9ce45cb98a`.
+- Active branch: `feat/runtime/development-target-discovery`; issue #57.
+- Current merge base: `ac419ae1c87f7c5186b848bc937591cf45f57560`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -38,7 +40,11 @@ isolated in #70.
   `d4dff55faa80231519daa2217d920cee73eb8a48` through GitHub async request
   `ed06e024-dbcc-4e9a-86e2-8560b05166a6` to merge commit
   `3d37aaece878fd099854d4190df78d9ce45cb98a`; issue #56 is closed.
-- GitButler reconciled to clean `main` with no active lanes.
+- Runtime PR #71 merged from exact reviewed head
+  `b4327b73ba8d8e1acd6c43572df417a126d71922` through GitHub async request
+  `690f515a-0651-47ef-aa7a-852e9efe02cd` to merge commit
+  `ac419ae1c87f7c5186b848bc937591cf45f57560`; issue #55 is closed.
+- GitButler reconciled to clean `main`; a fresh #57 branch was then applied.
 
 ## Preparation findings
 
@@ -291,7 +297,7 @@ and all builds.
   review rounds found and fixed ancestor-symlink admission, incomplete live-
   schema attestation, raw cursor errors, migration attestation ordering, and
   WAL/sidecar admission; round 3 reached 5/5 with zero P0-P3 and 40 focused
-  tests. Full exact-head standing and targeted PR review remains the merge gate.
+  tests. Full exact-head standing and targeted PR review then governed merge.
 - Runtime full review round 1: standing scored 3/5 and targeted 2/5 at exact
   head `f5c04a8ba2784143e023d44f603945e3f6111d6c`. Their shared P1
   (`RT-SG-001` / `PW-RUNTIME-001`) reproduced privilege escalation by spreading
@@ -319,6 +325,13 @@ and all builds.
   aggregate tests even though the exact-head run contains 304. The count is
   corrected for the final docs-only exact-head recheck; no runtime behavior or
   prior verification result changed.
+- Runtime full review round 4: standing and targeted both reached 5/5 with zero
+  P0-P3 at docs-only head `b4327b73ba8d8e1acd6c43572df417a126d71922`.
+  Hosted verify, visual, standalone-arm64, and security checks were green; the
+  PR was cleanly mergeable with no review threads. PR #71 merged through async
+  request `690f515a-0651-47ef-aa7a-852e9efe02cd` to
+  `ac419ae1c87f7c5186b848bc937591cf45f57560`; #55 closed and GitButler
+  reconciled without dirt or a residual lane.
 
 ## Verification Log
 
@@ -352,8 +365,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0 and standalone-runtime #56 are merged, closed, and
-reconciled on clean `main`. Runtime foundation #55 is implemented and locally
-green on a separate merge-first branch; exact-head review, hosted CI, merge,
-and reconciliation remain. All release/upstream/Connect/normal-profile stop
-boundaries remain intact.
+Execution active. Gate 0, standalone-runtime #56, and runtime foundation #55
+are merged, closed, and reconciled on clean `main`. Source-first discovery #57
+is active on a fresh merge-first branch. All release/upstream/Connect/normal-
+profile stop boundaries remain intact.
