@@ -5,23 +5,23 @@ Status: Active
 
 ## Summary
 
-The execution goal is active. Compatibility baseline #52 and spec/goal PR #53
-are merged. Released-capability Gate 0 implementation and review are complete
-with all six rows passing and both independent reviewers at 5/5; PR #68 is at
-its final ready/merge gate.
+The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
+and released-capability Gate 0 PR #68 are merged. Standalone-runtime #56 is
+implemented and independently reviewed at 5/5; PR #69 is at its final
+ready/merge gate.
 
 ## Readiness
 
-Active. Prompt/doctor/formatting and packet reviews pass; #52 and #53 are
+Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
-Its exact-head review and hosted CI gates pass; only the ready/merge transition
-and reconciliation remain.
+Standalone #69 has green local, hosted, and two-lane exact-head review evidence;
+only its ready/merge transition and reconciliation remain.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Gate branch: `test/plugin-workbench/released-capability-gate`; issue #54.
-- Current merge base: `59479253b2c0f6b465d5da870958267f846f42de`.
+- Standalone branch: `feat/cli/standalone-executable`; issue #56; PR #69.
+- Current merge base: `d40aef0b7b04e6f76982b7203927905fd380c5a8`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -29,7 +29,10 @@ and reconciliation remain.
   `e48e0306f2eb01c167aca19ce349c5b54bfcfc80` through GitHub async request
   `3227e20c-b82b-4b20-9138-e7b17bd95d77`. Merge commit:
   `59479253b2c0f6b465d5da870958267f846f42de`.
-- GitButler is clean with only the Gate 0 branch active.
+- Gate 0 PR #68 merged from exact reviewed head
+  `87066b4f62f82283fec8f25a912bd48a682f72cb` to merge commit
+  `d40aef0b7b04e6f76982b7203927905fd380c5a8`; issue #54 is closed.
+- GitButler is clean with only the standalone branch active.
 
 ## Preparation findings
 
@@ -123,6 +126,32 @@ blocked by every integrated input; #63 blocks on #65; and #64 blocks on #63.
 Issue dependency sections match the native graph rather than serving as its
 only representation.
 
+## Standalone executable #56
+
+Implementation head `02be708155cf3e7f66165cfe092bedbc361ade5e` builds a
+separate unsigned `bun-darwin-arm64` executable without changing the published
+npm/shebang package. A generated, sorted static-import entry embeds the exact
+Ladle bytes behind stable routes; source/package and standalone entrypoint modes
+are explicit, and standalone has no Bun interpreter fallback.
+
+The pre-review clean-room artifact is mode `0755`, 64,420,322 bytes, SHA-256
+`479df4999ef6e6d340134a6dae61e85b11bc1a98f0c085754b152485ce7b0ec3`,
+with 35 hashed assets and 13 stories. Two complete pinned Bun 1.3.14 builds were
+byte-identical. The moved executable passed with empty `PATH`, isolated
+HOME/TMP/XDG state, cleared Bun override variables, ambient `.env` and
+`bunfig.toml`, and the checkout lab renamed out of reach. It passed help,
+passive inspection without target-plugin execution, GET/HEAD, every asset hash,
+story metadata, SIGTERM, and post-exit listener unreachability. Printable
+payload inspection and the clean-room assertion found no absolute repository
+path.
+
+The legacy package lane remained separate and green: 41 files, 13 stories, and
+clean-room SHA-256
+`77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`.
+Focused tests, format, typecheck, compatibility, aggregate tests/build, and 14
+visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
+`macos-15` arm64 job, Linux verification, visual, and security checks are green.
+
 ## Review Log
 
 - Runtime/packaging, public bb seam, security/MCP, and goal-scope audits
@@ -166,11 +195,49 @@ only representation.
   `G0-SG-005` and targeted `PW-GATE0-004` both scored the head 4/5 and required
   “implementation and review complete; merge pending.” The status is corrected;
   completion remains reserved for post-merge reconciliation and #54 closure.
+- Gate 0 round 5: standing and targeted exact-head reviews both reached 5/5 at
+  `87066b4f62f82283fec8f25a912bd48a682f72cb` with zero findings. Hosted
+  verify, visual, and security checks were green, and no review threads remained.
+- PR #68 left draft at that exact head, merged through GitHub's SHA-pinned async
+  merge endpoint as `d40aef0b7b04e6f76982b7203927905fd380c5a8`, closed #54,
+  and reconciled to a clean, lane-free GitButler workspace. Epic #21 now links
+  the capability matrix on `main` and marks Gate 0 complete.
+- Standalone round 1: standing scored 3/5 and targeted scored 2/5. Their shared
+  P1 (`ST-SA-001` / `PW-STANDALONE-001`) found that the exported builder could
+  recursively delete a caller-selected broad output root. Recursive root
+  deletion is removed: the builder now rejects repository ancestors, symlink
+  roots, and unexpected entries, validates the whole directory first, and
+  unlinks only `bb-mate` and `manifest.json`; three focused ownership tests
+  cover replacement, no-delete rejection, broad paths, and symlinks. Shared P2
+  `ST-SA-002` / `PW-STANDALONE-002` corrected the plan's package filter to
+  `bb-mate`. `PW-STANDALONE-003` corrected hosted CI state from pending to
+  green. All findings are fixed for round 2.
+- Standalone round 2: standing reached 5/5; targeted reached 4/5 and kept
+  `PW-STANDALONE-001` open because allowlisted replacement still removed the
+  prior valid pair before a new build succeeded, and the system temp root was
+  rejected only incidentally. The builder now structurally permits only the
+  canonical artifact root or a leaf beneath `os.tmpdir()`, builds both files in
+  a sibling staging directory, validates the exact pair before promotion,
+  restores the old directory if promotion fails, and removes only a validated
+  backup. Five ownership tests now include incomplete-stage and injected
+  partway-promotion failures that prove the prior pair stays byte-identical.
+- Standalone round 3: standing and targeted both scored 4/5. Their shared P2
+  (`ST-SA-003` / continued `PW-STANDALONE-001`) reproduced a symlinked parent
+  beneath the lexical temporary root redirecting output into a separate
+  physical tree. The builder now walks every existing relative component and
+  rejects symlinks before creating the leaf, then verifies the real output root
+  remains beneath the real allowed base. A focused no-write test uses an
+  outside task-owned directory and proves the symlink target remains empty.
+- Standalone round 4: standing and targeted exact-head reviews both reached
+  5/5 at `c6d0e93109f492cad754f270adef5ec6a39935c2` with zero findings. The
+  original symlink-parent attack now rejects without touching its target;
+  transactional rollback, moved empty-PATH execution, legacy package,
+  aggregate, visual, hosted CI, thread, tracker, and clean-workspace gates pass.
 
 ## Verification Log
 
 - `check-goal-prompt --no-placeholders`: passed at 3,216/4,000 characters.
-- `goal-loop-doctor`: passed with both active round-three reports clean.
+- `goal-loop-doctor`: passed with every active review report clean.
 - `bun run format:check`: passed for the reviewed packet and design record.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
@@ -199,6 +266,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active; next gate is PR #68 ready transition, exact-head pin, async
-merge, and reconciliation, then the domain and standalone-runtime foundation
-lanes.
+Execution active. Gate 0 is merged and reconciled. Standalone-runtime #56 has
+completed implementation and two independent review lanes; PR #69 is ready for
+its final merge transition. Domain #55 remains independent and prepared for a
+separate branch.

@@ -7,6 +7,7 @@ import {
   isLoopbackHost,
   runSurfaceLab,
 } from "./surface-lab-server.ts";
+import { createInMemoryLabAssets } from "./lab-assets.ts";
 
 const roots: string[] = [];
 
@@ -95,6 +96,24 @@ describe("packaged surface lab server", () => {
     );
     expect(await metadata.text()).toBe("");
 
+    expect(
+      (await handle(new Request("http://lab.local/assets/app.js"))).headers.get(
+        "content-type",
+      ),
+    ).toBe("text/javascript; charset=utf-8");
+  });
+
+  test("uses the same handler for embedded or in-memory assets", async () => {
+    const handle = createSurfaceLabHandler(
+      createInMemoryLabAssets({
+        "/index.html": "<h1>Standalone lab</h1>",
+        "/assets/app.js": "export {};",
+      }),
+    );
+
+    const index = await handle(new Request("http://lab.local/"));
+    expect(index.status).toBe(200);
+    expect(await index.text()).toContain("Standalone lab");
     expect(
       (await handle(new Request("http://lab.local/assets/app.js"))).headers.get(
         "content-type",

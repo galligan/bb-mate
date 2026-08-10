@@ -22,6 +22,9 @@
     "package:artifact": "bun scripts/package-local.ts",
     "package:inspect": "bun scripts/package-local.ts --dry-run",
     "package:test": "bun scripts/package-clean-room.ts",
+    "standalone:build": "bun scripts/build-standalone.ts",
+    "standalone:inspect": "bun scripts/inspect-standalone.ts",
+    "standalone:test": "bun scripts/standalone-clean-room.ts",
     "format": "prettier . --write",
     "format:check": "prettier . --check"
   },

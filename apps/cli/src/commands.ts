@@ -19,8 +19,8 @@ export interface ProcessExit {
 export interface CliRuntime {
   cwd: string;
   env: NodeJS.ProcessEnv;
-  bunExecutable: string;
-  workspaceRoot: string;
+  bunExecutable?: string;
+  workspaceRoot?: string;
   fixtureName?: string;
   stdout(value: string): void;
   stderr(value: string): void;
@@ -214,6 +214,10 @@ export async function runCli(
     line(runtime.stdout, connectExposure(context.report, args.port));
     if (runtime.runFixture) {
       return runtime.runFixture({ host: args.host, port: args.port });
+    }
+    if (!runtime.bunExecutable || !runtime.workspaceRoot) {
+      line(runtime.stderr, "Fixture surface lab assets are unavailable.");
+      return failure;
     }
     line(
       runtime.stdout,
