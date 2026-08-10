@@ -81,7 +81,9 @@ contract when distributed, and Live bb remains the visual authority.
 - npm stable `bb-app` is `0.36.0`.
 - npm publishes `bb-mate@0.1.0-alpha.1` and `0.1.0-alpha.2`; `alpha` points to
   alpha.2 and `latest` to alpha.1.
-- Upstream [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) and
+- Upstream SDK distribution issue
+  [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) and scaffold
+  production-dependency issue
   [get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) remain open.
 
 This spec must be reconciled with `main` after PR #52 lands. It must not be
@@ -275,8 +277,8 @@ entrypoint and must:
   output when requested;
 - send human logs to stderr;
 - handle SIGINT/SIGTERM and abort active work cleanly;
-- report `version`, `apiVersion`, `pid`, `baseUrl`, `mcpUrl`, target identity,
-  and capabilities;
+- report `version`, `apiVersion`, `pid`, `baseUrl`, target identity, and
+  capabilities;
 - refuse an incompatible plugin/runtime API handshake.
 
 Example descriptor:
@@ -288,7 +290,6 @@ Example descriptor:
   "apiVersion": 1,
   "pid": 12345,
   "baseUrl": "http://127.0.0.1:53122",
-  "mcpUrl": "http://127.0.0.1:53122/mcp",
   "capabilities": {
     "annotations": true,
     "captures": true,
@@ -389,8 +390,6 @@ GET    /v1/comparisons/:id
 POST   /v1/briefs
 GET    /v1/briefs/:id
 GET    /v1/events
-POST   /mcp
-GET    /mcp
 ```
 
 The exact HTTP routes are not a public stability promise until documented as
@@ -792,11 +791,11 @@ Classify operations:
 ### Transports
 
 - `bb-mate mcp --stdio` lets an MCP client launch an adapter process.
-- The supervised runtime may expose authenticated Streamable HTTP at `/mcp` for
-  clients that need the live shared session.
-- Local HTTP validates `Origin`, authenticates every request, binds only to
-  loopback, rate-limits tools, caps inputs/outputs, and records an audit log.
-- Do not support legacy unauthenticated SSE.
+- V1 MCP delivery is stdio only. The adapter authenticates to the canonical
+  domain service over a private local connection; it does not expose HTTP MCP.
+- General Streamable HTTP MCP, OAuth/DCR, and legacy SSE are deferred until a
+  separate security/conformance contract proves request auth, Origin handling,
+  principal-bound sessions, and replay isolation.
 
 ### `plugin-workbench` skill
 
@@ -1023,7 +1022,6 @@ user/assistant support, durable rendering, and bounded agent-context references.
 - Resources never disclose absolute roots or tokens.
 - Read/reversible/mutating authority boundaries are enforced.
 - Stdio writes protocol only to stdout and logs only to stderr.
-- Streamable HTTP validates Origin, authentication, and session identity.
 - Fresh-context skill eval completes target discovery, surface selection,
   annotation resolution, comparison, and native handoff without inventing APIs.
 
