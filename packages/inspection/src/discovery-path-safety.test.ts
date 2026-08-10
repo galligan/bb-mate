@@ -95,7 +95,12 @@ describe("source path safety", () => {
       JSON.stringify({
         name: "bb-plugin-unsafe",
         version: "1.0.0",
-        bb: { name: "unsafe", server },
+        bb: {
+          name: "unsafe",
+          description: "unsafe plugin",
+          branding: { icon: "Puzzle" },
+          server,
+        },
       }),
     );
     await fs.writeFile(
@@ -192,7 +197,13 @@ async function writeManifest(
     JSON.stringify({
       name: "bb-plugin-unsafe",
       version: "1.0.0",
-      bb: { name: "unsafe", server: "./server.ts", ...bb },
+      bb: {
+        name: "unsafe",
+        description: "unsafe plugin",
+        branding: { icon: "Puzzle" },
+        server: "./server.ts",
+        ...bb,
+      },
     }),
   );
 }

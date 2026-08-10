@@ -1,5 +1,6 @@
 import { constants, promises as fs } from "node:fs";
 import { DiscoveryFailure } from "./discovery-errors.ts";
+import { runDiscoveryTestHook } from "./discovery-test-hook.ts";
 
 const MAX_MANIFEST_BYTES = 256 * 1024;
 
@@ -47,13 +48,29 @@ export async function readBoundedManifest(
         "package.json changed before it could be read",
       );
     }
-    const bytes = await handle.readFile();
-    if (bytes.byteLength > MAX_MANIFEST_BYTES) {
+    await runDiscoveryTestHook({
+      point: "after-manifest-stat",
+      path: packagePath,
+    });
+    const buffer = Buffer.allocUnsafe(MAX_MANIFEST_BYTES + 1);
+    let bytesRead = 0;
+    while (bytesRead < buffer.byteLength) {
+      const result = await handle.read(
+        buffer,
+        bytesRead,
+        buffer.byteLength - bytesRead,
+        bytesRead,
+      );
+      if (result.bytesRead === 0) break;
+      bytesRead += result.bytesRead;
+    }
+    if (bytesRead > MAX_MANIFEST_BYTES) {
       throw new DiscoveryFailure(
         "manifest-too-large",
         `package.json exceeds ${MAX_MANIFEST_BYTES} bytes`,
       );
     }
+    const bytes = buffer.subarray(0, bytesRead);
     const [after, leafAfter] = await Promise.all([
       handle.stat(),
       fs.lstat(packagePath).catch(() => null),
@@ -62,7 +79,7 @@ export async function readBoundedManifest(
       !sameIdentity(before, after) ||
       leafAfter === null ||
       !sameIdentity(after, leafAfter) ||
-      after.size !== bytes.byteLength
+      after.size !== bytesRead
     ) {
       throw new DiscoveryFailure(
         "manifest-changed",

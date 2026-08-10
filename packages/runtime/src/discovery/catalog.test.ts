@@ -10,7 +10,7 @@ import {
   PrincipalIdSchema,
 } from "../contracts/ids.ts";
 import { openDevelopmentTargetCatalog } from "./catalog.ts";
-import { issueTrustedDevelopmentTargetCandidate } from "./trusted-candidate.ts";
+import { issueTrustedDevelopmentTargetCandidateFromInspection } from "./trusted-candidate.ts";
 
 const temporaryRoots: string[] = [];
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
@@ -56,7 +56,7 @@ describe("DevelopmentTargetCatalog capability boundary", () => {
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
     const canonicalRoot = await fs.realpath(pluginRoot);
-    const issued = await issueTrustedDevelopmentTargetCandidate(
+    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection(
       candidateInput(canonicalRoot),
     );
     const catalog = await openDevelopmentTargetCatalog({

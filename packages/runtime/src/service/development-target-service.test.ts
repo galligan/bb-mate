@@ -15,7 +15,7 @@ import {
 import { ObjectCodecRegistry } from "../contracts/objects.ts";
 import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
 import { DevelopmentTargetCodec } from "../discovery/development-target.ts";
-import { issueTrustedDevelopmentTargetCandidate } from "../discovery/trusted-candidate.ts";
+import { issueTrustedDevelopmentTargetCandidateFromInspection } from "../discovery/trusted-candidate.ts";
 import { RuntimeError } from "../errors.ts";
 import { openRuntimeStore } from "../persistence/store.ts";
 import { createWorkbenchService } from "./workbench-service.ts";
@@ -74,7 +74,9 @@ function candidateInput(canonicalRoot: string) {
 }
 
 async function candidate(canonicalRoot: string) {
-  return issueTrustedDevelopmentTargetCandidate(candidateInput(canonicalRoot));
+  return issueTrustedDevelopmentTargetCandidateFromInspection(
+    candidateInput(canonicalRoot),
+  );
 }
 
 afterEach(async () => {
@@ -110,7 +112,7 @@ describe("DevelopmentTargetService", () => {
       }),
     ).toEqual({
       canonicalRoot: fixture.pluginRoot,
-      rootKey: "r".repeat(32),
+      rootKey: OpaqueIdSchema.parse("r".repeat(32)),
       rootKind: "current-project",
     });
     expect(JSON.stringify(created)).not.toContain(fixture.pluginRoot);
@@ -224,7 +226,9 @@ describe("DevelopmentTargetService", () => {
           service.refreshFromTrustedCandidate(context(), forged as never),
         ).rejects.toMatchObject({ code: "invalid_request" });
       }
-      await fs.rm(fixture.pluginRoot, { recursive: true });
+      const originalRoot = `${fixture.pluginRoot}-original`;
+      await fs.rename(fixture.pluginRoot, originalRoot);
+      await fs.mkdir(fixture.pluginRoot);
       await expect(
         service.refreshFromTrustedCandidate(context(), issued),
       ).rejects.toMatchObject({ code: "invalid_request" });
@@ -249,7 +253,7 @@ describe("DevelopmentTargetService", () => {
       );
       const refreshed = await service.refreshFromTrustedCandidate(
         context(),
-        await issueTrustedDevelopmentTargetCandidate({
+        await issueTrustedDevelopmentTargetCandidateFromInspection({
           ...candidateInput(fixture.pluginRoot),
           target: {
             ...candidateInput(fixture.pluginRoot).target,

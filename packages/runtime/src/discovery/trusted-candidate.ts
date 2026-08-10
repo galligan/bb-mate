@@ -1,5 +1,4 @@
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 
 import { z } from "zod";
 
@@ -9,6 +8,7 @@ import {
   DevelopmentTargetPayloadSchema,
   type DevelopmentTargetPayload,
 } from "./development-target.ts";
+import { isCanonicalSourcePathFormat } from "./source-path-policy.ts";
 
 export const DevelopmentTargetRootKindSchema = z.enum([
   "current-project",
@@ -22,12 +22,18 @@ export type DevelopmentTargetRootKind = z.infer<
 const trustedCandidateBrand: unique symbol = Symbol(
   "bb-mate.trusted-development-target-candidate",
 );
-const issuedCandidates = new WeakSet<object>();
+interface IssuedSourceIdentity {
+  readonly canonicalRoot: string;
+  readonly device: number;
+  readonly inode: number;
+}
+
+const issuedCandidates = new WeakMap<object, IssuedSourceIdentity>();
 
 const TrustedDevelopmentTargetCandidateSchema = z.strictObject({
   rootKey: OpaqueIdSchema,
   rootKind: DevelopmentTargetRootKindSchema,
-  canonicalRoot: z.string().min(1).max(4_096),
+  canonicalRoot: z.string(),
   target: DevelopmentTargetPayloadSchema,
 });
 
@@ -39,28 +45,40 @@ export interface TrustedDevelopmentTargetCandidate {
   readonly [trustedCandidateBrand]: true;
 }
 
-async function validateCanonicalRoot(canonicalRoot: string): Promise<void> {
-  const [metadata, resolvedRoot] = await Promise.all([
-    fs.lstat(canonicalRoot),
-    fs.realpath(canonicalRoot),
-  ]);
+async function inspectCanonicalRoot(
+  canonicalRoot: string,
+): Promise<IssuedSourceIdentity> {
+  const before = await fs.lstat(canonicalRoot);
+  const resolvedRoot = await fs.realpath(canonicalRoot);
+  const after = await fs.lstat(canonicalRoot);
+  const resolvedRootAfter = await fs.realpath(canonicalRoot);
   if (
-    metadata.isSymbolicLink() ||
-    !metadata.isDirectory() ||
-    resolvedRoot !== canonicalRoot
+    !isCanonicalSourcePathFormat(canonicalRoot) ||
+    before.isSymbolicLink() ||
+    !before.isDirectory() ||
+    after.isSymbolicLink() ||
+    !after.isDirectory() ||
+    resolvedRoot !== canonicalRoot ||
+    resolvedRootAfter !== resolvedRoot ||
+    before.dev !== after.dev ||
+    before.ino !== after.ino
   ) {
     throw new RuntimeError("invalid_request");
   }
+  return {
+    canonicalRoot,
+    device: after.dev,
+    inode: after.ino,
+  };
 }
 
-export async function issueTrustedDevelopmentTargetCandidate(
+export async function issueTrustedDevelopmentTargetCandidateFromInspection(
   input: unknown,
 ): Promise<TrustedDevelopmentTargetCandidate> {
   try {
     const candidate = TrustedDevelopmentTargetCandidateSchema.parse(input);
     if (
-      !path.isAbsolute(candidate.canonicalRoot) ||
-      path.normalize(candidate.canonicalRoot) !== candidate.canonicalRoot ||
+      !isCanonicalSourcePathFormat(candidate.canonicalRoot) ||
       (candidate.rootKind === "explicit" &&
         candidate.target.sourceKind !== "explicit") ||
       (candidate.rootKind === "pinned" &&
@@ -72,7 +90,7 @@ export async function issueTrustedDevelopmentTargetCandidate(
       throw new RuntimeError("invalid_request");
     }
 
-    await validateCanonicalRoot(candidate.canonicalRoot);
+    const identity = await inspectCanonicalRoot(candidate.canonicalRoot);
     const issued = Object.freeze({
       ...candidate,
       target: Object.freeze({
@@ -82,7 +100,7 @@ export async function issueTrustedDevelopmentTargetCandidate(
         capabilities: Object.freeze({ ...candidate.target.capabilities }),
       }),
     }) as TrustedDevelopmentTargetCandidate;
-    issuedCandidates.add(issued);
+    issuedCandidates.set(issued, identity);
     return issued;
   } catch (error) {
     if (error instanceof RuntimeError) throw error;
@@ -101,8 +119,16 @@ export async function validateTrustedDevelopmentTargetCandidate(
     throw new RuntimeError("invalid_request");
   }
   const candidate = input as TrustedDevelopmentTargetCandidate;
+  const expectedIdentity = issuedCandidates.get(candidate)!;
   try {
-    await validateCanonicalRoot(candidate.canonicalRoot);
+    const actualIdentity = await inspectCanonicalRoot(candidate.canonicalRoot);
+    if (
+      actualIdentity.canonicalRoot !== expectedIdentity.canonicalRoot ||
+      actualIdentity.device !== expectedIdentity.device ||
+      actualIdentity.inode !== expectedIdentity.inode
+    ) {
+      throw new RuntimeError("invalid_request");
+    }
     return candidate;
   } catch (error) {
     if (error instanceof RuntimeError) throw error;

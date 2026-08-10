@@ -10,6 +10,10 @@ import {
   boundedDiagnosticDetail,
   DiscoveryFailure,
 } from "./discovery-errors.ts";
+import {
+  allocateDiscoveryRootBudgets,
+  type DiscoveryRootBudget,
+} from "./discovery-budget.ts";
 import { candidateAtRoot } from "./discovery-manifest.ts";
 import {
   attestScanDirectory,
@@ -34,10 +38,15 @@ export async function discoverSourceCandidates(
 ): Promise<SourceDiscoveryResult> {
   const candidates: SourceCandidate[] = [];
   const diagnostics: DiscoveryDiagnostic[] = [];
-  const budget = { visitedEntries: 0, entryLimitReported: false };
-  let candidateLimitReported = false;
+  const rootBudgets = allocateDiscoveryRootBudgets(
+    roots.length,
+    MAX_VISITED_ENTRIES,
+    MAX_CANDIDATES,
+  );
 
-  for (const root of roots) {
+  for (const [rootIndex, root] of roots.entries()) {
+    const budget = rootBudgets[rootIndex];
+    if (!budget) continue;
     const { canonicalRoot } = trustedRootDetails(root);
     const queue: PendingDirectory[] = [
       { directory: canonicalRoot, relative: "", depth: 0 },
@@ -71,18 +80,19 @@ export async function discoverSourceCandidates(
         stableAfterManifest,
       );
       if (!stableAfterRead) continue;
-      if (candidate && candidates.length < MAX_CANDIDATES) {
+      if (candidate && budget.acceptedCandidates < budget.maxCandidates) {
         candidates.push(candidate);
-      } else if (candidate && !candidateLimitReported) {
+        budget.acceptedCandidates += 1;
+      } else if (candidate && !budget.candidateLimitReported) {
         diagnostics.push(
           diagnostic(
             "candidate-limit",
             root,
             candidate.displayPath,
-            `Source candidate ${candidate.displayPath} exceeds the ${MAX_CANDIDATES}-candidate limit.`,
+            `Source candidate ${candidate.displayPath} exceeds its ${budget.maxCandidates}-candidate share of the global ${MAX_CANDIDATES}-candidate limit.`,
           ),
         );
-        candidateLimitReported = true;
+        budget.candidateLimitReported = true;
       }
     }
   }
@@ -126,13 +136,29 @@ async function enqueueChildren(
   current: PendingDirectory,
   queue: PendingDirectory[],
   diagnostics: DiscoveryDiagnostic[],
-  budget: { visitedEntries: number; entryLimitReported: boolean },
+  budget: DiscoveryRootBudget,
   canonicalRoot: string,
   attestation: ScanDirectoryAttestation,
 ): Promise<boolean> {
-  const entries = await fs
-    .readdir(current.directory, { withFileTypes: true })
-    .catch(() => []);
+  let entries;
+  try {
+    await runDiscoveryTestHook({
+      point: "before-directory-read",
+      path: current.directory,
+    });
+    entries = await fs.readdir(current.directory, { withFileTypes: true });
+  } catch {
+    const displayPath = displayPathFor(root, current.relative);
+    diagnostics.push(
+      diagnostic(
+        "scan-directory-unreadable",
+        root,
+        displayPath,
+        `Source directory ${displayPath} could not be read.`,
+      ),
+    );
+    return false;
+  }
   await runDiscoveryTestHook({
     point: "after-directory-read",
     path: current.directory,
@@ -147,7 +173,7 @@ async function enqueueChildren(
   if (!stable) return false;
   entries.sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
-    if (budget.visitedEntries >= MAX_VISITED_ENTRIES) {
+    if (budget.visitedEntries >= budget.maxVisitedEntries) {
       if (!budget.entryLimitReported) {
         const displayPath = displayPathFor(root, current.relative);
         diagnostics.push(
@@ -155,7 +181,7 @@ async function enqueueChildren(
             "scan-entry-limit",
             root,
             displayPath,
-            `Source scan at ${displayPath} reached the ${MAX_VISITED_ENTRIES}-entry limit.`,
+            `Source scan at ${displayPath} reached its ${budget.maxVisitedEntries}-entry share of the global ${MAX_VISITED_ENTRIES}-entry limit.`,
           ),
         );
         budget.entryLimitReported = true;

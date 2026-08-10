@@ -9,10 +9,11 @@ import {
   parseDevelopmentTargetEnvelope,
   type DevelopmentTargetEnvelope,
 } from "./development-target.ts";
-import type {
-  DevelopmentTargetRootKind,
-  TrustedDevelopmentTargetCandidate,
-} from "./trusted-candidate.ts";
+import {
+  parsePrivateDevelopmentTargetSource,
+  type PrivateDevelopmentTargetSource,
+} from "./private-source.ts";
+import type { TrustedDevelopmentTargetCandidate } from "./trusted-candidate.ts";
 
 interface ObjectRow {
   readonly id: string;
@@ -30,7 +31,7 @@ interface ObjectRow {
 interface PrivateRow {
   readonly canonical_root: string;
   readonly root_key: string;
-  readonly root_kind: DevelopmentTargetRootKind;
+  readonly root_kind: string;
 }
 
 function parseRow(row: ObjectRow): DevelopmentTargetEnvelope {
@@ -79,13 +80,7 @@ export interface DevelopmentTargetCatalogStorage {
     principalId: PrincipalId,
     bbContextId: BbContextId,
     id: ObjectId,
-  ):
-    | {
-        readonly canonicalRoot: string;
-        readonly rootKey: string;
-        readonly rootKind: DevelopmentTargetRootKind;
-      }
-    | undefined;
+  ): PrivateDevelopmentTargetSource | undefined;
   persistCreation(
     envelope: DevelopmentTargetEnvelope,
     candidate: TrustedDevelopmentTargetCandidate,
@@ -223,11 +218,11 @@ export function createDevelopmentTargetCatalogStorage(
     resolvePrivate(principalId, bbContextId, id) {
       const row = selectPrivate.get(id, principalId, bbContextId);
       return row
-        ? {
+        ? parsePrivateDevelopmentTargetSource({
             canonicalRoot: row.canonical_root,
             rootKey: row.root_key,
             rootKind: row.root_kind,
-          }
+          })
         : undefined;
     },
     persistCreation,

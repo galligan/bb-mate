@@ -266,7 +266,12 @@ describe("passive source discovery", () => {
           preinstall: `printf package-script > ${JSON.stringify(sentinel)}`,
           postinstall: `printf package-script > ${JSON.stringify(sentinel)}`,
         },
-        bb: { name: "passive", server: "./server.ts" },
+        bb: {
+          name: "passive",
+          description: "passive plugin",
+          branding: { icon: "Puzzle" },
+          server: "./server.ts",
+        },
       }),
     );
     const admission = await admitTrustedRoots([

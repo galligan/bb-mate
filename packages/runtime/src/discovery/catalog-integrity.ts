@@ -1,9 +1,16 @@
 import type { Database } from "bun:sqlite";
 
 import { RuntimeError } from "../errors.ts";
+import { parsePrivateDevelopmentTargetSource } from "./private-source.ts";
 
 interface IntegrityRow {
   readonly invalid: number;
+}
+
+interface PrivateSourceRow {
+  readonly canonical_root: string;
+  readonly root_key: string;
+  readonly root_kind: string;
 }
 
 export function createDevelopmentTargetIntegrityCheck(
@@ -33,8 +40,23 @@ export function createDevelopmentTargetIntegrityCheck(
       )
     LIMIT 1
   `);
+  const selectPrivateSources = database.query<PrivateSourceRow, []>(`
+    SELECT canonical_root, root_key, root_kind
+    FROM development_target_sources
+  `);
 
   return () => {
     if (selectFailure.get()) throw new RuntimeError("corrupt_data");
+    try {
+      for (const row of selectPrivateSources.all()) {
+        parsePrivateDevelopmentTargetSource({
+          canonicalRoot: row.canonical_root,
+          rootKey: row.root_key,
+          rootKind: row.root_kind,
+        });
+      }
+    } catch (error) {
+      throw new RuntimeError("corrupt_data", { cause: error });
+    }
   };
 }

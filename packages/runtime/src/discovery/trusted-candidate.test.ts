@@ -5,7 +5,7 @@ import * as path from "node:path";
 
 import { OpaqueIdSchema } from "../contracts/ids.ts";
 import {
-  issueTrustedDevelopmentTargetCandidate,
+  issueTrustedDevelopmentTargetCandidateFromInspection,
   validateTrustedDevelopmentTargetCandidate,
 } from "./trusted-candidate.ts";
 
@@ -50,14 +50,14 @@ describe("trusted development-target candidates", () => {
     await fs.mkdir(pluginRoot);
     const canonicalRoot = await fs.realpath(pluginRoot);
 
-    const issued = await issueTrustedDevelopmentTargetCandidate(
+    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection(
       candidate(canonicalRoot),
     );
     expect(Object.fromEntries(Object.entries(issued))).toEqual(
       candidate(canonicalRoot),
     );
     await expect(
-      issueTrustedDevelopmentTargetCandidate({
+      issueTrustedDevelopmentTargetCandidateFromInspection({
         ...candidate(canonicalRoot),
         id: "x".repeat(32),
         bindings: {},
@@ -76,19 +76,41 @@ describe("trusted development-target candidates", () => {
     await fs.symlink(pluginRoot, alias);
 
     await expect(
-      issueTrustedDevelopmentTargetCandidate(candidate(alias)),
+      issueTrustedDevelopmentTargetCandidateFromInspection(candidate(alias)),
     ).rejects.toMatchObject({ code: "invalid_request" });
     await expect(
-      issueTrustedDevelopmentTargetCandidate(
+      issueTrustedDevelopmentTargetCandidateFromInspection(
         candidate(path.join(parent, "missing")),
       ),
     ).rejects.toMatchObject({ code: "invalid_request" });
     await expect(
-      issueTrustedDevelopmentTargetCandidate({
+      issueTrustedDevelopmentTargetCandidateFromInspection({
         ...candidate(await fs.realpath(pluginRoot)),
         rootKind: "explicit",
       }),
     ).rejects.toMatchObject({ code: "invalid_request" });
+  });
+
+  test("rejects filesystem-wide, home, and ignored source roots", async () => {
+    const temporaryRoot = await fs.realpath(os.tmpdir());
+    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    temporaryRoots.push(parent);
+    const ignoredRoot = path.join(parent, "node_modules", "plugin");
+    await fs.mkdir(ignoredRoot, { recursive: true });
+
+    const canonicalHome = await fs.realpath(os.homedir());
+    for (const forbidden of [
+      await fs.realpath(path.parse(parent).root),
+      canonicalHome,
+      path.dirname(canonicalHome),
+      await fs.realpath(ignoredRoot),
+    ]) {
+      await expect(
+        issueTrustedDevelopmentTargetCandidateFromInspection(
+          candidate(forbidden),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+    }
   });
 
   test("recognizes only the exact issued capability and rejects structural clones", async () => {
@@ -97,7 +119,7 @@ describe("trusted development-target candidates", () => {
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
-    const issued = await issueTrustedDevelopmentTargetCandidate(
+    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection(
       candidate(await fs.realpath(pluginRoot)),
     );
 
@@ -114,7 +136,9 @@ describe("trusted development-target candidates", () => {
         validateTrustedDevelopmentTargetCandidate(forged),
       ).rejects.toMatchObject({ code: "invalid_request" });
     }
-    await fs.rm(pluginRoot, { recursive: true });
+    const originalRoot = path.join(parent, "original-plugin");
+    await fs.rename(pluginRoot, originalRoot);
+    await fs.mkdir(pluginRoot);
     await expect(
       validateTrustedDevelopmentTargetCandidate(issued),
     ).rejects.toMatchObject({ code: "invalid_request" });

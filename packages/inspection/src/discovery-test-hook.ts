@@ -1,5 +1,8 @@
 export type DiscoveryTestHookPoint =
-  "after-root-lstat" | "after-directory-read";
+  | "after-root-lstat"
+  | "after-manifest-stat"
+  | "before-directory-read"
+  | "after-directory-read";
 
 export interface DiscoveryTestHookEvent {
   readonly point: DiscoveryTestHookPoint;

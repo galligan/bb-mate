@@ -141,6 +141,31 @@ describe("trusted source roots", () => {
     ]);
   });
 
+  test("counts only admitted roots toward the configured-root limit", async () => {
+    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    temporaryRoots.push(parent);
+    const safeRoot = path.join(parent, "safe");
+    await fs.mkdir(safeRoot);
+    const missing: TrustedRootInput[] = Array.from(
+      { length: 16 },
+      (_, index) => ({
+        rootKey: index.toString(36).padStart(32, "m"),
+        kind: "explicit",
+        path: path.join(parent, `missing-${index}`),
+      }),
+    );
+
+    const result = await admitTrustedRoots([
+      ...missing,
+      { rootKey: opaqueKey("s"), kind: "current-project", path: safeRoot },
+    ]);
+
+    expect(result.roots.map((root) => root.displayName)).toEqual(["safe"]);
+    expect(result.diagnostics.map((entry) => entry.code)).toEqual(
+      Array.from({ length: 16 }, () => "root-missing"),
+    );
+  });
+
   test("rejects a non-opaque root key without echoing it", async () => {
     const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
     temporaryRoots.push(parent);

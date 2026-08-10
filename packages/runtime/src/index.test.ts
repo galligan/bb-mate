@@ -33,13 +33,15 @@ describe("@bb-mate/runtime public surface", () => {
       "createWorkbenchService",
       "defineObjectCodec",
       "isRequestContext",
-      "issueTrustedDevelopmentTargetCandidate",
       "openDevelopmentTargetCatalog",
       "openRuntimeStore",
     ]);
   });
 
   test("does not expose persistence, event-feed, or schema internals", () => {
+    expect(runtime).not.toHaveProperty(
+      "issueTrustedDevelopmentTargetCandidateFromInspection",
+    );
     expect(runtime).not.toHaveProperty("openRuntimeDatabase");
     expect(runtime).not.toHaveProperty("applyRuntimeMigrations");
     expect(runtime).not.toHaveProperty("createEventFeed");

@@ -26,7 +26,7 @@ export async function admitTrustedRoots(
   const canonicalRoots = new Set<string>();
   const rootKeys = new Set<string>();
 
-  for (const [index, input] of inputs.entries()) {
+  for (const input of inputs) {
     const displayPath = redactedBasename(input.path);
     if (!/^[A-Za-z0-9_-]{32}$/u.test(input.rootKey)) {
       diagnostics.push({
@@ -53,15 +53,6 @@ export async function admitTrustedRoots(
         rootKey: input.rootKey,
         displayPath,
         detail: `Configured root ${displayPath} has an invalid display label.`,
-      });
-      continue;
-    }
-    if (index >= MAX_TRUSTED_ROOTS) {
-      diagnostics.push({
-        code: "root-limit",
-        rootKey: input.rootKey,
-        displayPath,
-        detail: `Configured root ${displayPath} exceeds the ${MAX_TRUSTED_ROOTS}-root limit.`,
       });
       continue;
     }
@@ -113,10 +104,7 @@ export async function admitTrustedRoots(
       continue;
     }
     const canonicalHome = await fs.realpath(os.homedir()).catch(() => null);
-    if (
-      canonicalRoot === path.parse(canonicalRoot).root ||
-      canonicalRoot === canonicalHome
-    ) {
+    if (isForbiddenCanonicalRoot(canonicalRoot, canonicalHome)) {
       diagnostics.push({
         code: "root-forbidden",
         rootKey: input.rootKey,
@@ -143,6 +131,15 @@ export async function admitTrustedRoots(
       });
       continue;
     }
+    if (roots.length >= MAX_TRUSTED_ROOTS) {
+      diagnostics.push({
+        code: "root-limit",
+        rootKey: input.rootKey,
+        displayPath,
+        detail: `Configured root ${displayPath} exceeds the ${MAX_TRUSTED_ROOTS}-root limit.`,
+      });
+      continue;
+    }
     canonicalRoots.add(canonicalRoot);
     rootKeys.add(input.rootKey);
     const root = {
@@ -165,6 +162,47 @@ export async function admitTrustedRoots(
     roots: Object.freeze(roots),
     diagnostics: Object.freeze(diagnostics),
   };
+}
+
+/**
+ * This structural deny policy also excludes bb's ordinary managed data roots,
+ * which live below hidden directories. An exact non-hidden installed-root deny
+ * set needs the native inventory owned by slice 57B; native inventory must not
+ * seed roots in this source-only slice.
+ */
+function isForbiddenCanonicalRoot(
+  canonicalRoot: string,
+  canonicalHome: string | null,
+): boolean {
+  const filesystemRoot = path.parse(canonicalRoot).root;
+  if (canonicalRoot === filesystemRoot) return true;
+  if (
+    canonicalHome !== null &&
+    (canonicalRoot === canonicalHome ||
+      isStrictDescendant(canonicalHome, canonicalRoot))
+  ) {
+    return true;
+  }
+  const components = path
+    .relative(filesystemRoot, canonicalRoot)
+    .split(path.sep)
+    .filter(Boolean);
+  return components.some((component) => {
+    const normalized = component.toLowerCase();
+    return (
+      component.startsWith(".") ||
+      ["node_modules", "dist", "cache", "caches"].includes(normalized)
+    );
+  });
+}
+
+function isStrictDescendant(candidate: string, parent: string): boolean {
+  const relative = path.relative(parent, candidate);
+  return (
+    relative !== "" &&
+    !relative.startsWith(`..${path.sep}`) &&
+    relative !== ".."
+  );
 }
 
 function sameIdentity(

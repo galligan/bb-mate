@@ -55,10 +55,7 @@ export type {
   PrivateDevelopmentTargetSource,
   RefreshDevelopmentTargetInput,
 } from "./discovery/catalog.ts";
-export {
-  DevelopmentTargetRootKindSchema,
-  issueTrustedDevelopmentTargetCandidate,
-} from "./discovery/trusted-candidate.ts";
+export { DevelopmentTargetRootKindSchema } from "./discovery/trusted-candidate.ts";
 export type {
   DevelopmentTargetRootKind,
   TrustedDevelopmentTargetCandidate,

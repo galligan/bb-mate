@@ -9,13 +9,14 @@ import { createRequestContext } from "../packages/runtime/src/auth/context.ts";
 import {
   BbContextIdSchema,
   ObjectIdSchema,
+  OpaqueIdSchema,
   PrincipalIdSchema,
 } from "../packages/runtime/src/contracts/ids.ts";
 import { openDevelopmentTargetCatalog } from "../packages/runtime/src/discovery/catalog.ts";
-import { issueTrustedDevelopmentTargetCandidate } from "../packages/runtime/src/discovery/trusted-candidate.ts";
+import { issueTrustedDevelopmentTargetCandidateFromInspection } from "../packages/runtime/src/discovery/trusted-candidate.ts";
 import { createDevelopmentTargetService } from "../packages/runtime/src/service/development-target-service.ts";
 
-const ROOT_KEY = "r".repeat(32);
+const ROOT_KEY = OpaqueIdSchema.parse("r".repeat(32));
 const PRINCIPAL_ID = PrincipalIdSchema.parse("p".repeat(32));
 const BB_CONTEXT_ID = BbContextIdSchema.parse("b".repeat(32));
 const TARGET_ID = ObjectIdSchema.parse("t".repeat(32));
@@ -50,6 +51,8 @@ describe("source discovery to development-target catalog", () => {
         },
         bb: {
           name: "Example plugin",
+          description: "A passive source-catalog integration fixture.",
+          branding: { icon: "extension" },
           server: "dist/server.js",
         },
       }),
@@ -74,7 +77,7 @@ describe("source discovery to development-target catalog", () => {
     const candidate = discovery.candidates[0]!;
     expect(candidate.canonicalRoot).toBe(pluginRoot);
 
-    const issued = await issueTrustedDevelopmentTargetCandidate({
+    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection({
       rootKey: candidate.rootKey,
       rootKind: "current-project",
       canonicalRoot: candidate.canonicalRoot,

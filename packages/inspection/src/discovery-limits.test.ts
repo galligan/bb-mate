@@ -4,6 +4,7 @@ import path from "node:path";
 import { discoverSourceCandidates } from "./discover-source-candidates.ts";
 import {
   createDiscoveryTestHarness,
+  EXAMPLE_ROOT_KEY,
   WORKSPACE_ROOT_KEY,
 } from "./discovery-test-helpers.ts";
 import { admitTrustedRoots } from "./trusted-roots.ts";
@@ -107,6 +108,71 @@ describe("source discovery limits", () => {
       expect.objectContaining({
         code: "candidate-limit",
         displayPath: "workspace/plugin-128",
+      }),
+    );
+  });
+
+  test("reserves the global entry budget fairly across independent roots", async () => {
+    const noisyRoot = await harness.createRoot("noisy");
+    const safeRoot = await harness.createRoot("safe-root");
+    const safePlugin = path.join(safeRoot, "plugin");
+    await fs.mkdir(safePlugin);
+    await harness.writePlugin(safePlugin, "safe");
+    await Promise.all(
+      Array.from({ length: 2048 }, (_, index) =>
+        fs.writeFile(
+          path.join(noisyRoot, `entry-${index.toString().padStart(4, "0")}`),
+          "",
+        ),
+      ),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: noisyRoot },
+      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: safeRoot },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates.map((candidate) => candidate.pluginId)).toContain(
+      "safe",
+    );
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "scan-entry-limit",
+        displayPath: "noisy",
+      }),
+    );
+  });
+
+  test("reserves the global candidate budget fairly across independent roots", async () => {
+    const noisyRoot = await harness.createRoot("noisy");
+    const safeRoot = await harness.createRoot("safe-root");
+    for (let index = 0; index < 128; index += 1) {
+      const pluginRoot = path.join(
+        noisyRoot,
+        `plugin-${index.toString().padStart(3, "0")}`,
+      );
+      await fs.mkdir(pluginRoot);
+      await harness.writePlugin(pluginRoot, `noisy-${index}`);
+    }
+    const safePlugin = path.join(safeRoot, "plugin");
+    await fs.mkdir(safePlugin);
+    await harness.writePlugin(safePlugin, "safe");
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: noisyRoot },
+      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: safeRoot },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates).toHaveLength(65);
+    expect(result.candidates.map((candidate) => candidate.pluginId)).toContain(
+      "safe",
+    );
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "candidate-limit",
+        displayPath: "noisy/plugin-064",
       }),
     );
   });

@@ -16,9 +16,9 @@ import {
   parseDevelopmentTargetEnvelope,
   type DevelopmentTargetEnvelope,
 } from "./development-target.ts";
+import type { PrivateDevelopmentTargetSource } from "./private-source.ts";
 import {
   validateTrustedDevelopmentTargetCandidate,
-  type DevelopmentTargetRootKind,
   type TrustedDevelopmentTargetCandidate,
 } from "./trusted-candidate.ts";
 
@@ -28,11 +28,7 @@ export interface OpenDevelopmentTargetCatalogOptions {
   readonly id?: () => ObjectId;
 }
 
-export interface PrivateDevelopmentTargetSource {
-  readonly canonicalRoot: string;
-  readonly rootKey: string;
-  readonly rootKind: DevelopmentTargetRootKind;
-}
+export type { PrivateDevelopmentTargetSource } from "./private-source.ts";
 
 export interface RefreshDevelopmentTargetInput {
   readonly principalId: PrincipalId;

@@ -103,4 +103,55 @@ describe("trusted root security", () => {
     ]);
     expect(JSON.stringify(result.diagnostics)).not.toContain(os.homedir());
   });
+
+  test("rejects canonical ancestors of the current home without disclosing them", async () => {
+    const homeAncestor = path.dirname(await fs.realpath(os.homedir()));
+
+    const result = await admitTrustedRoots([
+      {
+        rootKey: opaqueKey("a"),
+        kind: "explicit",
+        path: homeAncestor,
+        displayName: "home-ancestor",
+      },
+    ]);
+
+    expect(result.roots).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "root-forbidden",
+        displayPath: path.basename(homeAncestor) || "root",
+      }),
+    ]);
+    expect(JSON.stringify(result.diagnostics)).not.toContain(homeAncestor);
+  });
+
+  test.each(["node_modules", ".git", "dist", "cache", "caches", ".private"])(
+    "rejects a configured root inside the forbidden %s tree",
+    async (forbiddenName) => {
+      const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+      temporaryRoots.push(parent);
+      const forbiddenRoot = path.join(parent, forbiddenName);
+      const configured = path.join(forbiddenRoot, "nested-source");
+      await fs.mkdir(configured, { recursive: true });
+
+      const result = await admitTrustedRoots([
+        {
+          rootKey: opaqueKey("f"),
+          kind: "explicit",
+          path: configured,
+          displayName: "forbidden-source",
+        },
+      ]);
+
+      expect(result.roots).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "root-forbidden",
+          displayPath: "nested-source",
+        }),
+      ]);
+      expect(JSON.stringify(result.diagnostics)).not.toContain(parent);
+    },
+  );
 });
