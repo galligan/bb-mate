@@ -18,6 +18,21 @@
 - GitHub epic: https://github.com/galligan/bb-mate/issues/21
 - Compatibility issue: https://github.com/galligan/bb-mate/issues/51
 - Compatibility PR: https://github.com/galligan/bb-mate/pull/52
+- Goal/spec PR: https://github.com/galligan/bb-mate/pull/53
+- Gate 0: https://github.com/galligan/bb-mate/issues/54
+- Runtime domain: https://github.com/galligan/bb-mate/issues/55
+- Standalone executable: https://github.com/galligan/bb-mate/issues/56
+- Development-target discovery: https://github.com/galligan/bb-mate/issues/57
+- Thread/composer references: https://github.com/galligan/bb-mate/issues/58
+- Captures/comparisons: https://github.com/galligan/bb-mate/issues/59
+- Native agent tools/skill: https://github.com/galligan/bb-mate/issues/60
+- Sessions/annotations: https://github.com/galligan/bb-mate/issues/61
+- Plugin host shell: https://github.com/galligan/bb-mate/issues/62
+- Integrated final review: https://github.com/galligan/bb-mate/issues/63
+- Local release/proposal handoff: https://github.com/galligan/bb-mate/issues/64
+- Clean-room integrated trial: https://github.com/galligan/bb-mate/issues/65
+- Surface Explorer/Plugin Brief: https://github.com/galligan/bb-mate/issues/66
+- Stdio MCP adapter: https://github.com/galligan/bb-mate/issues/67
 - Upstream SDK distribution: https://github.com/get-bb/bb/issues/1134
 - Upstream scaffold production dependencies: https://github.com/get-bb/bb/issues/1133
 - Upstream scaffold fix PR: https://github.com/get-bb/bb/pull/1135
