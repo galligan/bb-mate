@@ -27,7 +27,14 @@ describe("runtime HTTP route inventory", () => {
       ["GET", "/assets/app.js"],
       ["POST", "/bootstrap"],
       ["POST", "/v1/bootstrap"],
+      ["POST", "/v1/browser-credentials/mint"],
+      ["POST", "/v1/browser-credentials/redeem"],
       ["GET", "/v1/targets"],
+      ["POST", "/v1/targets/from-path"],
+      ["GET", "/v1/targets/target-id/path"],
+      ["GET", "/v1/filesystem"],
+      ["POST", "/v1/objects"],
+      ["PATCH", "/v1/objects/object-id"],
       ["POST", "/v1/sessions"],
       ["GET", "/v1/sessions/session-id"],
       ["PATCH", "/v1/sessions/session-id/state"],
@@ -47,6 +54,14 @@ describe("runtime HTTP route inventory", () => {
       ["POST", "/v1/mcp"],
       ["POST", "/v1/artifacts"],
       ["GET", "/v1/artifacts/artifact-id"],
+      ["POST", "/v1/url-fetch"],
+      ["POST", "/v1/proxy"],
+      ["POST", "/v1/shell"],
+      ["POST", "/v1/eval"],
+      ["GET", "/v1/secrets"],
+      ["POST", "/v1/secrets"],
+      ["POST", "/v1/retention"],
+      ["DELETE", "/v1/delete-all"],
       ["POST", "/v1/import"],
       ["GET", "/v1/export"],
       ["DELETE", "/v1/data"],
@@ -62,6 +77,7 @@ describe("runtime HTTP route inventory", () => {
           method,
           headers: {
             host: "127.0.0.1:41721",
+            origin: "http://127.0.0.1:41721",
             ...(method === "POST" || method === "PATCH"
               ? { "content-type": "application/json" }
               : {}),
@@ -83,6 +99,7 @@ describe("runtime HTTP route inventory", () => {
       new Request("http://127.0.0.1:41721/v1/events", {
         headers: {
           host: "127.0.0.1:41721",
+          origin: "http://127.0.0.1:41721",
           connection: "Upgrade",
           upgrade: "websocket",
         },
@@ -92,6 +109,7 @@ describe("runtime HTTP route inventory", () => {
       new Request("http://127.0.0.1:41721/v1/events", {
         headers: {
           host: "127.0.0.1:41721",
+          origin: "http://127.0.0.1:41721",
           accept: "text/event-stream",
         },
       }),

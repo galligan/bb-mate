@@ -59,7 +59,12 @@ describe("runtime loopback HTTP routes", () => {
     const handle = createRuntimeHttpHandler({ port: 41_721 });
     for (const path of ["/healthz", "/v1/capabilities"]) {
       for (const method of ["OPTIONS", "POST", "PUT", "PATCH", "DELETE"]) {
-        const response = await handle(request(path, { method }));
+        const response = await handle(
+          request(path, {
+            method,
+            headers: { origin: "http://127.0.0.1:41721" },
+          }),
+        );
         expect(response.status, `${method} ${path}`).toBe(405);
         expect(response.headers.get("allow")).toBe("GET, HEAD");
         expect(response.headers.has("access-control-allow-methods")).toBe(
@@ -72,7 +77,9 @@ describe("runtime loopback HTTP routes", () => {
   test("returns a typed, redacted error for unknown routes", async () => {
     const handle = createRuntimeHttpHandler({ port: 41_721 });
     const response = await handle(
-      request("/secrets/private-key?token=do-not-reflect"),
+      request("/secrets/private-key?token=do-not-reflect", {
+        headers: { origin: "http://127.0.0.1:41721" },
+      }),
     );
 
     expect(response.status).toBe(404);
@@ -170,6 +177,50 @@ describe("runtime loopback HTTP routes", () => {
     }
   });
 
+  test("authenticates absent-Origin callers before unknown-route disclosure", async () => {
+    const unknown = () => request("/v1/not-a-route");
+    const unauthenticated = createRuntimeHttpHandler({ port: 41_721 });
+    const missing = await unauthenticated(unknown());
+    expect(missing.status).toBe(401);
+
+    const browser = createRuntimeHttpHandler({
+      port: 41_721,
+      authenticate: async () => runtimeReader("browser-session"),
+    });
+    const browserDenied = await browser(unknown());
+    expect(browserDenied.status).toBe(403);
+
+    const adapter = createRuntimeHttpHandler({
+      port: 41_721,
+      authenticate: async () => runtimeReader("plugin-adapter"),
+    });
+    const absent = await adapter(unknown());
+    expect(absent.status).toBe(404);
+    expect(await absent.json()).toEqual({
+      error: { code: "not_found", message: "Resource not found" },
+    });
+  });
+
+  test("authenticates absent-Origin callers before method disclosure", async () => {
+    const preflight = () => request("/v1/not-a-route", { method: "OPTIONS" });
+    const unauthenticated = createRuntimeHttpHandler({ port: 41_721 });
+    expect((await unauthenticated(preflight())).status).toBe(401);
+
+    const browser = createRuntimeHttpHandler({
+      port: 41_721,
+      authenticate: async () => runtimeReader("browser-session"),
+    });
+    expect((await browser(preflight())).status).toBe(403);
+
+    const adapter = createRuntimeHttpHandler({
+      port: 41_721,
+      authenticate: async () => runtimeReader("plugin-adapter"),
+    });
+    const disclosed = await adapter(preflight());
+    expect(disclosed.status).toBe(405);
+    expect(disclosed.headers.get("allow")).toBe("GET, HEAD");
+  });
+
   test("authenticates HEAD capabilities and returns no response body", async () => {
     let authenticationCalls = 0;
     const handle = createRuntimeHttpHandler({
@@ -214,7 +265,16 @@ describe("runtime loopback HTTP routes", () => {
       },
     });
     for (const path of ["/healthz?verbose=true", "/v1/capabilities?all=true"]) {
-      expect((await handle(request(path))).status, path).toBe(404);
+      expect(
+        (
+          await handle(
+            request(path, {
+              headers: { origin: "http://127.0.0.1:41721" },
+            }),
+          )
+        ).status,
+        path,
+      ).toBe(404);
     }
     expect(authenticationCalls).toBe(0);
   });

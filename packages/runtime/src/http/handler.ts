@@ -174,12 +174,39 @@ export function createRuntimeHttpHandler({
       return runtimeProblem(403, "forbidden");
     }
 
+    const routePath =
+      url.search === "" && url.hash === "" ? url.pathname : undefined;
+
     if (activeRequests >= MAX_CONCURRENT_REQUESTS) {
       return runtimeProblem(503, "conflict", requestOrigin);
     }
     activeRequests += 1;
 
     try {
+      let authenticatedContext: RequestContext | undefined;
+      const isPublicHealth =
+        routePath === "/healthz" &&
+        (request.method === "GET" || request.method === "HEAD");
+      if (requestOrigin === undefined && !isPublicHealth) {
+        try {
+          authenticatedContext = authorize(await authenticate(request), {
+            scope: "runtime:read",
+          });
+          if (authenticatedContext.principal.kind === "browser-session") {
+            throw new RuntimeError("forbidden");
+          }
+        } catch (error) {
+          const runtimeError =
+            error instanceof RuntimeError
+              ? error
+              : new RuntimeError("internal", { cause: error });
+          return runtimeProblem(
+            statusForRuntimeError(runtimeError),
+            runtimeError.code,
+          );
+        }
+      }
+
       if (request.headers.has("content-encoding")) {
         return runtimeProblem(415, "invalid_request", requestOrigin);
       }
@@ -196,9 +223,6 @@ export function createRuntimeHttpHandler({
       if (bodyPolicy === "too-large") {
         return runtimeProblem(413, "invalid_request", requestOrigin);
       }
-
-      const routePath =
-        url.search === "" && url.hash === "" ? url.pathname : undefined;
 
       if (request.method === "OPTIONS") {
         return runtimeProblem(405, "invalid_request", requestOrigin, {
@@ -229,8 +253,9 @@ export function createRuntimeHttpHandler({
         routePath === "/v1/capabilities"
       ) {
         try {
-          const context = await authenticate(request);
-          const authorized = authorize(context, { scope: "runtime:read" });
+          const authorized =
+            authenticatedContext ??
+            authorize(await authenticate(request), { scope: "runtime:read" });
           if (
             requestOrigin === undefined &&
             authorized.principal.kind === "browser-session"

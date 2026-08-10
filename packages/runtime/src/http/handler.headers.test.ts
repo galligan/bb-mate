@@ -12,6 +12,7 @@ function request(
 ): Request {
   const headers = new Headers(init.headers);
   headers.set("host", host);
+  if (!headers.has("origin")) headers.set("origin", URL);
   return new Request(`${URL}${path}`, { ...init, headers });
 }
 
