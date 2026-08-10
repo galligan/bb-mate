@@ -1,7 +1,7 @@
 # Workbench runtime foundation
 
 Date: 2026-08-10
-Status: Active
+Status: Implementation and local verification complete; review and merge pending
 Issue: [#55](https://github.com/galligan/bb-mate/issues/55)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
@@ -43,22 +43,22 @@ transport.
 
 ## Implementation
 
-1. [ ] Add the private package, curated exports, direct dependencies, scripts,
+1. [x] Add the private package, curated exports, direct dependencies, scripts,
        and a focused package-level type/test gate.
-2. [ ] Define strict identifiers, principal/request contexts, object envelopes,
+2. [x] Define strict identifiers, principal/request contexts, object envelopes,
        codec registration, typed errors, and canonical JSON serialization.
-3. [ ] Implement explicit scopes and table-driven default-deny authorization
+3. [x] Implement explicit scopes and table-driven default-deny authorization
        for principal, bb-context, target, session, revocation, and revision.
-4. [ ] Implement a symlink-rejecting 0700 data-root boundary, 0600 database,
+4. [x] Implement a symlink-rejecting 0700 data-root boundary, 0600 database,
        transactional append-only migrations, corruption/newer-schema failure,
        and deterministic injectable clock/ID sources.
-5. [ ] Implement atomic object create/read/update plus minimal redacted events,
+5. [x] Implement atomic object create/read/update plus minimal redacted events,
        optimistic revisions, bounded pull cursors, restart persistence, and
        transaction rollback semantics.
-6. [ ] Implement the exact `127.0.0.1:<port>` Host/Origin/auth/concurrency/body
+6. [x] Implement the exact `127.0.0.1:<port>` Host/Origin/auth/concurrency/body
        policy and security headers around constant health and authenticated
        capabilities handlers.
-7. [ ] Add schema, canonicalization, IDOR, migration/corruption, event,
+7. [x] Add schema, canonicalization, IDOR, migration/corruption, event,
        file-mode, HTTP policy, and forbidden-surface tests. Audit exports/routes
        for every deferred feature.
 8. [ ] Run focused and aggregate checks, two independent 5/5 review lanes,

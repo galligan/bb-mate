@@ -7,21 +7,23 @@ Status: Active
 
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
-The narrowed runtime domain/security foundation #55 is the active milestone.
+The narrowed runtime domain/security foundation #55 is implemented and locally
+green; its exact-head review and merge gate is the active milestone.
 
 ## Readiness
 
 Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
 Standalone #69 passed green local, hosted, and two-lane exact-head review
-evidence and is reconciled. The transport-neutral runtime foundation #55 is
-next; browser bootstrap/topology is isolated in #70.
+evidence and is reconciled. The transport-neutral runtime foundation #55 has
+passed focused and aggregate local verification; browser bootstrap/topology is
+isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Standalone branch: `feat/cli/standalone-executable`; issue #56; PR #69.
-- Current merge base: `d40aef0b7b04e6f76982b7203927905fd380c5a8`.
+- Runtime branch: `feat/runtime/domain-security-foundation`; issue #55.
+- Current merge base: `3d37aaece878fd099854d4190df78d9ce45cb98a`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -153,8 +155,40 @@ The legacy package lane remained separate and green: 41 files, 13 stories, and
 clean-room SHA-256
 `77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`.
 Focused tests, format, typecheck, compatibility, aggregate tests/build, and 14
-visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
-`macos-15` arm64 job, Linux verification, visual, and security checks are green.
+visual/accessibility checks passed. PR #69 merged after its dedicated
+`macos-15` arm64 job, Linux verification, visual, and security checks passed.
+
+## Runtime foundation #55
+
+The pre-review implementation head `2f5588ac0d213b926bc71b7afb9bac92ae860ee9`
+adds one private `@bb-mate/runtime` package. Its curated public entry point
+exports strict v1 identifiers, envelopes, codecs, request contexts,
+authorization, the canonical store/service, and the injectable Fetch handler;
+an exact export test keeps low-level database, migration, event-feed, and schema
+internals private.
+
+The service uses explicit least-privilege scopes and derives principal,
+bb-context, target, and optional session bindings only from a branded server-
+created request context. SQLite persistence stores those bindings outside
+canonical payload JSON, uses optimistic revisions, and commits minimal redacted
+pull events atomically with object mutations. The explicit private data root
+fails closed for unsafe modes, ownership, links, sidecars, WAL databases,
+corruption, newer schemas, migration drift, or live-schema drift without
+repairing or deleting caller data.
+
+The HTTP slice is handler-only: exact numerical loopback Host/URL/Origin,
+authenticated non-browser absent-Origin access, a constant public health route,
+authenticated capabilities with every deferred feature false, a 256 KiB body
+bound, 32-request concurrency limit, typed redacted failures, and restrictive
+security headers. Route/export tests prove the absence of bootstrap, target-
+path, artifact, generic object-write, event-stream, MCP, URL-fetch, shell/eval,
+native-lifecycle, destructive, import/export, and remote-bind surfaces.
+
+Focused runtime verification passes 93 tests with 519 assertions. The full
+local gate passes formatting, type/compatibility checks, 299 aggregate tests,
+the 41-file/13-story legacy package clean room at SHA-256
+`77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`,
+and all builds.
 
 ## Review Log
 
@@ -246,6 +280,14 @@ visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
   versioned contracts, authorization, SQLite, pull events, and loopback policy;
   #57/#59/#61/#62/#66/#67 own their concrete lanes. New child #70 owns secure
   browser bootstrap and same-instance topology and blocks integrated trial #65.
+- Runtime implementation subreviews exercised each security-critical lane.
+  HTTP review first found absent-Origin authentication/order and forbidden-
+  surface inventory gaps; the corrected lane reached 5/5 with 26 tests and 288
+  assertions. The service lane reached 5/5 with zero findings. Persistence
+  review rounds found and fixed ancestor-symlink admission, incomplete live-
+  schema attestation, raw cursor errors, migration attestation ordering, and
+  WAL/sidecar admission; round 3 reached 5/5 with zero P0-P3 and 40 focused
+  tests. Full exact-head standing and targeted PR review remains the merge gate.
 
 ## Verification Log
 
@@ -280,6 +322,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0 and standalone-runtime #56 are merged, closed, and
-reconciled on clean `main`. Runtime foundation #55 is active on a separate
-merge-first branch; all release/upstream/Connect/normal-profile stop boundaries
-remain intact.
+reconciled on clean `main`. Runtime foundation #55 is implemented and locally
+green on a separate merge-first branch; exact-head review, hosted CI, merge,
+and reconciliation remain. All release/upstream/Connect/normal-profile stop
+boundaries remain intact.
