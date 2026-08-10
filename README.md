@@ -27,7 +27,8 @@ plugin back to live bb.
 
 Today BB Mate can:
 
-- discover an ordinary bb plugin workspace without adding a BB Mate manifest;
+- passively discover ordinary bb plugin source trees without adding a BB Mate
+  manifest;
 - inspect `package.json`, native `dist/*.meta.json`, engine ranges, and passive
   bb status without importing or executing the plugin;
 - render deterministic stories for the public plugin UI surface catalog;
@@ -127,7 +128,10 @@ bun run build
 bun run visual:test
 ```
 
-The source workbench discovers plugin packages under `plugins/`. Pass an
+The source workbench passively discovers plugin packages beneath its admitted
+project roots and assigns each one an opaque, stable catalog ID. Its browser
+session is read-only and Fixture-only: selecting a target does not run `bb`,
+query Connect or npm, import the plugin, or expose its canonical path. Pass an
 explicit external plugin path to the CLI when needed:
 
 ```sh

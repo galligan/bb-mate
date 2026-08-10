@@ -36,6 +36,7 @@ import type {
   PreviewViewport,
   WorkbenchState,
 } from "@/workbench-state";
+import { isOpaqueTargetId } from "@/workbench-state";
 import type { PluginInspection } from "@bb-mate/inspection";
 
 const surfaceItems = surfaceCatalog.map((surface) => ({
@@ -53,10 +54,10 @@ interface MateOverlayProps {
   selectionError: string | null;
   workspaceLabel: string | null;
   candidates: PluginCandidate[];
-  selectedKey: string | null;
+  selectedTargetId: string | null;
   handoffs: PluginHandoffs;
   onRefreshInspection: () => void;
-  onPluginChange: (plugin: string | null) => void;
+  onTargetChange: (targetId: string | null) => void;
   onSurfaceChange: (surfaceId: string) => void;
   onFixtureChange: (fixtureId: string) => void;
   onModeChange: (mode: PreviewMode) => void;
@@ -67,16 +68,16 @@ interface MateOverlayProps {
 const actionableStatuses = new Set(["warning", "fail", "unavailable"]);
 const workspaceSelectionValue = "control:workspace";
 
-export function candidateSelectionValue(key: string): string {
-  return `candidate:${key}`;
+export function candidateSelectionValue(targetId: string): string {
+  return `candidate:${targetId}`;
 }
 
-export function pluginKeyFromSelection(value: string): string | null {
-  return value === workspaceSelectionValue
-    ? null
-    : value.startsWith("candidate:")
-      ? value.slice("candidate:".length)
-      : null;
+export function targetIdFromSelection(value: string): string | null {
+  if (value === workspaceSelectionValue) return null;
+  const targetId = value.startsWith("candidate:")
+    ? value.slice("candidate:".length)
+    : "";
+  return isOpaqueTargetId(targetId) ? targetId : null;
 }
 
 export function PluginInspectionCard({
@@ -214,10 +215,10 @@ export function MateOverlay({
   selectionError,
   workspaceLabel,
   candidates,
-  selectedKey,
+  selectedTargetId,
   handoffs,
   onRefreshInspection,
-  onPluginChange,
+  onTargetChange,
   onSurfaceChange,
   onFixtureChange,
   onModeChange,
@@ -235,9 +236,9 @@ export function MateOverlay({
       label: `Discover in ${workspaceLabel ?? "workspace"}`,
       value: workspaceSelectionValue,
     },
-    ...candidates.map(({ key, label }) => ({
+    ...candidates.map(({ id, label }) => ({
       label,
-      value: candidateSelectionValue(key),
+      value: candidateSelectionValue(id),
     })),
   ];
   const fixtureItems = selection.surface.fixtures.map((fixture) => ({
@@ -290,21 +291,23 @@ export function MateOverlay({
           <div className="mate-divider" />
 
           <div className="mate-field">
-            <label className="mate-field-heading" htmlFor="mate-plugin">
-              Plugin / workspace
+            <label className="mate-field-heading" htmlFor="mate-target">
+              Development target
             </label>
             <Select
               items={pluginItems}
               value={
-                state.plugin || selectedKey
-                  ? candidateSelectionValue(state.plugin ?? selectedKey ?? "")
+                state.targetId || selectedTargetId
+                  ? candidateSelectionValue(
+                      state.targetId ?? selectedTargetId ?? "",
+                    )
                   : workspaceSelectionValue
               }
               onValueChange={(value) => {
-                if (value) onPluginChange(pluginKeyFromSelection(value));
+                if (value) onTargetChange(targetIdFromSelection(value));
               }}
             >
-              <SelectTrigger id="mate-plugin" className="mate-select-trigger">
+              <SelectTrigger id="mate-target" className="mate-select-trigger">
                 <SelectValue placeholder="Choose a discovered plugin" />
               </SelectTrigger>
               <SelectContent
@@ -321,7 +324,7 @@ export function MateOverlay({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {candidates.length > 1 && !selectedKey ? (
+            {candidates.length > 1 && !selectedTargetId ? (
               <p className="mate-help" role="status">
                 Multiple plugins were discovered. Choose one explicitly before
                 using native handoffs.

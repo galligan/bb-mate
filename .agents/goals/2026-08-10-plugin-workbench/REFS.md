@@ -23,6 +23,7 @@
 - Runtime domain: https://github.com/galligan/bb-mate/issues/55
 - Standalone executable: https://github.com/galligan/bb-mate/issues/56
 - Development-target discovery: https://github.com/galligan/bb-mate/issues/57
+- Opaque-target Workbench adapter: https://github.com/galligan/bb-mate/pull/75
 - Thread/composer references: https://github.com/galligan/bb-mate/issues/58
 - Captures/comparisons: https://github.com/galligan/bb-mate/issues/59
 - Native agent tools/skill: https://github.com/galligan/bb-mate/issues/60

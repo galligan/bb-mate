@@ -9,7 +9,8 @@ import { MateOverlay } from "./MateOverlay";
 afterEach(cleanup);
 
 const state: WorkbenchState = {
-  plugin: "workspace",
+  targetId: "w".repeat(32),
+  selectionError: null,
   surfaceId: "thread-list",
   fixtureId: "agents",
   mode: "fixture",
@@ -64,7 +65,7 @@ function renderOverlay(
 ) {
   const callbacks = {
     onRefreshInspection: mock(() => {}),
-    onPluginChange: mock((_plugin: string | null) => {}),
+    onTargetChange: mock((_targetId: string | null) => {}),
     onSurfaceChange: mock((_surface: string) => {}),
     onFixtureChange: mock((_fixture: string) => {}),
     onModeChange: mock((_mode: WorkbenchState["mode"]) => {}),
@@ -81,13 +82,17 @@ function renderOverlay(
       workspaceLabel="bb-mate"
       candidates={[
         {
-          key: "workspace",
-          label: "plugins/workspace",
+          id: "w".repeat(32),
+          label: "control:workspace",
           displayPath: "plugins/workspace",
         },
-        { key: "other", label: "plugins/other", displayPath: "plugins/other" },
+        {
+          id: "o".repeat(32),
+          label: "plugins/other",
+          displayPath: "plugins/other",
+        },
       ]}
-      selectedKey="workspace"
+      selectedTargetId={"w".repeat(32)}
       handoffs={{
         launchCommand: null,
         checkCommand: null,
@@ -122,15 +127,15 @@ describe("MateOverlay interactions", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  test("keeps a plugin named workspace distinct and gates preview modes honestly", async () => {
+  test("selects opaque IDs for reserved-looking labels and gates preview modes honestly", async () => {
     const user = userEvent.setup();
     const callbacks = renderOverlay();
 
     await user.click(
-      screen.getByRole("combobox", { name: "Plugin / workspace" }),
+      screen.getByRole("combobox", { name: "Development target" }),
     );
     await user.click(screen.getByRole("option", { name: "plugins/other" }));
-    expect(callbacks.onPluginChange).toHaveBeenCalledWith("other");
+    expect(callbacks.onTargetChange).toHaveBeenCalledWith("o".repeat(32));
 
     const harness = screen.getByRole("button", { name: /Harness/ });
     const live = screen.getByRole("button", { name: /Live bb/ });

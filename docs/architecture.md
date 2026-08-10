@@ -17,7 +17,7 @@ The workbench puts the bb surface directly in the viewport. Workbench controls
 belong in the collapsible Mate overlay, not in a permanent wrapper around the
 prototype. The overlay uses vendored shadcn/Base UI source and has its own dark
 theme; bb-facing views use bb's typography, icon family, and measured semantic
-tokens. The URL is the complete launcher-state contract for plugin, surface,
+tokens. The URL is the complete launcher-state contract for target, surface,
 scenario, mode, theme, and viewport. The overlay emits copyable CLI handoffs;
 it never owns a browser-triggered native command runner.
 
@@ -79,24 +79,21 @@ state/action contract and cannot safely drive plugin behavior.
 
 ### Plugin inspection
 
-The workbench dev server may inspect one explicit plugin directory or require a
-choice from its discovered workspace candidates. Candidate keys are mapped to
-trusted roots server-side and never interpreted as browser-provided paths. The
-browser projection redacts lexical roots, symlink realpaths, path provenance,
-and incidental absolute paths in native diagnostics. Inspection is data-only: it reads
-the ordinary package manifest, native
-`dist/server.meta.json` and `dist/app.meta.json`, and the JSON output of native
-bb commands. It must not evaluate the plugin entrypoint, mount a content script,
-or introduce a BB Mate manifest.
+The source workbench admits explicit, current-project, startup, or pinned roots
+at server startup and passively discovers plugin manifests beneath those roots.
+It persists a private source catalog and exposes only opaque 32-character target
+IDs plus allowlisted display metadata to the browser. The URL accepts only
+`?target=<opaque-id>`; duplicate, legacy, and unknown query keys fail closed.
+Browser input is never interpreted as a filesystem path, and installed plugin
+inventory never seeds source candidates.
 
-Build/check and Live handoffs use the repository-proven `bun run bb-mate`
-entrypoint and are copied under an explicit user gesture. Targets are expressed
-relative to the BB Mate command workspace. If inspection started in an external
-workspace, copyable handoffs are unavailable: serializing a cross-root command
-would disclose local path hierarchy, while a bare global `bb-mate` binary is not
-part of the proven source-checkout entrypoint. Available commands execute only
-in the developer's terminal, where the CLI delegates to native bb with inherited
-output. There is no HTTP action endpoint and no Connect fetch, proxy, or iframe.
+The schema-v2 session endpoint is a read-only Fixture adapter. A request reads
+only the already-prepared public catalog projection: it does not run `bb`, query
+Connect or npm, inspect build metadata, execute a target, or refresh native
+state. Persisted native status may be summarized as informational evidence, but
+Harness, Live, and terminal handoffs remain unavailable. The dev-only endpoint
+is constrained to the actual loopback listener with exact Host and present
+Origin checks; the authenticated runtime/browser bootstrap belongs to #70.
 
 The official SDK frontend collector currently exposes these registration
 groups, which define the eventual surface inventory:

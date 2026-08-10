@@ -70,8 +70,11 @@ const inspection: PluginInspection = {
   },
 };
 
+const exampleTargetId = "e".repeat(32);
+
 const initialState: WorkbenchState = {
-  plugin: "example",
+  targetId: exampleTargetId,
+  selectionError: null,
   surfaceId: "thread-list",
   fixtureId: "agents",
   mode: "fixture",
@@ -102,12 +105,12 @@ function Harness() {
         workspaceLabel="fixture-workspace"
         candidates={[
           {
-            key: "example",
+            id: exampleTargetId,
             label: "plugins/example",
             displayPath: "plugins/example",
           },
         ]}
-        selectedKey="example"
+        selectedTargetId={exampleTargetId}
         handoffs={{
           launchCommand: "bun run bb-mate plugins/example",
           checkCommand: "bun run bb-mate check plugins/example",
@@ -115,7 +118,7 @@ function Harness() {
           detail: "Deterministic copy-only commands for visual coverage.",
         }}
         onRefreshInspection={() => {}}
-        onPluginChange={(plugin) => update({ plugin, mode: "fixture" })}
+        onTargetChange={(targetId) => update({ targetId, mode: "fixture" })}
         onSurfaceChange={(surfaceId) => {
           const next = resolveCatalogSelection(surfaceId, "");
           update({

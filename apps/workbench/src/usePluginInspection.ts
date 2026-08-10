@@ -1,37 +1,22 @@
 import { useEffect, useState } from "react";
+
 import type { PluginInspection } from "@/plugin-inspection";
+import {
+  parsePluginSession,
+  readBoundedJson,
+  type PluginCandidate,
+  type PluginHandoffs,
+} from "@/plugin-session";
+import { isOpaqueTargetId, unavailableTargetMessage } from "@/workbench-state";
 
-export interface PluginCandidate {
-  key: string;
-  label: string;
-  displayPath: string;
-}
-
-export interface PluginHandoffs {
-  launchCommand: string | null;
-  checkCommand: string | null;
-  liveCommand: string | null;
-  detail: string;
-}
-
-interface PluginSession {
-  schemaVersion: 1;
-  workspace: {
-    label: string;
-    candidates: PluginCandidate[];
-    selectedKey: string | null;
-    selectionError: string | null;
-  };
-  inspection: PluginInspection;
-  handoffs: PluginHandoffs;
-}
+export type { PluginCandidate, PluginHandoffs } from "@/plugin-session";
 
 interface InspectionResult {
   inspection: PluginInspection | null;
   error: string | null;
   workspaceLabel: string | null;
   candidates: PluginCandidate[];
-  selectedKey: string | null;
+  selectedTargetId: string | null;
   selectionError: string | null;
   handoffs: PluginHandoffs;
   refresh(): void;
@@ -44,21 +29,21 @@ const emptyHandoffs: PluginHandoffs = {
   detail: "Choose a discovered plugin before using terminal handoffs.",
 };
 
-export function pluginSessionUrl(plugin: string | null): string {
+export function pluginSessionUrl(targetId: string | null): string {
   const params = new URLSearchParams();
-  if (plugin) params.set("plugin", plugin);
+  if (targetId && isOpaqueTargetId(targetId)) params.set("target", targetId);
   const query = params.size > 0 ? `?${params.toString()}` : "";
   return `/bb-mate-session.json${query}`;
 }
 
-export function usePluginInspection(plugin: string | null): InspectionResult {
+export function usePluginInspection(targetId: string | null): InspectionResult {
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<InspectionResult>({
     inspection: null,
     error: null,
     workspaceLabel: null,
     candidates: [],
-    selectedKey: null,
+    selectedTargetId: null,
     selectionError: null,
     handoffs: emptyHandoffs,
     refresh: () => setRevision((value) => value + 1),
@@ -71,11 +56,18 @@ export function usePluginInspection(plugin: string | null): InspectionResult {
       inspection: null,
       error: null,
       candidates: [],
-      selectedKey: null,
+      selectedTargetId: null,
       selectionError: null,
       handoffs: emptyHandoffs,
     }));
-    void fetch(pluginSessionUrl(plugin), {
+    if (targetId && !isOpaqueTargetId(targetId)) {
+      setResult((current) => ({
+        ...current,
+        selectionError: unavailableTargetMessage,
+      }));
+      return () => controller.abort();
+    }
+    void fetch(pluginSessionUrl(targetId), {
       signal: controller.signal,
       cache: "no-store",
     })
@@ -85,7 +77,7 @@ export function usePluginInspection(plugin: string | null): InspectionResult {
             `Plugin inspection failed with HTTP ${response.status}`,
           );
         }
-        return (await response.json()) as PluginSession;
+        return parsePluginSession(await readBoundedJson(response));
       })
       .then((session) => {
         if (controller.signal.aborted) return;
@@ -95,7 +87,7 @@ export function usePluginInspection(plugin: string | null): InspectionResult {
           error: null,
           workspaceLabel: session.workspace.label,
           candidates: session.workspace.candidates,
-          selectedKey: session.workspace.selectedKey,
+          selectedTargetId: session.workspace.selectedTargetId,
           selectionError: session.workspace.selectionError,
           handoffs: session.handoffs,
         }));
@@ -107,13 +99,13 @@ export function usePluginInspection(plugin: string | null): InspectionResult {
           inspection: null,
           error: error instanceof Error ? error.message : String(error),
           candidates: [],
-          selectedKey: null,
+          selectedTargetId: null,
           selectionError: null,
           handoffs: emptyHandoffs,
         }));
       });
     return () => controller.abort();
-  }, [plugin, revision]);
+  }, [targetId, revision]);
 
   return result;
 }

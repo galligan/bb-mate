@@ -36,14 +36,16 @@ Connect, or pair an account.
 | root `bun run test` or `bun run build`           | every workspace's scripts, including plugin-owned tests and native `bb plugin build` | repository and plugin source                     | whatever a plugin-owned test/build toolchain performs                | test/build output including plugin `dist`; no install/reload           |
 | `bun run visual:test`                            | deterministic Fixture browser/test code and dependencies                             | Fixture source and checked-in baselines          | loopback test server                                                 | test output only; no selected plugin or native bb state                |
 
-`--host` on source-checkout `dev` is an explicit exposure choice. Its
-unauthenticated `/bb-mate-session.json` endpoint lets any client trigger bounded
-read-only bb version/plugin-list/Connect status/share processes and an npm SDK
-lookup, then returns redacted plugin/native/Connect metadata. Connect and share
-URLs remain URLs after path redaction. Keep source dev on loopback unless you
-intend to expose both the Fixture server and that inspection surface. The
-packaged lab is different: it rejects non-loopback hosts, serves static Fixture
-assets only, and has no session endpoint.
+The source-checkout Workbench refuses non-loopback Vite hosts. Its dev-only
+`/bb-mate-session.json` endpoint requires the request to reach the actual
+loopback listener with an exact Host and, when present, same-origin Origin. It
+accepts only an empty query or one opaque `target` selector and returns a strict,
+bounded, no-store schema-v2 projection. A request runs no `bb`, Connect, npm,
+build, or target code and exposes no command, URL, canonical root, host identity,
+or provenance. This is a constrained local development adapter, not the
+authenticated Workbench runtime API; browser credentials and same-instance
+topology belong to #70. The packaged lab remains static, loopback-only, and has
+no session endpoint.
 
 ## Content scripts
 
@@ -71,10 +73,12 @@ when available or in a controlled Live bb profile.
 ## Security boundary
 
 The browser does not receive raw plugin roots or incidental absolute paths.
-Opaque candidate keys are resolved server-side, and source-workbench reports
-redact path hierarchy. No HTTP endpoint executes a native mutation or plugin
-entrypoint; the source session endpoint does execute the bounded read-only
-inspection described above. These controls reduce accidental disclosure; they
-do not turn BB Mate or plugins into untrusted-code sandboxes.
+Opaque target IDs resolve only against the server-prepared catalog, and the
+source-workbench response is built from an explicit public allowlist rather
+than regex redaction. Private catalog state lives beneath a mode-0700 data root;
+its owned identity file is a mode-0600 regular single-link file. The session GET
+does not execute native commands, mutate plugin state, or import an entrypoint.
+These controls reduce accidental disclosure; they do not turn BB Mate or
+plugins into untrusted-code sandboxes.
 
 Report suspected boundary failures using [SECURITY.md](../SECURITY.md).

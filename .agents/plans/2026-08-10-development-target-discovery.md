@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slices 57A and 57B1 merged; slice 57B2 active
+Status: Slices 57A and 57B1 merged; slice 57B2 implementation complete, review pending
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
@@ -52,6 +52,15 @@ Issue #57 closes only after all three slices merge and reconcile.
   restart preserve the same ID for the same private canonical root.
 - The `bb` object in `package.json` is the released plugin manifest. No second
   manifest format is introduced.
+- The Workbench browser contract is schema v2 and accepts only an empty query
+  or one `target=<opaque-id>` selector. Duplicate, legacy, unknown, or mixed
+  query keys fail closed without echoing input.
+- Workbench request handling projects the prepared public catalog only. It
+  performs no native observation, npm or Connect lookup, build-metadata read,
+  target execution, or catalog mutation; Fixture stays available while
+  Harness, Live, and terminal handoffs remain unavailable.
+- The source Vite adapter is dev-only, loopback-bound, and same-origin checked.
+  It is not the authenticated runtime/browser surface owned by #70.
 
 ## Trusted-root policy
 
@@ -100,7 +109,7 @@ decision; #70 owns that gate.
        fixtures for every required state, and atomic private host observations
        without lifecycle mutation, candidate seeding, or topology conclusions.
 6. [x] Run aggregate gates and two 5/5 lanes, then merge and reconcile 57B1.
-7. [ ] Adapt one-authorized-target inspection and Workbench selection to
+7. [x] Adapt one-authorized-target inspection and Workbench selection to
        opaque target IDs; reverse the prior external-symlink acceptance test.
 8. [ ] Run visual/accessibility and aggregate gates, two 5/5 reviews, hosted
        CI, merge 57B2, close #57, and reconcile GitButler.

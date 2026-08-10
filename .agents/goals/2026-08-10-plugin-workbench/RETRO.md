@@ -27,7 +27,8 @@ bootstrap/topology remains isolated in #70.
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/workbench/opaque-target-adapter`; issue #57; no PR yet.
+- Active branch: `feat/workbench/opaque-target-adapter`; issue #57; draft PR
+  #75.
 - Current merge base: `73e6865e2a135dfd02dc2429ebc3debaa179d79d`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
@@ -457,6 +458,20 @@ and all builds.
   `73e6865e2a135dfd02dc2429ebc3debaa179d79d`. `but pull` removed the integrated
   57B1 branch and advanced the workspace base; the unrelated PR #73 lane was
   only rebased locally and remains unpushed.
+- Slice 57B2 replaces basename/path selection and recursive regex redaction
+  with a lifecycle-open source catalog and schema-v2 browser projection. The
+  browser selects only opaque target IDs, an invalid or foreign selection never
+  falls back, one unambiguous target may auto-select, and the former external
+  symlink acceptance is now a fail-closed no-execution case.
+- The Workbench GET path reads only its prepared public catalog projection. It
+  runs no `bb`, Connect, npm, build, native-observer, or target code and returns
+  no command, URL, provenance, canonical root, principal/context, or host fact.
+  Fixture remains available; Harness, Live, and terminal handoffs remain
+  explicitly unavailable until their owning milestones.
+- The dev adapter persists only stable server identity keys and the catalog
+  under an explicit private data root, checks exact loopback Host/listener port
+  and present Origin, and accepts only zero query parameters or one opaque
+  `target`. Legacy, duplicate, mixed, and unknown query keys return a generic 400. Browser responses pass a strict recursive allowlist and 256 KiB reader.
 
 ## Verification Log
 
@@ -468,6 +483,15 @@ check`, `bun run test`, `bun run build`, and `git diff --check`. The aggregate
   run passed 470 tests: inspection 136, runtime 169, CLI 42, Workbench 53,
   Linear plugin 21, and scripts 49. The package clean room passed with 41
   files, 13 stories, and SHA-256
+  `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
+- Slice 57B2 local implementation gate passed `bun run format:check`, `bun run
+check`, `bun run test`, `bun run build`, `bun run visual:test`, `bun run
+compatibility:latest`, `bun run package:inspect`, and `bun run
+standalone:inspect`. The aggregate test lane passed 482 tests: inspection
+  136, runtime 169, CLI 42, Workbench 65, Linear plugin 21, and scripts 49.
+  Workbench contributed 602 assertions; all 14 visual/accessibility checks
+  passed. The unchanged package clean room remained 41 files/13 stories at
+  SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
@@ -515,6 +539,13 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   reopen. The inventory invokes only `bb plugin list --json`, creates no
   additional target, exposes no private root/hostname publicly, and executes
   neither package scripts nor the target entrypoint.
+- A real Vite walking skeleton used a disposable canonical `/private/tmp` data
+  root and numerical loopback port 43127. It returned schema v2 with one opaque
+  target, null terminal commands, Fixture available, and Harness/Live
+  unavailable; legacy `plugin` query input returned the generic HTTP 400. SIGINT
+  removed the listener and the disposable evidence roots were deleted. A first
+  `/tmp` attempt failed closed because macOS resolves that path through a
+  symlink, confirming the data-root ancestor policy rather than weakening it.
 
 ## Prompt / Goal Alignment
 
@@ -533,6 +564,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
-source-catalog slices 57A and 57B1 are merged and reconciled. Issue #57 stays
-open for the active 57B2 opaque-target Workbench adapter. All
+source-catalog slices 57A and 57B1 are merged and reconciled. Slice 57B2
+implementation and local verification are complete on draft PR #75; exact-head
+review, hosted CI, ready/merge, issue closure, and reconciliation remain. All
 release/upstream/Connect/normal-profile stop boundaries remain intact.
