@@ -581,6 +581,16 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   and unrelated #73 remained preserved. Superseded Workbench rounds 1-3 were
   scratch-archived only after all findings and fixed dispositions were recorded
   here.
+- PR #75 was made ready only after exact final head
+  `cc4c7e383dd0dac6b665f14b0075b9aaa288ebb0` passed terminal hosted checks,
+  zero-thread verification, packet doctor, and final standing plus targeted
+  5/5 reviews. GitHub async request
+  `2cc9e6c7-3d21-41ba-8ad9-cb643da8dd6b` merged it as
+  `6ed0c33ddbe8b971eadb36d170fc705dbf9550b3`. `but pull` removed the
+  integrated 57B2 branch and reconciled the workspace; #57 closed complete and
+  #21 now records source-first development-target discovery as merged. The
+  unrelated #73 lane remains isolated in its pre-existing force-push-required
+  state.
 
 ## Prompt / Goal Alignment
 
@@ -599,8 +609,8 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
-source-catalog slices 57A and 57B1 are merged and reconciled. Slice 57B2
-implementation, local and hosted verification, and dual 5/5 review are complete
-on draft PR #75; the final docs-only exact-head review, ready/merge, issue
-closure, and reconciliation remain. All release/upstream/Connect/normal-profile
-stop boundaries remain intact.
+source-catalog slices 57A, 57B1, and 57B2 are merged and reconciled; #57 is
+closed. Host-shell #62 is active with an explicit merge-first split: 62A adds
+the supervised runtime protocol, then 62B packages and supervises that exact
+runtime from `bb-plugin-mate`. All release/upstream/Connect/normal-profile stop
+boundaries remain intact.
