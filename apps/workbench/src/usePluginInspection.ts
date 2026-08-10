@@ -36,7 +36,10 @@ export function pluginSessionUrl(targetId: string | null): string {
   return `/bb-mate-session.json${query}`;
 }
 
-export function usePluginInspection(targetId: string | null): InspectionResult {
+export function usePluginInspection(
+  targetId: string | null,
+  callerSelectionError: string | null = null,
+): InspectionResult {
   const [revision, setRevision] = useState(0);
   const [result, setResult] = useState<InspectionResult>({
     inspection: null,
@@ -60,6 +63,13 @@ export function usePluginInspection(targetId: string | null): InspectionResult {
       selectionError: null,
       handoffs: emptyHandoffs,
     }));
+    if (callerSelectionError) {
+      setResult((current) => ({
+        ...current,
+        selectionError: callerSelectionError,
+      }));
+      return () => controller.abort();
+    }
     if (targetId && !isOpaqueTargetId(targetId)) {
       setResult((current) => ({
         ...current,
@@ -105,7 +115,7 @@ export function usePluginInspection(targetId: string | null): InspectionResult {
         }));
       });
     return () => controller.abort();
-  }, [targetId, revision]);
+  }, [callerSelectionError, targetId, revision]);
 
   return result;
 }

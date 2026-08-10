@@ -24,7 +24,22 @@ export function attachCatalogMiddleware(
 ): void {
   server.httpServer?.once("close", () => sessionServer.close());
   server.middlewares.use((request, response, next) => {
-    const url = new URL(request.url ?? "/", "http://bb-mate.local");
+    const requestTarget = request.url ?? "/";
+    if (!requestTarget.startsWith("/") || requestTarget.startsWith("//")) {
+      response.statusCode = 400;
+      setSecurityHeaders(response);
+      response.end(JSON.stringify({ error: "Request unavailable." }));
+      return;
+    }
+    let url: URL;
+    try {
+      url = new URL(requestTarget, "http://bb-mate.local");
+    } catch {
+      response.statusCode = 400;
+      setSecurityHeaders(response);
+      response.end(JSON.stringify({ error: "Request unavailable." }));
+      return;
+    }
     if (url.pathname !== "/bb-mate-session.json") {
       next();
       return;
@@ -66,7 +81,8 @@ function readTargetQuery(url: URL): string | null | undefined {
   const entries = [...url.searchParams.entries()];
   if (entries.length === 0) return null;
   if (entries.length !== 1 || entries[0]![0] !== "target") return undefined;
-  return entries[0]![1];
+  const targetId = entries[0]![1];
+  return /^[A-Za-z0-9_-]{32}$/u.test(targetId) ? targetId : undefined;
 }
 
 function isSameOriginLoopback(request: {

@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import type { PluginInspection } from "@bb-mate/inspection";
 import { parsePluginSession } from "./plugin-session";
 import { pluginSessionUrl, usePluginInspection } from "./usePluginInspection";
+import { unavailableTargetMessage } from "./workbench-state";
 
 afterEach(cleanup);
 
@@ -168,6 +169,25 @@ describe("usePluginInspection", () => {
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(result.current.selectionError).not.toContain("../plugins/secret");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("does not fetch or default when URL parsing rejected a target", async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchMock = mock(() => Promise.resolve(Response.json({})));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const { result } = renderHook(() =>
+        usePluginInspection(null, unavailableTargetMessage),
+      );
+      await waitFor(() =>
+        expect(result.current.selectionError).toBe(unavailableTargetMessage),
+      );
+
+      expect(fetchMock).not.toHaveBeenCalled();
     } finally {
       globalThis.fetch = originalFetch;
     }

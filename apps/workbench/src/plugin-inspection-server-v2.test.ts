@@ -384,6 +384,17 @@ describe("catalog-backed plugin inspection session", () => {
     const extra = await request(
       `/bb-mate-session.json?target=${targetId}&extra=ignored`,
     );
+    const pathTarget = await request(
+      "/bb-mate-session.json?target=..%2Fplugins%2Fsecret",
+    );
+    const emptyTarget = await request("/bb-mate-session.json?target=");
+    const unknownTarget = await request(
+      `/bb-mate-session.json?target=${"u".repeat(32)}`,
+    );
+    const absoluteTarget = await request(
+      "http://evil.example/bb-mate-session.json",
+    );
+    const malformed = await request("http://[");
     const foreign = await request("/bb-mate-session.json", {
       host: "evil.example",
     });
@@ -395,12 +406,38 @@ describe("catalog-backed plugin inspection session", () => {
     expect(
       (initial.body as BrowserPluginSession).workspace.selectedTargetId,
     ).toBeNull();
-    for (const rejected of [legacy, duplicate, extra]) {
+    for (const rejected of [
+      legacy,
+      duplicate,
+      extra,
+      pathTarget,
+      emptyTarget,
+      absoluteTarget,
+      malformed,
+    ]) {
       expect(rejected.statusCode).toBe(400);
       expect(rejected.body).toEqual({ error: "Request unavailable." });
     }
+    expect(unknownTarget.statusCode).toBe(200);
+    expect(
+      (unknownTarget.body as BrowserPluginSession).workspace.selectedTargetId,
+    ).toBeNull();
+    expect(
+      (unknownTarget.body as BrowserPluginSession).workspace.selectionError,
+    ).not.toContain("u".repeat(32));
     expect(foreign.statusCode).toBe(403);
-    for (const response of [selected, legacy, duplicate, extra, foreign]) {
+    for (const response of [
+      selected,
+      legacy,
+      duplicate,
+      extra,
+      pathTarget,
+      emptyTarget,
+      unknownTarget,
+      absoluteTarget,
+      malformed,
+      foreign,
+    ]) {
       expect(response.responseHeaders).toMatchObject({
         "cache-control": "no-store",
         "content-type": "application/json; charset=utf-8",

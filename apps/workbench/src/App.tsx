@@ -9,7 +9,7 @@ import { automaticTargetId, useWorkbenchState } from "@/workbench-state";
 export function App() {
   const { state, update } = useWorkbenchState();
   const selection = resolveCatalogSelection(state.surfaceId, state.fixtureId);
-  const inspection = usePluginInspection(state.targetId);
+  const inspection = usePluginInspection(state.targetId, state.selectionError);
   const modeCapabilities = useMemo(
     () => previewModeCapabilities(inspection.inspection),
     [inspection.inspection],

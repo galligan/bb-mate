@@ -487,9 +487,10 @@ check`, `bun run test`, `bun run build`, and `git diff --check`. The aggregate
 - Slice 57B2 local implementation gate passed `bun run format:check`, `bun run
 check`, `bun run test`, `bun run build`, `bun run visual:test`, `bun run
 compatibility:latest`, `bun run package:inspect`, and `bun run
-standalone:inspect`. The aggregate test lane passed 482 tests: inspection
-  136, runtime 169, CLI 42, Workbench 65, Linear plugin 21, and scripts 49.
-  Workbench contributed 602 assertions; all 14 visual/accessibility checks
+standalone:inspect`. The remediation aggregate test lane passed 483 tests:
+  inspection 136, runtime 169, CLI 42, Workbench 66, Linear plugin 21, and
+  scripts 49. Workbench contributed 620 assertions; all 14
+  visual/accessibility checks
   passed. The unchanged package clean room remained 41 files/13 stories at
   SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
@@ -546,6 +547,18 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   removed the listener and the disposable evidence roots were deleted. A first
   `/tmp` attempt failed closed because macOS resolves that path through a
   symlink, confirming the data-root ancestor policy rather than weakening it.
+- Workbench round-one standing review scored 2/5 and targeted review scored
+  3/5 at implementation head `9d740f01d05c0169c0283bf3fbc4dfb41f9a11dd`.
+  Both found that a malformed launcher selector became a null target before the
+  hook, allowing an empty-query fetch and sole-target fallback. Standing also
+  found that the server admitted malformed target values, while both reviews
+  found that malformed absolute-form request targets could escape the secured
+  response path. The replacement blocks the fetch whenever URL-state parsing
+  has already rejected a selector, requires the exact 32-character opaque ID
+  grammar at the HTTP boundary, rejects non-origin-form request targets, and
+  returns the same secured generic 400 for parsing failures. Focused regressions
+  prove zero fetch/fallback, path/empty selector rejection, valid foreign-ID
+  non-enumeration, and malformed/hostile absolute-form rejection.
 
 ## Prompt / Goal Alignment
 
