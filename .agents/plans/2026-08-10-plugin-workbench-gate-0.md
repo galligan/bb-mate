@@ -1,7 +1,7 @@
 # Plugin Workbench released-capability Gate 0
 
 Date: 2026-08-10
-Status: Complete
+Status: Implementation and review complete; merge pending
 Issue: [#54](https://github.com/galligan/bb-mate/issues/54)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 

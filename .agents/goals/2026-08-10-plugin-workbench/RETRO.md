@@ -6,8 +6,9 @@ Status: Active
 ## Summary
 
 The execution goal is active. Compatibility baseline #52 and spec/goal PR #53
-are merged. Released-capability Gate 0 is complete with all six rows passing and
-both independent reviewers at 5/5; PR #68 is at its final ready/merge gate.
+are merged. Released-capability Gate 0 implementation and review are complete
+with all six rows passing and both independent reviewers at 5/5; PR #68 is at
+its final ready/merge gate.
 
 ## Readiness
 
@@ -160,6 +161,11 @@ only representation.
   independently corroborated C–F evidence, exact GitHub dependency/prose state,
   issue/PR status, full local and hosted gates, clean mergeability, no review
   threads, and clean GitButler state.
+- Gate 0 round 4: a bookkeeping-only delta correctly checked the review step but
+  prematurely labeled the whole milestone complete before merge. Standing
+  `G0-SG-005` and targeted `PW-GATE0-004` both scored the head 4/5 and required
+  “implementation and review complete; merge pending.” The status is corrected;
+  completion remains reserved for post-merge reconciliation and #54 closure.
 
 ## Verification Log
 
