@@ -113,6 +113,12 @@ domain/executable foundation (#55–#56), source discovery and host shell
 and education (#60/#67/#66), then integrated trial/review/handoff
 (#65/#63/#64).
 
+GitHub's native dependency graph now mirrors that order. Gate #54 blocks the
+three foundation issues; #55 blocks the domain consumers; #57 explicitly
+blocks host shell #62; the object/adapter issues carry their direct blockers;
+#65 is blocked by every integrated input; #63 blocks on #65; and #64 blocks on
+#63. Prose dependency sections remain explanatory rather than the only graph.
+
 ## Review Log
 
 - Runtime/packaging, public bb seam, security/MCP, and goal-scope audits
@@ -132,6 +138,14 @@ and education (#60/#67/#66), then integrated trial/review/handoff
 - PR #53 exact-head review round 4 found stale pre-activation/current-state
   language in the plan and `RETRO.md`. Round 5 standing and targeted reviews
   verified the correction at 5/5 with zero findings before merge.
+- Gate 0 round 1: standing and targeted reviews both scored 3/5 and requested
+  changes. Durable IDs `G0-SG-001`/`PW-GATE0-001` require exact C–F evidence
+  outside ephemeral summaries; `G0-SG-002`/`PW-GATE0-003`
+  require native GitHub dependency edges; and
+  `G0-SG-003`/`PW-GATE0-002` require #21 to keep #54 open until PR #68
+  merges. Native edges and epic state are corrected; exact evidence is being
+  expanded before round 2. Historical non-clean reports remain active until
+  their dispositions are recorded and then move to scratch archive.
 
 ## Verification Log
 
@@ -156,9 +170,12 @@ forbidden actions, review model, verification, done/not-done, and persistence.
 
 ## Forbidden-action audit
 
-No npm publication/tag, Git tag/release, visibility change, announcement,
-upstream edit/submission, Connect exposure, or normal-profile mutation during
-preparation.
+Through Gate 0 there has been no npm publication/tag, Git tag/release,
+visibility change, announcement, upstream edit/submission, Connect pairing or
+share, automatic bunx execution, normal-profile plugin mutation, or private SDK
+fallback. The only lifecycle mutations occurred in an `env -i` disposable bb
+0.36 profile with explicit temporary HOME/XDG/cache/data roots and loopback
+ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 

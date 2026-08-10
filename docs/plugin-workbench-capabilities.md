@@ -29,12 +29,14 @@ The probes used the published `bb-app@0.36.0` package and generated declarations
 only. They did not resolve `@bb/plugin-sdk` from npm, use a workspace link,
 import `../bb`, or copy SDK/runtime/testing code.
 
-Build probes used fresh scaffold directories, isolated npm/Bun caches, and the
-native commands:
+Build probes used fresh scaffold directories and isolated npm/Bun caches. The
+A/B probe ran the scaffold-documented plain install; the C–E probes explicitly
+included development dependencies:
 
 ```sh
 bb plugin new <name> --app
-npm install --include=dev
+npm install --no-fund --no-audit                 # A/B
+npm install --include=dev --no-fund --no-audit   # C-E
 bb plugin types <path> --check
 tsc --project <path>/tsconfig.json --noEmit
 bb plugin build <path>
@@ -51,6 +53,96 @@ The temporary plugin was installed by path, reloaded, disabled, enabled,
 reloaded, and removed. Shutdown left no temporary listener or process. The
 normal desktop stayed on its original ports and its plugin inventory contained
 no temporary source or identifier.
+
+## Exact evidence ledger
+
+The disposable probe roots are evidence identifiers, not runtime dependencies.
+No repository command or deliverable refers to them.
+
+### Rows A and B
+
+- Root: `/tmp/bb-mate-gate0-ab.ldrGZM`
+- Published package integrity:
+  `sha512-E2XIZGCYiBw3SNAI9zlFESNNSaAhASd360DP94Oqtgn/37hlthWYjJg915EG/ddBix1f1UUfMnjtq3ac8p4prg==`
+- CLI: `probe/node_modules/bb-app/dist/bb.js`; `bb --version` returned `0.36.0`.
+- Isolated command selectors: `BB_DATA_DIR=<root>/bb-data`,
+  `BB_SERVER_URL=http://127.0.0.1:48986`, and
+  `BB_HOST_DAEMON_PORT=48987`.
+- Generated engines: bb `>=0.36`; plugin SDK `^0.4.1`.
+- Canonical declaration SHA-256: app
+  `984e0539c6926d42ddaf666c6b6890a567d08f711d9ae73a9b986620230eed9a`;
+  backend
+  `5c7c834978e9710999ef7b5fd777e623a139fcd7a29ac11dea0b69f0d6e918cb`.
+- Native artifact SHA-256: `app.js`
+  `9d858c3d6cd2c6e89c7957d483d0b4749f8ca01d549daa91ec8d2a6a4c5f24dc`;
+  `server.js`
+  `bf0f4d5d906add5eacb254efa1dfecad67da4b369ab53939cca5f901d59bedc6`;
+  app/server metadata
+  `9c9f52e37551b0a581cddbbd61247ea4caa54b506e297f35315662bc45eb4db5`.
+- Metadata: SDK `0.4.1`, artifact format `1`, plugin
+  `workbench-probe@0.1.0`, built with bb `0.36.0`.
+- Raw `npm pack --dry-run --json` produced 25 entries and omitted every
+  `dist/` artifact, establishing the package-rule caveat.
+
+### Rows C, D, and E
+
+- Root: `/tmp/bb-mate-gate0-cde.5sNLy6`
+- CLI:
+  `toolchain/node_modules/bb-app/dist/bb.js`; `bb --version` returned `0.36.0`.
+- Probes: `scaffold/bb-plugin-gate-c`, `bb-plugin-gate-d`, and
+  `bb-plugin-gate-cde`.
+- Each probe ran generated declaration check, local TypeScript `--noEmit`,
+  native `bb plugin build`, then `npm pack --json --ignore-scripts` after adding
+  the explicit temporary `files: ["dist", "skills"]` allowlist.
+- Row C `server.js` SHA-256:
+  `3cf3c75a4f53bd02da3a6199a83231eb64c044f2556ac2d8da33572f02c5c16b`;
+  package SHA-256:
+  `e1adbeb6c2427adff2b7ca21dcd56c302e8bac961ab415d4b31c59bc9fdde6fb`.
+- Row D `server.js` SHA-256:
+  `c8e236c103095d08d81363d7ce756683455844f06906d53243a342f8795d4867`;
+  package SHA-256:
+  `9f2587ecd02c694f4159495f8b1351312489ebfdb6a804773ec777f91db89114`.
+- Row E `server.js` SHA-256:
+  `6757a4598d19492b605ca12e8fccf8e794e7e8508af11b203f1bd42289d62af9`;
+  `app.js` SHA-256:
+  `fa88df48ef2de3c74a7a6dd96ca4e8ac59cb80bd59dbb020854502b38f9c76d8`;
+  package SHA-256:
+  `49590f0b8897eb7b7c8e2743bb4c47e613133376214047a175f6a0f58e44447a`.
+- Every native metadata file records SDK `0.4.1`, artifact format `1`, and bb
+  `0.36.0`. Package manifests/locks contain no `@bb/plugin-sdk` package,
+  workspace link, sibling path, or private SDK reference.
+
+### Row F
+
+- Fresh rerun root: `/tmp/bb-mate-gate0-row-f-rerun.nM6L2m`; unique plugin ID:
+  `pw-gate0-row-f-20260810`.
+- Evidence-ledger SHA-256:
+  `16c83fa30ac3fe5d3f1c28478e507fd1690ff012812040d28c19a756a2d77e9d`.
+- Released entrypoints: workspace-pinned published `bb-app@0.36.0`
+  `dist/bb.js` and `dist/bb-app.js`, launched with `/opt/homebrew/bin/node`.
+- Before mutation, the normal server reported `/Users/mg/.bb`, listened only on
+  `127.0.0.1:38886/38887`, contained ten projected plugin rows, and contained
+  neither the unique plugin ID nor temporary root in its list or on-disk state.
+- The isolated server used `env -i`, temporary HOME/XDG/npm/Bun/TMP/data roots,
+  and `127.0.0.1:52879/52880`. Launcher output, status, process command, and
+  listeners all agreed on that topology before plugin mutation.
+- The isolated profile began with nine builtins. Connect remained
+  `disconnected`, `paired: false`, and `shares: []` before and after lifecycle.
+- Exact lifecycle commands were `plugin new`, isolated
+  `bun install --ignore-scripts`, `plugin install . --yes --json`, list, source,
+  reload, disable, list, enable, reload, remove, final list, and source-file
+  preservation check.
+- Observed sequence: running, running after reload, disabled, running after
+  enable, running after the second reload, absent after remove. Final isolated
+  list contained only nine builtins.
+- Ctrl-C shut the launcher down with exit 0. No isolated listener or process
+  remained. The normal server still reported `/Users/mg/.bb`; its projected ten
+  plugin rows were byte-equivalent before/after, and the unique ID/root remained
+  absent from both list and disk.
+- Server log SHA-256:
+  `2b3fd0a75f2020daf269360dff3bf69651e97213e88f0dbd4221a09548e817dd`;
+  host-daemon log SHA-256:
+  `50c76d86aa8d6253d6290f9b3c6e126131325aa23b47382b79256e97254363ba`.
 
 ## Released-artifact caveats
 
