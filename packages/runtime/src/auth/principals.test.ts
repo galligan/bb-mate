@@ -13,6 +13,8 @@ describe("principal contracts", () => {
     expect(ScopeSchema.options).toContain("runtime:read");
     expect(ScopeSchema.options).toContain("events:read");
     expect(ScopeSchema.options).toContain("credential:issue");
+    expect(ScopeSchema.options).toContain("targets:write");
+    expect(ScopeSchema.options).toContain("surfaces:write");
     expect(() => ScopeSchema.parse("admin")).toThrow();
     expect(() => PrincipalKindSchema.parse("user")).toThrow();
   });
