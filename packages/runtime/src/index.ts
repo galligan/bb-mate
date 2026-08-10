@@ -37,6 +37,32 @@ export {
   ObjectCodecRegistry,
   ObjectKindSchema,
 } from "./contracts/objects.ts";
+export {
+  DevelopmentTargetCodec,
+  DevelopmentTargetPayloadSchema,
+  DevelopmentTargetSourceKindSchema,
+  NativeReconciliationStatusSchema,
+} from "./discovery/development-target.ts";
+export type {
+  DevelopmentTargetEnvelope,
+  DevelopmentTargetPayload,
+  DevelopmentTargetProjection,
+} from "./discovery/development-target.ts";
+export { openDevelopmentTargetCatalog } from "./discovery/catalog.ts";
+export type {
+  DevelopmentTargetCatalog,
+  OpenDevelopmentTargetCatalogOptions,
+  PrivateDevelopmentTargetSource,
+  RefreshDevelopmentTargetInput,
+} from "./discovery/catalog.ts";
+export {
+  DevelopmentTargetRootKindSchema,
+  issueTrustedDevelopmentTargetCandidate,
+} from "./discovery/trusted-candidate.ts";
+export type {
+  DevelopmentTargetRootKind,
+  TrustedDevelopmentTargetCandidate,
+} from "./discovery/trusted-candidate.ts";
 export type {
   JsonPrimitive,
   JsonValue,
@@ -68,3 +94,4 @@ export type {
   UpdateObjectInput,
 } from "./persistence/store.ts";
 export { createWorkbenchService } from "./service/workbench-service.ts";
+export { createDevelopmentTargetService } from "./service/development-target-service.ts";

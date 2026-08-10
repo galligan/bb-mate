@@ -22,7 +22,6 @@ import { createWorkbenchService } from "./workbench-service.ts";
 
 const temporaryRoots: string[] = [];
 const scopeCases = [
-  ["development-target", "targets:read", "targets:write"],
   ["session", "sessions:read", "sessions:write"],
   ["surface", "surfaces:read", "surfaces:write"],
   ["annotation", "annotations:read", "annotations:write"],
@@ -50,7 +49,7 @@ afterEach(async () => {
 });
 
 describe("WorkbenchService scope mapping", () => {
-  test("uses the least-privilege write scope for every reserved object kind", async () => {
+  test("uses the least-privilege write scope for every generic object kind", async () => {
     let nextId = 0;
     const store = await openRuntimeStore({
       dataRoot: await makeDataRoot(),
@@ -83,7 +82,7 @@ describe("WorkbenchService scope mapping", () => {
     }
   });
 
-  test("uses the least-privilege read scope for every reserved object kind", async () => {
+  test("uses the least-privilege read scope for every generic object kind", async () => {
     const ids = scopeCases.map((_, index) =>
       ObjectIdSchema.parse(String(index).repeat(32)),
     );

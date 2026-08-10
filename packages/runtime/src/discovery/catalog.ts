@@ -1,0 +1,172 @@
+import {
+  BbContextIdSchema,
+  createOpaqueId,
+  ObjectIdSchema,
+  PrincipalIdSchema,
+  TargetIdSchema,
+  type BbContextId,
+  type ObjectId,
+  type PrincipalId,
+} from "../contracts/ids.ts";
+import { RuntimeError } from "../errors.ts";
+import { openRuntimeDatabase } from "../persistence/database.ts";
+import { RUNTIME_MIGRATIONS } from "../persistence/runtime-migrations.ts";
+import { createDevelopmentTargetCatalogStorage } from "./catalog-storage.ts";
+import {
+  parseDevelopmentTargetEnvelope,
+  type DevelopmentTargetEnvelope,
+} from "./development-target.ts";
+import {
+  validateTrustedDevelopmentTargetCandidate,
+  type DevelopmentTargetRootKind,
+  type TrustedDevelopmentTargetCandidate,
+} from "./trusted-candidate.ts";
+
+export interface OpenDevelopmentTargetCatalogOptions {
+  readonly dataRoot: string;
+  readonly clock?: () => number;
+  readonly id?: () => ObjectId;
+}
+
+export interface PrivateDevelopmentTargetSource {
+  readonly canonicalRoot: string;
+  readonly rootKey: string;
+  readonly rootKind: DevelopmentTargetRootKind;
+}
+
+export interface RefreshDevelopmentTargetInput {
+  readonly principalId: PrincipalId;
+  readonly bbContextId: BbContextId;
+  readonly candidate: TrustedDevelopmentTargetCandidate;
+  readonly expectedRevision?: number;
+}
+
+export interface DevelopmentTargetCatalog {
+  refresh(
+    input: RefreshDevelopmentTargetInput,
+  ): Promise<DevelopmentTargetEnvelope>;
+  list(input: {
+    readonly principalId: PrincipalId;
+    readonly bbContextId: BbContextId;
+  }): readonly DevelopmentTargetEnvelope[];
+  get(input: {
+    readonly principalId: PrincipalId;
+    readonly bbContextId: BbContextId;
+    readonly id: ObjectId;
+  }): DevelopmentTargetEnvelope | undefined;
+  resolvePrivate(input: {
+    readonly principalId: PrincipalId;
+    readonly bbContextId: BbContextId;
+    readonly id: ObjectId;
+  }): PrivateDevelopmentTargetSource | undefined;
+  close(): void;
+}
+
+function storageError(error: unknown): never {
+  if (error instanceof RuntimeError) throw error;
+  throw new RuntimeError("internal", { cause: error });
+}
+
+export async function openDevelopmentTargetCatalog(
+  options: OpenDevelopmentTargetCatalogOptions,
+): Promise<DevelopmentTargetCatalog> {
+  const runtimeDatabase = await openRuntimeDatabase({
+    dataRoot: options.dataRoot,
+    migrations: RUNTIME_MIGRATIONS,
+  });
+  const clock = options.clock ?? Date.now;
+  const id = options.id ?? (() => ObjectIdSchema.parse(createOpaqueId()));
+  const storage = createDevelopmentTargetCatalogStorage(
+    runtimeDatabase.database,
+  );
+
+  try {
+    storage.assertIntegrity();
+  } catch (error) {
+    runtimeDatabase.close();
+    storageError(error);
+  }
+
+  return {
+    async refresh(input) {
+      try {
+        const candidate = await validateTrustedDevelopmentTargetCandidate(
+          input.candidate,
+        );
+        storage.assertIntegrity();
+        const existing = storage.findByRoot(
+          input.principalId,
+          input.bbContextId,
+          candidate.canonicalRoot,
+        );
+        if (existing) {
+          const expectedRevision = input.expectedRevision ?? existing.revision;
+          if (existing.revision !== expectedRevision) {
+            throw new RuntimeError("conflict");
+          }
+          const envelope = parseDevelopmentTargetEnvelope({
+            ...existing,
+            revision: existing.revision + 1,
+            updatedAt: clock(),
+            payload: candidate.target,
+          });
+          storage.persistUpdate(envelope, candidate, expectedRevision);
+          return envelope;
+        }
+        if (input.expectedRevision !== undefined) {
+          throw new RuntimeError("not_found");
+        }
+
+        const objectId = id();
+        const now = clock();
+        const envelope = parseDevelopmentTargetEnvelope({
+          schemaVersion: 1,
+          id: objectId,
+          kind: "development-target",
+          bindings: {
+            principalId: PrincipalIdSchema.parse(input.principalId),
+            bbContextId: BbContextIdSchema.parse(input.bbContextId),
+            targetId: TargetIdSchema.parse(objectId),
+          },
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+          payload: candidate.target,
+        });
+        storage.persistCreation(envelope, candidate);
+        return envelope;
+      } catch (error) {
+        storageError(error);
+      }
+    },
+    list(input) {
+      try {
+        storage.assertIntegrity();
+        return storage.list(input.principalId, input.bbContextId);
+      } catch (error) {
+        storageError(error);
+      }
+    },
+    get(input) {
+      try {
+        storage.assertIntegrity();
+        return storage.get(input.principalId, input.bbContextId, input.id);
+      } catch (error) {
+        storageError(error);
+      }
+    },
+    resolvePrivate(input) {
+      try {
+        storage.assertIntegrity();
+        return storage.resolvePrivate(
+          input.principalId,
+          input.bbContextId,
+          input.id,
+        );
+      } catch (error) {
+        storageError(error);
+      }
+    },
+    close: runtimeDatabase.close,
+  };
+}

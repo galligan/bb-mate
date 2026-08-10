@@ -7,6 +7,11 @@ describe("@bb-mate/runtime public surface", () => {
     expect(Object.keys(runtime).sort()).toEqual([
       "AuthenticatedPrincipalSchema",
       "BbContextIdSchema",
+      "DevelopmentTargetCodec",
+      "DevelopmentTargetPayloadSchema",
+      "DevelopmentTargetRootKindSchema",
+      "DevelopmentTargetSourceKindSchema",
+      "NativeReconciliationStatusSchema",
       "ObjectBindingsSchema",
       "ObjectCodecRegistry",
       "ObjectIdSchema",
@@ -21,12 +26,15 @@ describe("@bb-mate/runtime public surface", () => {
       "TargetIdSchema",
       "authorize",
       "canonicalJson",
+      "createDevelopmentTargetService",
       "createOpaqueId",
       "createRequestContext",
       "createRuntimeHttpHandler",
       "createWorkbenchService",
       "defineObjectCodec",
       "isRequestContext",
+      "issueTrustedDevelopmentTargetCandidate",
+      "openDevelopmentTargetCatalog",
       "openRuntimeStore",
     ]);
   });
