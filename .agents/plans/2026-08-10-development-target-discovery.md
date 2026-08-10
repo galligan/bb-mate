@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slice A active
+Status: Slice A implementation and local verification complete; review and merge pending
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
@@ -80,12 +80,12 @@ decision; #70 owns that gate.
 
 ## TDD execution
 
-1. [ ] Add the concrete strict v1 target codec, self-binding validation, and
+1. [x] Add the concrete strict v1 target codec, self-binding validation, and
        allowlist public projection with oversize/unknown/private-field tests.
-2. [ ] Add secure trusted-root admission and bounded passive candidate
+2. [x] Add secure trusted-root admission and bounded passive candidate
        discovery with traversal, symlink, scan-limit, malformed-sibling, and
        no-execution sentinels.
-3. [ ] Add atomic private/public catalog persistence, target-unbound dedicated
+3. [x] Add atomic private/public catalog persistence, target-unbound dedicated
        authorization, stable reopen/refresh IDs, optimistic revisions, and
        redacted events.
 4. [ ] Review, verify, merge, and reconcile slice 57A with two 5/5 lanes.

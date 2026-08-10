@@ -9,7 +9,8 @@ The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
 and reconciled. Source-first development-target discovery #57 is the active
-milestone.
+milestone. Slice 57A implementation and local verification are complete on
+draft PR #72; exact-head review, hosted CI, merge, and reconciliation remain.
 
 ## Readiness
 
@@ -45,6 +46,9 @@ in #70.
   `690f515a-0651-47ef-aa7a-852e9efe02cd` to merge commit
   `ac419ae1c87f7c5186b848bc937591cf45f57560`; issue #55 is closed.
 - GitButler reconciled to clean `main`; a fresh #57 branch was then applied.
+- Source-catalog PR #72 was opened from merge base
+  `ac419ae1c87f7c5186b848bc937591cf45f57560`; its implementation head is not
+  yet frozen because exact-head review and merge remain pending.
 
 ## Preparation findings
 
@@ -79,6 +83,22 @@ in #70.
 
 ## Execution Log
 
+- 2026-08-10: slice 57A added strict self-bound development-target codecs,
+  private/public SQLite catalog persistence, dedicated target authorization,
+  server-admitted source roots, bounded passive discovery, canonical path and
+  symlink-race attestations, no-execution sentinels, and a real cross-package
+  reopen integration test. Generic object CRUD rejects development targets;
+  direct catalog calls independently reject forged source capabilities.
+- Slice 57A focused proof passed: inspection 87 tests/191 assertions, runtime
+  113 tests/598 assertions, and the cross-package catalog plus public-export
+  checks 3 tests/18 assertions. The first aggregate build exposed Node
+  strip-only syntax in a discovery error class; a focused regression fixed it.
+- Slice 57A aggregate proof then passed exactly: `bun run format:check && bun
+run check && bun run test && bun run build`. The aggregate test lane contains
+  359 tests: inspection 87, runtime 113, Linear plugin 21, CLI 42, Workbench 53,
+  and scripts 43. The legacy package clean room remained 41 files/13 stories
+  with SHA-256
+  `22e87071a14f060029f77500449991005de5eb88c06f7a29fa749f83848e7fb1`.
 - 2026-08-10: created the packet from the accepted design record and four
   bounded preparation audits.
 - 2026-08-10: activated the direct execution goal. Found one unresolved P2 on
