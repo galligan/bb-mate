@@ -31,14 +31,22 @@ export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
+const MAX_TEXT_CHARACTERS = 8 * 1024;
+const MAX_COLLECTION_ITEMS = 100;
+const MAX_CANONICAL_JSON_BYTES = 256 * 1024;
+
 const JsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
   z.union([
-    z.string(),
+    z.string().max(MAX_TEXT_CHARACTERS),
     z.number().finite(),
     z.boolean(),
     z.null(),
-    z.array(JsonValueSchema),
-    z.record(z.string(), JsonValueSchema),
+    z.array(JsonValueSchema).max(MAX_COLLECTION_ITEMS),
+    z
+      .record(z.string().max(MAX_TEXT_CHARACTERS), JsonValueSchema)
+      .refine((value) => Object.keys(value).length <= MAX_COLLECTION_ITEMS, {
+        message: `Objects may contain at most ${MAX_COLLECTION_ITEMS} properties`,
+      }),
   ]),
 );
 
@@ -57,7 +65,11 @@ function sortJson(value: JsonValue): JsonValue {
 }
 
 export function canonicalJson(value: unknown): string {
-  return JSON.stringify(sortJson(JsonValueSchema.parse(value)));
+  const serialized = JSON.stringify(sortJson(JsonValueSchema.parse(value)));
+  if (Buffer.byteLength(serialized, "utf8") > MAX_CANONICAL_JSON_BYTES) {
+    throw new RuntimeError("invalid_request");
+  }
+  return serialized;
 }
 
 export interface ObjectBindings {
@@ -145,10 +157,12 @@ export class ObjectCodecRegistry {
         throw new RuntimeError("unsupported_schema");
       }
 
-      return {
+      const parsed = {
         ...envelope,
         payload: codec.parse(envelope.payload),
       };
+      canonicalJson(parsed.payload);
+      return parsed;
     } catch (error) {
       if (error instanceof RuntimeError) {
         throw error;

@@ -139,4 +139,44 @@ describe("object contracts", () => {
       );
     }
   });
+
+  test("rejects payloads beyond the global text, collection, and byte bounds", () => {
+    const registry = new ObjectCodecRegistry([
+      defineObjectCodec("annotation", {
+        body: z.string(),
+        items: z.array(z.string()),
+        metadata: z.record(z.string(), z.string()),
+      }),
+    ]);
+    const id = "ffffffffffffffffffffffffffffffff";
+    const valid = {
+      schemaVersion: 1,
+      id,
+      kind: "annotation",
+      bindings: { principalId: id, bbContextId: id, targetId: id },
+      revision: 1,
+      createdAt: 10,
+      updatedAt: 10,
+      payload: { body: "ok", items: ["ok"], metadata: { ok: "ok" } },
+    };
+
+    for (const payload of [
+      { ...valid.payload, body: "x".repeat(8_193) },
+      { ...valid.payload, items: Array.from({ length: 101 }, () => "x") },
+      {
+        ...valid.payload,
+        metadata: Object.fromEntries(
+          Array.from({ length: 101 }, (_, index) => [`key-${index}`, "x"]),
+        ),
+      },
+      {
+        ...valid.payload,
+        items: Array.from({ length: 100 }, () => "x".repeat(8_192)),
+      },
+    ]) {
+      expect(() => registry.parse({ ...valid, payload })).toThrow(
+        new RuntimeError("invalid_request"),
+      );
+    }
+  });
 });

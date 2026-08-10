@@ -226,6 +226,98 @@ describe("RuntimeStore", () => {
     });
   });
 
+  test("rejects non-canonical stored payload bytes without rewriting them", async () => {
+    const dataRoot = await makeDataRoot();
+    const objectId = ObjectIdSchema.parse("o".repeat(32));
+    const codecs = new ObjectCodecRegistry([
+      defineObjectCodec("annotation", { a: z.string(), z: z.string() }),
+    ]);
+    const first = await openRuntimeStore({
+      dataRoot,
+      codecs,
+      clock: () => 1_000,
+      id: () => objectId,
+    });
+    first.createObject({
+      kind: "annotation",
+      bindings,
+      payload: { a: "first", z: "last" },
+    });
+    first.close();
+
+    const databasePath = path.join(dataRoot, "workbench.sqlite3");
+    const database = new Database(databasePath);
+    const nonCanonical = '{"z":"last", "a":"first"}';
+    database
+      .query("UPDATE runtime_objects SET payload_json = ? WHERE id = ?")
+      .run(nonCanonical, objectId);
+    database.close();
+
+    const reopened = await openRuntimeStore({ dataRoot, codecs });
+    try {
+      expect(() => reopened.getObject({ id: objectId, bindings })).toThrow(
+        expect.objectContaining({ code: "corrupt_data" }),
+      );
+    } finally {
+      reopened.close();
+    }
+
+    const readonlyDatabase = new Database(databasePath, { readonly: true });
+    expect(
+      readonlyDatabase
+        .query<{ payload_json: string }, [string]>(
+          "SELECT payload_json FROM runtime_objects WHERE id = ?",
+        )
+        .get(objectId),
+    ).toEqual({ payload_json: nonCanonical });
+    readonlyDatabase.close();
+  });
+
+  test("rejects a stale writer across two open stores", async () => {
+    const dataRoot = await makeDataRoot();
+    const objectId = ObjectIdSchema.parse("o".repeat(32));
+    const codecs = new ObjectCodecRegistry([
+      defineObjectCodec("annotation", { body: z.string() }),
+    ]);
+    const first = await openRuntimeStore({
+      dataRoot,
+      codecs,
+      clock: () => 1_000,
+      id: () => objectId,
+    });
+    first.createObject({
+      kind: "annotation",
+      bindings,
+      payload: { body: "Before" },
+    });
+    const second = await openRuntimeStore({
+      dataRoot,
+      codecs,
+      clock: () => 3_000,
+    });
+
+    try {
+      expect(second.getObject({ id: objectId, bindings })?.revision).toBe(1);
+      first.updateObject({
+        id: objectId,
+        bindings,
+        expectedRevision: 1,
+        payload: { body: "First writer" },
+      });
+      expect(() =>
+        second.updateObject({
+          id: objectId,
+          bindings,
+          expectedRevision: 1,
+          payload: { body: "Stale second writer" },
+        }),
+      ).toThrow(expect.objectContaining({ code: "conflict" }));
+    } finally {
+      second.close();
+      first.close();
+    }
+  });
+
   test("reopens durable objects from the same explicit data root", async () => {
     const dataRoot = await makeDataRoot();
     const objectId = ObjectIdSchema.parse("o".repeat(32));

@@ -5,6 +5,7 @@ import {
 } from "./principals.ts";
 
 const requestContextBrand: unique symbol = Symbol("bb-mate.request-context");
+const issuedRequestContexts = new WeakSet<object>();
 
 export interface RequestContext {
   readonly principal: AuthenticatedPrincipal;
@@ -23,17 +24,15 @@ export function createRequestContext(input: unknown): RequestContext {
     throw new RuntimeError("unauthenticated", { cause: error });
   }
 
-  return Object.freeze({
-    principal,
-    [requestContextBrand]: true as const,
-  });
+  const context = Object.freeze({ principal }) as RequestContext;
+  issuedRequestContexts.add(context);
+  return context;
 }
 
 export function isRequestContext(value: unknown): value is RequestContext {
   return (
     typeof value === "object" &&
     value !== null &&
-    requestContextBrand in value &&
-    value[requestContextBrand] === true
+    issuedRequestContexts.has(value)
   );
 }

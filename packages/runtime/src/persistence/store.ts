@@ -143,7 +143,7 @@ export async function openRuntimeStore(
 
   function parseRow(row: ObjectRow): ObjectEnvelope {
     try {
-      return options.codecs.parse({
+      const envelope = options.codecs.parse({
         schemaVersion: 1,
         id: row.id,
         kind: row.kind,
@@ -158,6 +158,10 @@ export async function openRuntimeStore(
         updatedAt: row.updated_at,
         payload: JSON.parse(row.payload_json) as JsonValue,
       });
+      if (row.payload_json !== canonicalJson(envelope.payload)) {
+        throw new RuntimeError("corrupt_data");
+      }
+      return envelope;
     } catch (error) {
       throw new RuntimeError("corrupt_data", { cause: error });
     }

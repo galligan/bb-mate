@@ -73,6 +73,47 @@ describe("authorization", () => {
     }
   });
 
+  test("rejects cloned contexts even when their private runtime keys are copied", () => {
+    const valid = createRequestContext({
+      id: principalId,
+      kind: "browser-session",
+      scopes: ["annotations:read"],
+      revoked: false,
+      bbContextId,
+      targetId,
+      sessionId,
+    });
+    const elevatedPrincipal = {
+      ...valid.principal,
+      scopes: ["annotations:write"] as const,
+    };
+    const spreadClone = {
+      ...valid,
+      principal: elevatedPrincipal,
+    } as unknown as RequestContext;
+    const inheritedClone = Object.create(valid, {
+      principal: {
+        value: elevatedPrincipal,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      },
+    }) as RequestContext;
+    const reflectedClone = Object.fromEntries(
+      Reflect.ownKeys(valid).map((key) => [
+        key,
+        key === "principal" ? elevatedPrincipal : Reflect.get(valid, key),
+      ]),
+    ) as unknown as RequestContext;
+
+    for (const clone of [spreadClone, inheritedClone, reflectedClone]) {
+      expect(() => authorize(clone, { scope: "annotations:write" })).toThrow(
+        new RuntimeError("unauthenticated"),
+      );
+    }
+    expect(authorize(valid, { scope: "annotations:read" })).toBe(valid);
+  });
+
   test("default-denies missing scopes and does not enumerate binding mismatches", () => {
     const context = createRequestContext({
       id: principalId,
