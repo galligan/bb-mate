@@ -1,7 +1,7 @@
 # Plugin Workbench goal retrospective and evidence ledger
 
 Date started: 2026-08-10
-Status: Ready for execution
+Status: Active
 
 ## Summary
 
@@ -56,6 +56,16 @@ Ready. Prompt/doctor/formatting pass; standing and targeted packet reviews are
 
 - 2026-08-10: created the packet from the accepted design record and four
   bounded preparation audits.
+- 2026-08-10: activated the direct execution goal. Found one unresolved P2 on
+  compatibility PR #52, added workflow-level serialization in commit
+  `1b047598b52f49ed8e6e0f7dd88387ff02c10445`, ran the full local gates, replied
+  and resolved the thread, and waited for hosted `verify`, `visual`, and
+  GitGuardian checks to pass.
+- 2026-08-10: pinned #52 at `1b047598b52f49ed8e6e0f7dd88387ff02c10445`
+  and merged it through GitHub async request
+  `0e8c1b42-73b9-4d40-9980-242ab10cf1ce`. Merge commit:
+  `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`. `but pull` removed the integrated
+  compatibility branch and rebased the clean spec branch. Issue #51 closed.
 
 ## Review Log
 
@@ -79,6 +89,10 @@ Ready. Prompt/doctor/formatting pass; standing and targeted packet reviews are
 - `check-goal-prompt --no-placeholders`: passed at 3,216/4,000 characters.
 - `goal-loop-doctor`: passed with both active round-three reports clean.
 - `bun run format:check`: passed for the reviewed packet and design record.
+- PR #52 final local gate: `bun run format:check && bun run check && bun run
+test && bun run build && bun run compatibility:latest` passed; package clean
+  room produced 41 files, 13 stories, SHA-256
+  `de6174f733c8a76fdc4b7e117ff2499a47d55e918e02150fecb9337384e0e843`.
 
 ## Evidence ledger
 
