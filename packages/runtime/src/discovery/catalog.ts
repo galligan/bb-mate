@@ -215,6 +215,9 @@ export async function openDevelopmentTargetCatalog(
           now,
         });
         const host = readPrivateHostObservation(input.inventory);
+        if (host.observedAt > now) {
+          throw new RuntimeError("invalid_request");
+        }
         if (host.observedAt !== native.observedAt) {
           throw new RuntimeError("invalid_request");
         }

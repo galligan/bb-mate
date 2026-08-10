@@ -19,6 +19,54 @@ import { createDevelopmentTargetService } from "./development-target-service.ts"
 afterEach(cleanupDevelopmentTargetReconciliationFixtures);
 
 describe("DevelopmentTargetService native reconciliation persistence", () => {
+  test("rejects a future-dated observation without corrupting persisted state", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => 2_000,
+    });
+    const service = createDevelopmentTargetService(catalog);
+    const created = await service.refreshFromTrustedCandidate(
+      context(),
+      await candidate(fixture.pluginRoot),
+    );
+
+    await expect(
+      service.reconcileFromTrustedInventory(context(), {
+        targetId: created.id,
+        sourceCandidate: await candidate(fixture.pluginRoot),
+        inventory: await issueNativeInventory(fixture.pluginRoot, {
+          observedAt: 2_001,
+        }),
+        expectedRevision: 1,
+      }),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(service.getTarget(context(), created.id)).toEqual(created);
+    expect(
+      catalog.resolvePrivateHostObservation({
+        principalId,
+        bbContextId,
+        id: objectId,
+      }),
+    ).toBeUndefined();
+    catalog.close();
+
+    const reopened = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    try {
+      expect(
+        createDevelopmentTargetService(reopened).getTarget(
+          context(),
+          created.id,
+        ),
+      ).toEqual(created);
+    } finally {
+      reopened.close();
+    }
+  });
+
   test("rolls back the public target, private host row, and redacted event on either private or event failure", async () => {
     const fixture = await makeFixture();
     const catalog = await openDevelopmentTargetCatalog({
