@@ -1,7 +1,7 @@
 # Plugin Workbench and `bb-mate` runtime specification
 
 Date: 2026-08-10  
-Status: Proposed; research complete, implementation goal not started  
+Status: Active; validated implementation goal running  
 Primary roadmap: [galligan/bb-mate#21](https://github.com/galligan/bb-mate/issues/21)  
 Compatibility baseline: `bb-app@0.36.0`, `@bb/plugin-sdk@0.4.1`  
 Related open work: [#41](https://github.com/galligan/bb-mate/issues/41),
@@ -74,10 +74,10 @@ contract when distributed, and Live bb remains the visual authority.
 
 ### Repository and release state
 
-- The GitButler workspace was clean on 2026-08-10.
-- The applied compatibility branch is `feat/bb-compatibility/adopt-0-36`; PR
-  [#52](https://github.com/galligan/bb-mate/pull/52) is ready, mergeable, and
-  green at hosted head `9bcd96305804c06a88816b796ae7a1fc0669990b`.
+- Compatibility PR [#52](https://github.com/galligan/bb-mate/pull/52) merged on
+  2026-08-10 at exact head `1b047598b52f49ed8e6e0f7dd88387ff02c10445`;
+  merge commit `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824` is the execution
+  baseline.
 - npm stable `bb-app` is `0.36.0`.
 - npm publishes `bb-mate@0.1.0-alpha.1` and `0.1.0-alpha.2`; `alpha` points to
   alpha.2 and `latest` to alpha.1.
@@ -86,8 +86,7 @@ contract when distributed, and Live bb remains the visual authority.
   production-dependency issue
   [get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) remain open.
 
-This spec must be reconciled with `main` after PR #52 lands. It must not be
-folded into or change the scope of PR #52.
+This spec was rebased onto post-#52 `main` and is carried by PR #53.
 
 ### Current BB Mate package
 
@@ -1136,78 +1135,20 @@ path.
 Stop before publication, upstream submission, or announcement without owner
 approval.
 
-## Goal conversion
+## Active goal
 
-After owner review, convert this plan into:
+The validated packet is
+`.agents/goals/2026-08-10-plugin-workbench/`. Its canonical completion horizon
+is `merged`: every capability proven downstream-independent by the released-
+artifact Gate 0 matrix must merge to `main`; failed rows remain tracked with an
+existing upstream issue or a locally reviewed proposal draft.
 
-```text
-.agents/goals/YYYY-MM-DD-plugin-workbench/
-├── GOAL.md
-├── SPEC.md
-├── PROMPT.md
-├── REFS.md
-└── RETRO.md
-```
-
-### Proposed completion horizon
-
-`merged-independent-work`
-
-Complete when all downstream-independent waves are merged to `main`, their
-GitHub issues are current/closed, aggregate and clean-room gates are green, the
-installed Plugin Workbench loop passes in an isolated bb profile, local reviews
-have no open P0-P2 findings, and a local release candidate plus upstream seam
-proposals are ready for owner review.
-
-Not complete while any independent issue is local-only, the compiled executable
-still requires Bun, managed installed plugins leak into default development
-targets, thread objects cannot be resolved by agents, capture fidelity is
-overstated, runtime security gates fail, or the isolated end-to-end trial is
-incomplete.
-
-### Proposed authority boundary
-
-The eventual goal packet should state explicitly whether it may create issues,
-commit, push, open/merge PRs, and update issue state. This plan grants none of
-those external permissions by itself.
-
-Even with implementation authority, stop before:
-
-- publishing either npm package;
-- changing npm dist-tags;
-- creating Git tags or GitHub releases;
-- editing or opening PRs against upstream bb;
-- exposing/pairing Connect;
-- mutating normal user plugin state;
-- adding remote-host proxies;
-- announcing the release.
-
-### Review topology
-
-For the goal packet, use:
-
-- one standing doctrine/security reviewer across all waves;
-- one targeted reviewer for each issue through its fix loop;
-- a fresh executable/package reviewer for Wave 0 and the release candidate;
-- a fresh agent/MCP security reviewer for Wave 3;
-- a fresh full-stack reviewer for the final isolated trial;
-- 5/5 clean reviews with no open P0-P2 before each merge, following the
-  repository's existing goal-loop convention.
-
-### Evidence ledger
-
-`RETRO.md` should record:
-
-- exact base/head/PR/CI provenance per issue;
-- runtime platform, size, hashes, signature, package contents, and no-Bun proof;
-- target-discovery fixtures and live provenance results;
-- API/object schema versions and migration evidence;
-- security and topology tests;
-- annotation/capture/comparison artifact IDs and fidelity;
-- native/MCP tool parity and fresh-context skill evals;
-- isolated bb profile and disposable target-plugin evidence;
-- review rounds/findings/dispositions;
-- forbidden-action audit and remaining upstream seams.
+The packet grants issue/PR/merge and isolated-test authority. It stops before
+npm publication or tag changes, Git tags/releases, upstream submission,
+visibility changes, Connect exposure, normal-profile mutation, remote proxies,
+or announcements. Each milestone requires standing and targeted 5/5 reviews;
+final acceptance adds a fresh full-stack review. `RETRO.md` is the operational
+evidence and resume surface.
 
 ## Documentation changes expected during implementation
 
@@ -1241,18 +1182,14 @@ For the goal packet, use:
 | Browser/API upstream plans change                | Capability negotiation, released-contract gates, deletable adapters          |
 | Goal becomes too broad                           | Focused issues/waves, dependency graph, per-issue review and merge gates     |
 
-## Open product questions for goal kickoff
+## Goal decisions
 
-1. Should V1 preserve Workbench data indefinitely by default, or use a bounded
-   capture-retention policy while preserving briefs/annotations?
-2. Should the first macOS binary be signed/notarized before internal Plugin
-   Workbench testing, or only before a public `bb-plugin-mate` candidate?
-3. Should the first goal include drafting upstream browser/thread-object issues,
-   or stop with locally reviewed proposal text for separate owner approval?
-
-None of these questions blocks Wave 0 research or the downstream object/API
-design. They should be decided before release packaging and goal authority are
-finalized.
+- Preserve briefs, annotations, and review metadata; use bounded retention for
+  screenshot payloads.
+- Use unsigned exact hashes for isolated internal proof. Require signing and
+  notarization before any public binary candidate.
+- Draft and review upstream browser/thread-object proposals locally. Stop before
+  submission without separate owner approval.
 
 ## Research references
 
@@ -1291,7 +1228,5 @@ finalized.
 
 ## Next move
 
-Review this spec with the owner, resolve the three kickoff questions, reconcile
-the plan onto post-#52 `main`, create the focused GitHub issue graph under #21,
-then generate and validate the goal packet. Do not begin implementation waves or
-external issue/upstream mutations merely because this plan exists.
+Merge PR #53, update the focused issue graph under #21, then run the released-
+artifact Gate 0 capability matrix before starting conditional host work.

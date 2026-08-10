@@ -5,21 +5,24 @@ Status: Active
 
 ## Summary
 
-The execution contract is validated and ready for direct goal activation.
+The execution goal is active. Compatibility baseline #52 is merged; spec/goal
+PR #53 is in its exact-head review and hosted-CI gate.
 
 ## Readiness
 
-Ready. Prompt/doctor/formatting pass; standing and targeted packet reviews are
-5/5 clean. Baseline PR #52 must be freshly pinned before merge.
+Active. Prompt/doctor/formatting and packet reviews pass; #52 is merged. PR #53
+must clear exact-head 5/5 review and hosted gates before Gate 0 begins.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Design branch: `docs/plugin-workbench/spec`
-- Design commit: `d5a449213b6a4a6a9d4a46c88043223e802c2a4c`
-- Merge base observed: `c3993b66f00629d4ab06dbda6247341b2a65564f`
-- Compatibility PR: #52, head `9bcd96305804c06a88816b796ae7a1fc0669990b`, open, ready, mergeable, hosted checks green at preparation.
-- Workspace observed clean with two independent GitButler branches.
+- Design branch: `docs/plugin-workbench/spec`; PR #53.
+- Current reviewed head before final fixes: `0e6a4ab93919a63273e2c508f3cd0efa3af84aea`.
+- Merge base: `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`.
+- Compatibility PR #52 merged from exact head
+  `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
+  `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
+- GitButler is clean with only the spec branch active.
 
 ## Preparation findings
 
@@ -71,7 +74,7 @@ Ready. Prompt/doctor/formatting pass; standing and targeted packet reviews are
 
 - Runtime/packaging, public bb seam, security/MCP, and goal-scope audits
   completed read-only during preparation. Findings were incorporated into the
-  packet; formal packet review remains pending.
+  packet.
 - Packet review round 1: standing 3/5 and targeted 3/5, changes requested. Fixed
   the collapsed Gate 0, HTTP-MCP contradiction, #1133 mislabel, missing exact
   commands/CI transitions, per-milestone 5/5 ambiguity, and prompt headroom.
@@ -83,6 +86,8 @@ Ready. Prompt/doctor/formatting pass; standing and targeted packet reviews are
   open P0-P3. Active reports: `tmp/reviews/standing/round-3.json` and
   `tmp/reviews/targeted-packet/round-3.json`. Superseded rounds 1–2 are scratch-
   archived at `/tmp/bb-mate-plugin-workbench-reviews-20260810/`.
+- PR #53 exact-head review round 4 found stale pre-activation/current-state
+  language in the plan and `RETRO.md`; fixes are in progress before re-review.
 
 ## Verification Log
 
@@ -113,4 +118,4 @@ preparation.
 
 ## Final State
 
-Preparation complete; direct execution goal is the next action.
+Execution active; next gate is PR #53 merge, then Gate 0.
