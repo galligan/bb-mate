@@ -179,4 +179,51 @@ describe("object contracts", () => {
       );
     }
   });
+
+  test("admits only envelopes that fit the same canonical serialization bound", () => {
+    const registry = new ObjectCodecRegistry([
+      defineObjectCodec("annotation", {
+        body: z.string(),
+        items: z.array(z.string()),
+        metadata: z.record(z.string(), z.string()),
+      }),
+    ]);
+    const id = "ffffffffffffffffffffffffffffffff";
+    const metadata = Object.fromEntries(
+      Array.from({ length: 31 }, (_, index) => [
+        `key-${index}`,
+        "x".repeat(8_192),
+      ]),
+    );
+    const payloadWithoutBody = { body: "", items: ["ok"], metadata };
+    const maximumBytes = 256 * 1024;
+    const remainingPayloadBytes =
+      maximumBytes - Buffer.byteLength(JSON.stringify(payloadWithoutBody)) - 1;
+    expect(remainingPayloadBytes).toBeGreaterThan(0);
+    expect(remainingPayloadBytes).toBeLessThanOrEqual(8_192);
+    const payload = {
+      ...payloadWithoutBody,
+      body: "x".repeat(remainingPayloadBytes),
+    };
+    const envelope = {
+      schemaVersion: 1,
+      id,
+      kind: "annotation",
+      bindings: { principalId: id, bbContextId: id, targetId: id },
+      revision: 1,
+      createdAt: 10,
+      updatedAt: 10,
+      payload,
+    };
+
+    expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThan(
+      maximumBytes,
+    );
+    expect(Buffer.byteLength(JSON.stringify(envelope))).toBeGreaterThan(
+      maximumBytes,
+    );
+    expect(() => registry.parse(envelope)).toThrow(
+      new RuntimeError("invalid_request"),
+    );
+  });
 });

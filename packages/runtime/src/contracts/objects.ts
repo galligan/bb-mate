@@ -161,7 +161,7 @@ export class ObjectCodecRegistry {
         ...envelope,
         payload: codec.parse(envelope.payload),
       };
-      canonicalJson(parsed.payload);
+      canonicalJson(parsed);
       return parsed;
     } catch (error) {
       if (error instanceof RuntimeError) {
