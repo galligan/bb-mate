@@ -29,9 +29,15 @@ transport.
 - Treat `principalId` as the verified security subject and `kind` as the
   credential class. Multiple adapters may later receive distinct credentials
   for the same subject while another subject remains isolated.
+- Track issued request-context objects by exact module-private identity. A
+  copied, inherited, or symbol-reflected object never inherits authority.
+- Bound every generic JSON value to 8,192-character strings/property names,
+  100 array items/object properties, and 256 KiB of canonical UTF-8 JSON before
+  a concrete codec may admit it.
 - Store principal, bb-context, target, optional session, revision, and integer
   timestamps in database columns outside canonical payload JSON. IDs do not
-  authorize access.
+  authorize access. Reads recompute canonical payload bytes and fail closed on
+  any stored representation drift.
 - Use pull pagination over committed event rows. Events identify the changed
   object and its bindings but never copy user payloads, comments, paths,
   credentials, or binary data.

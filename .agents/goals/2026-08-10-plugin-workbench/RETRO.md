@@ -167,16 +167,20 @@ authorization, the canonical store/service, and the injectable Fetch handler;
 an exact export test keeps low-level database, migration, event-feed, and schema
 internals private.
 
-The service uses explicit least-privilege scopes and derives principal,
+The service uses exact module-private issued-context identity, explicit least-
+privilege scopes, and derives principal,
 bb-context, target, and optional session bindings only from a branded server-
 created request context. SQLite persistence stores those bindings outside
 canonical payload JSON, uses optimistic revisions, and commits minimal redacted
-pull events atomically with object mutations. The explicit private data root
+pull events atomically with object mutations. Stored payload bytes must exactly
+match their recomputed canonical form. The explicit private data root
 fails closed for unsafe modes, ownership, links, sidecars, WAL databases,
 corruption, newer schemas, migration drift, or live-schema drift without
 repairing or deleting caller data.
 
-The HTTP slice is handler-only: exact numerical loopback Host/URL/Origin,
+Generic JSON is bounded to 8,192-character strings/property names, 100 array
+items/object properties, and 256 KiB canonical UTF-8. The HTTP slice is
+handler-only: exact numerical loopback Host/URL/Origin,
 authenticated non-browser absent-Origin access, a constant public health route,
 authenticated capabilities with every deferred feature false, a 256 KiB body
 bound, 32-request concurrency limit, typed redacted failures, and restrictive
@@ -184,9 +188,9 @@ security headers. Route/export tests prove the absence of bootstrap, target-
 path, artifact, generic object-write, event-stream, MCP, URL-fetch, shell/eval,
 native-lifecycle, destructive, import/export, and remote-bind surfaces.
 
-Focused runtime verification passes 93 tests with 519 assertions. The full
-local gate passes formatting, type/compatibility checks, 299 aggregate tests,
-the 41-file/13-story legacy package clean room at SHA-256
+Focused runtime verification passes 97 tests with 531 assertions. The full
+remediation gate passes formatting, type/compatibility checks, 303 aggregate
+tests, the 41-file/13-story legacy package clean room at SHA-256
 `77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`,
 and all builds.
 
@@ -288,6 +292,17 @@ and all builds.
   schema attestation, raw cursor errors, migration attestation ordering, and
   WAL/sidecar admission; round 3 reached 5/5 with zero P0-P3 and 40 focused
   tests. Full exact-head standing and targeted PR review remains the merge gate.
+- Runtime full review round 1: standing scored 3/5 and targeted 2/5 at exact
+  head `f5c04a8ba2784143e023d44f603945e3f6111d6c`. Their shared P1
+  (`RT-SG-001` / `PW-RUNTIME-001`) reproduced privilege escalation by spreading
+  the enumerable request-context symbol and replacing the principal/scopes.
+  Request contexts now use a module-private `WeakSet` of exact issued objects;
+  spread, inherited, and reflected-key clones all fail unauthenticated. Shared
+  P2s (`RT-SG-002` / `PW-RUNTIME-002` and `RT-SG-003` /
+  `PW-RUNTIME-003`) added mandatory JSON text/collection/byte bounds and exact
+  canonical stored-byte verification. A two-open-store regression also proves
+  optimistic stale-writer conflict across SQLite connections. All three
+  findings are fixed for round 2.
 
 ## Verification Log
 
