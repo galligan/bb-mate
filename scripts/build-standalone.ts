@@ -20,6 +20,56 @@ const defaultOutputRoot = path.join(
   "standalone",
   "darwin-arm64",
 );
+const outputAllowlist = new Set(["bb-mate", "manifest.json"]);
+
+function containsPath(parent: string, candidate: string): boolean {
+  return candidate === parent || candidate.startsWith(`${parent}${path.sep}`);
+}
+
+export async function prepareStandaloneOutputRoot(
+  root: string,
+): Promise<string> {
+  const outputRoot = path.resolve(root);
+  if (
+    outputRoot === path.parse(outputRoot).root ||
+    outputRoot === repositoryRoot ||
+    outputRoot === os.homedir() ||
+    containsPath(outputRoot, repositoryRoot)
+  ) {
+    throw new Error(`Refusing unsafe standalone output root: ${outputRoot}`);
+  }
+
+  const existing = await fs.lstat(outputRoot).catch((error: unknown) => {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return null;
+    }
+    throw error;
+  });
+  if (existing?.isSymbolicLink() || (existing && !existing.isDirectory())) {
+    throw new Error(
+      `Standalone output root must be a real directory: ${outputRoot}`,
+    );
+  }
+  if (!existing) await fs.mkdir(outputRoot, { recursive: true });
+
+  const entries = await fs.readdir(outputRoot, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!outputAllowlist.has(entry.name) || !entry.isFile()) {
+      throw new Error(
+        `Standalone output root contains an unexpected entry: ${entry.name}`,
+      );
+    }
+  }
+  await Promise.all(
+    entries.map((entry) => fs.unlink(path.join(outputRoot, entry.name))),
+  );
+  return outputRoot;
+}
 
 async function run(
   args: readonly string[],
@@ -52,14 +102,9 @@ export interface BuildStandaloneResult {
 export async function buildStandalone(
   options: BuildStandaloneOptions = {},
 ): Promise<BuildStandaloneResult> {
-  const outputRoot = path.resolve(options.outputRoot ?? defaultOutputRoot);
-  if (
-    outputRoot === path.parse(outputRoot).root ||
-    outputRoot === repositoryRoot ||
-    outputRoot === os.homedir()
-  ) {
-    throw new Error(`Refusing unsafe standalone output root: ${outputRoot}`);
-  }
+  const outputRoot = await prepareStandaloneOutputRoot(
+    options.outputRoot ?? defaultOutputRoot,
+  );
   if (options.buildStories !== false) {
     await run([process.execPath, "run", "stories:build"], workbenchRoot);
   }
@@ -78,8 +123,6 @@ export async function buildStandalone(
       }),
     );
 
-    await fs.rm(outputRoot, { recursive: true, force: true });
-    await fs.mkdir(outputRoot, { recursive: true });
     const executablePath = path.join(outputRoot, "bb-mate");
     const result = await Bun.build({
       entrypoints: [generatedEntry],

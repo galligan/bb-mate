@@ -53,8 +53,8 @@ a separate compatibility lane.
 
 ## Verification
 
-- `bun test apps/cli/src/lab-assets.test.ts apps/cli/src/surface-lab-server.test.ts apps/cli/src/entrypoint.test.ts scripts/standalone-assets.test.ts`
-- `bun --filter @bb-mate/cli check && tsc -p scripts/tsconfig.json`
+- `bun test apps/cli/src/lab-assets.test.ts apps/cli/src/surface-lab-server.test.ts apps/cli/src/entrypoint.test.ts scripts/standalone-assets.test.ts scripts/build-standalone.test.ts`
+- `bun --filter bb-mate check && tsc -p scripts/tsconfig.json`
 - `bun run standalone:inspect`
 - `bun run standalone:test`
 - `bun run package:inspect`

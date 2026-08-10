@@ -146,8 +146,8 @@ The legacy package lane remained separate and green: 41 files, 13 stories, and
 clean-room SHA-256
 `77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`.
 Focused tests, format, typecheck, compatibility, aggregate tests/build, and 14
-visual/accessibility checks passed. A dedicated `macos-15` arm64 hosted job is
-added but remains pending until the draft PR is pushed.
+visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
+`macos-15` arm64 job, Linux verification, visual, and security checks are green.
 
 ## Review Log
 
@@ -199,6 +199,16 @@ added but remains pending until the draft PR is pushed.
   merge endpoint as `d40aef0b7b04e6f76982b7203927905fd380c5a8`, closed #54,
   and reconciled to a clean, lane-free GitButler workspace. Epic #21 now links
   the capability matrix on `main` and marks Gate 0 complete.
+- Standalone round 1: standing scored 3/5 and targeted scored 2/5. Their shared
+  P1 (`ST-SA-001` / `PW-STANDALONE-001`) found that the exported builder could
+  recursively delete a caller-selected broad output root. Recursive root
+  deletion is removed: the builder now rejects repository ancestors, symlink
+  roots, and unexpected entries, validates the whole directory first, and
+  unlinks only `bb-mate` and `manifest.json`; three focused ownership tests
+  cover replacement, no-delete rejection, broad paths, and symlinks. Shared P2
+  `ST-SA-002` / `PW-STANDALONE-002` corrected the plan's package filter to
+  `bb-mate`. `PW-STANDALONE-003` corrected hosted CI state from pending to
+  green. All findings are fixed for round 2.
 
 ## Verification Log
 
