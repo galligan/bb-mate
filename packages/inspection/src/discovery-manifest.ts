@@ -1,45 +1,20 @@
 import path from "node:path";
-import type {
-  IssuedSourceCandidateFacts,
-  SourceCandidate,
-  TrustedRoot,
-} from "./discovery-types.ts";
+import type { SourceCandidate, TrustedRoot } from "./discovery-types.ts";
 import { readBoundedPluginIcon } from "./discovery-asset-reader.ts";
 import { DiscoveryFailure } from "./discovery-errors.ts";
+import { readBoundedManifestSnapshot } from "./discovery-manifest-reader.ts";
 import {
-  readBoundedManifestSnapshot,
-  type BoundedManifestSnapshot,
-} from "./discovery-manifest-reader.ts";
-import {
-  attestScanDirectory,
   displayPathFor,
-  isContained,
   validateDeclaredPath,
 } from "./discovery-path-safety.ts";
+import { issueSourceCandidate } from "./source-candidate-transition.ts";
 import { assertValidCompactSvg } from "./svg.ts";
-import { trustedRootDetails } from "./trusted-roots.ts";
 
 const MAX_MANIFEST_STRING_CHARACTERS = 8192;
 const MAX_DISPLAY_NAME_CHARACTERS = 128;
 const MAX_PACKAGE_NAME_CHARACTERS = 214;
 const MAX_VERSION_CHARACTERS = 64;
 const MAX_PLUGIN_ID_CHARACTERS = 64;
-
-const issuedCandidates = new WeakMap<
-  object,
-  {
-    readonly root: TrustedRoot;
-    readonly facts: IssuedSourceCandidateFacts;
-    readonly directoryIdentity: CandidateDirectoryIdentity;
-    readonly manifestIdentity: BoundedManifestSnapshot;
-  }
->();
-
-interface CandidateDirectoryIdentity {
-  readonly canonicalPath: string;
-  readonly device: number;
-  readonly inode: number;
-}
 
 export async function candidateAtRoot(
   root: TrustedRoot,
@@ -101,100 +76,7 @@ export async function candidateAtRoot(
     hasServer: true,
     hasApp: app !== undefined,
   };
-  Object.defineProperty(candidate, "toJSON", {
-    enumerable: false,
-    value: () => {
-      throw new TypeError("source candidates are server-private");
-    },
-  });
-  Object.freeze(candidate);
-  const directoryIdentity = await captureCandidateDirectoryIdentity(
-    root,
-    candidateRoot,
-  );
-  issuedCandidates.set(candidate, {
-    root,
-    facts: Object.freeze({
-      ...candidate,
-      rootKind: root.kind,
-    }),
-    directoryIdentity,
-    manifestIdentity: manifest,
-  });
-  return candidate;
-}
-
-export async function readIssuedSourceCandidate(
-  candidate: unknown,
-): Promise<Readonly<IssuedSourceCandidateFacts>> {
-  try {
-    if (typeof candidate !== "object" || candidate === null) throw notIssued();
-    const issued = issuedCandidates.get(candidate);
-    if (!issued) throw notIssued();
-    const rootDetails = trustedRootDetails(issued.root);
-    if (
-      issued.facts.rootKey !== issued.root.rootKey ||
-      issued.facts.rootKind !== issued.root.kind ||
-      !isContained(rootDetails.canonicalRoot, issued.facts.canonicalRoot)
-    ) {
-      throw notIssued();
-    }
-    const before = await captureCandidateDirectoryIdentity(
-      issued.root,
-      issued.facts.canonicalRoot,
-    );
-    if (!sameDirectoryIdentity(before, issued.directoryIdentity)) {
-      throw notIssued();
-    }
-    const manifest = await readBoundedManifestSnapshot(
-      path.join(issued.facts.canonicalRoot, "package.json"),
-    );
-    if (
-      manifest === null ||
-      manifest.device !== issued.manifestIdentity.device ||
-      manifest.inode !== issued.manifestIdentity.inode ||
-      manifest.sha256 !== issued.manifestIdentity.sha256
-    ) {
-      throw notIssued();
-    }
-    const after = await captureCandidateDirectoryIdentity(
-      issued.root,
-      issued.facts.canonicalRoot,
-    );
-    if (!sameDirectoryIdentity(after, issued.directoryIdentity)) {
-      throw notIssued();
-    }
-    return Object.freeze({ ...issued.facts });
-  } catch {
-    throw notIssued();
-  }
-}
-
-async function captureCandidateDirectoryIdentity(
-  root: TrustedRoot,
-  candidateRoot: string,
-): Promise<CandidateDirectoryIdentity> {
-  const attestation = await attestScanDirectory(
-    candidateRoot,
-    trustedRootDetails(root).canonicalRoot,
-  );
-  if (attestation.canonicalPath !== candidateRoot) throw notIssued();
-  return {
-    canonicalPath: attestation.canonicalPath,
-    device: attestation.dev,
-    inode: attestation.ino,
-  };
-}
-
-function sameDirectoryIdentity(
-  left: CandidateDirectoryIdentity,
-  right: CandidateDirectoryIdentity,
-): boolean {
-  return (
-    left.canonicalPath === right.canonicalPath &&
-    left.device === right.device &&
-    left.inode === right.inode
-  );
+  return issueSourceCandidate(root, candidate, manifest);
 }
 
 async function validateSkills(
@@ -326,7 +208,7 @@ async function validateThemes(
 }
 
 function isPluginOwnedIconPath(icon: string): boolean {
-  return icon.startsWith("./") || icon.startsWith(".\\");
+  return icon.startsWith("./");
 }
 
 function validateLogoExtension(value: string, label: string): void {
@@ -385,8 +267,4 @@ function derivePluginId(packageName: string): string {
 
 function invalid(message: string): DiscoveryFailure {
   return new DiscoveryFailure("manifest-invalid", message);
-}
-
-function notIssued(): TypeError {
-  return new TypeError("source candidate was not issued by discovery");
 }

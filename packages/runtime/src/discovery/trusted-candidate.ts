@@ -1,5 +1,3 @@
-import * as fs from "node:fs/promises";
-
 import { z } from "zod";
 
 import { OpaqueIdSchema, type OpaqueId } from "../contracts/ids.ts";
@@ -9,6 +7,11 @@ import {
   type DevelopmentTargetPayload,
 } from "./development-target.ts";
 import { isCanonicalSourcePathFormat } from "./source-path-policy.ts";
+import {
+  inspectDevelopmentSourceIdentity,
+  sameDevelopmentSourceIdentity,
+  type DevelopmentSourceIdentity,
+} from "./source-identity.ts";
 
 export const DevelopmentTargetRootKindSchema = z.enum([
   "current-project",
@@ -22,13 +25,7 @@ export type DevelopmentTargetRootKind = z.infer<
 const trustedCandidateBrand: unique symbol = Symbol(
   "bb-mate.trusted-development-target-candidate",
 );
-interface IssuedSourceIdentity {
-  readonly canonicalRoot: string;
-  readonly device: number;
-  readonly inode: number;
-}
-
-const issuedCandidates = new WeakMap<object, IssuedSourceIdentity>();
+const issuedCandidates = new WeakMap<object, DevelopmentSourceIdentity>();
 
 const TrustedDevelopmentTargetCandidateSchema = z.strictObject({
   rootKey: OpaqueIdSchema,
@@ -50,6 +47,20 @@ const InspectionSourceCandidateFactsSchema = z.strictObject({
   hasApp: z.boolean(),
 });
 
+const SourceCandidateTransitionFactsSchema =
+  InspectionSourceCandidateFactsSchema.extend({
+    directoryIdentity: z.strictObject({
+      canonicalRoot: z.string(),
+      device: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      inode: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    }),
+    manifestIdentity: z.strictObject({
+      device: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      inode: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+      sha256: z.string().regex(/^[0-9a-f]{64}$/u),
+    }),
+  });
+
 export type InspectionSourceCandidateFacts = z.infer<
   typeof InspectionSourceCandidateFactsSchema
 >;
@@ -66,35 +77,8 @@ export interface TrustedDevelopmentTargetCandidate {
   readonly [trustedCandidateBrand]: true;
 }
 
-async function inspectCanonicalRoot(
-  canonicalRoot: string,
-): Promise<IssuedSourceIdentity> {
-  const before = await fs.lstat(canonicalRoot);
-  const resolvedRoot = await fs.realpath(canonicalRoot);
-  const after = await fs.lstat(canonicalRoot);
-  const resolvedRootAfter = await fs.realpath(canonicalRoot);
-  if (
-    !isCanonicalSourcePathFormat(canonicalRoot) ||
-    before.isSymbolicLink() ||
-    !before.isDirectory() ||
-    after.isSymbolicLink() ||
-    !after.isDirectory() ||
-    resolvedRoot !== canonicalRoot ||
-    resolvedRootAfter !== resolvedRoot ||
-    before.dev !== after.dev ||
-    before.ino !== after.ino
-  ) {
-    throw new RuntimeError("invalid_request");
-  }
-  return {
-    canonicalRoot,
-    device: after.dev,
-    inode: after.ino,
-  };
-}
-
 async function issueTrustedDevelopmentTargetCandidate(
-  input: InspectionSourceCandidateFacts,
+  input: z.infer<typeof SourceCandidateTransitionFactsSchema>,
   observedAt: number,
 ): Promise<TrustedDevelopmentTargetCandidate> {
   try {
@@ -134,7 +118,19 @@ async function issueTrustedDevelopmentTargetCandidate(
       throw new RuntimeError("invalid_request");
     }
 
-    const identity = await inspectCanonicalRoot(candidate.canonicalRoot);
+    const identity = await inspectDevelopmentSourceIdentity(
+      candidate.canonicalRoot,
+    );
+    const expectedIdentity: DevelopmentSourceIdentity = {
+      ...input.directoryIdentity,
+      manifest: input.manifestIdentity,
+    };
+    if (
+      input.directoryIdentity.canonicalRoot !== input.canonicalRoot ||
+      !sameDevelopmentSourceIdentity(identity, expectedIdentity)
+    ) {
+      throw new RuntimeError("invalid_request");
+    }
     const issued = Object.freeze({
       ...candidate,
       target: Object.freeze({
@@ -153,26 +149,51 @@ async function issueTrustedDevelopmentTargetCandidate(
 }
 
 export function createInspectionDevelopmentTargetCandidateBridge(options: {
-  readonly readIssuedSourceCandidate: (
+  readonly consumeIssuedSourceCandidate: (
     candidate: unknown,
+    consumer: (transition: unknown) => unknown | Promise<unknown>,
   ) => unknown | Promise<unknown>;
+  readonly readSourceCandidateTransition: (transition: unknown) => unknown;
   readonly clock?: () => number;
 }): InspectionDevelopmentTargetCandidateBridge {
-  if (typeof options.readIssuedSourceCandidate !== "function") {
-    throw new TypeError("Inspection candidate reader must be a function");
+  if (
+    typeof options.consumeIssuedSourceCandidate !== "function" ||
+    typeof options.readSourceCandidateTransition !== "function"
+  ) {
+    throw new TypeError("Inspection transition functions must be provided");
   }
   const clock = options.clock ?? Date.now;
   return Object.freeze({
     async issue(candidate: unknown) {
       try {
-        const facts = InspectionSourceCandidateFactsSchema.parse(
-          await options.readIssuedSourceCandidate(candidate),
+        let consumed = false;
+        const issued = await options.consumeIssuedSourceCandidate(
+          candidate,
+          async (transition) => {
+            if (consumed) throw new RuntimeError("invalid_request");
+            consumed = true;
+            const facts = SourceCandidateTransitionFactsSchema.parse(
+              options.readSourceCandidateTransition(transition),
+            );
+            const observedAt = clock();
+            if (!Number.isSafeInteger(observedAt) || observedAt < 0) {
+              throw new RuntimeError("invalid_request");
+            }
+            return await issueTrustedDevelopmentTargetCandidate(
+              facts,
+              observedAt,
+            );
+          },
         );
-        const observedAt = clock();
-        if (!Number.isSafeInteger(observedAt) || observedAt < 0) {
+        if (
+          !consumed ||
+          typeof issued !== "object" ||
+          issued === null ||
+          !issuedCandidates.has(issued)
+        ) {
           throw new RuntimeError("invalid_request");
         }
-        return await issueTrustedDevelopmentTargetCandidate(facts, observedAt);
+        return issued as TrustedDevelopmentTargetCandidate;
       } catch (error) {
         if (error instanceof RuntimeError) throw error;
         throw new RuntimeError("invalid_request", { cause: error });
@@ -194,12 +215,10 @@ export async function validateTrustedDevelopmentTargetCandidate(
   const candidate = input as TrustedDevelopmentTargetCandidate;
   const expectedIdentity = issuedCandidates.get(candidate)!;
   try {
-    const actualIdentity = await inspectCanonicalRoot(candidate.canonicalRoot);
-    if (
-      actualIdentity.canonicalRoot !== expectedIdentity.canonicalRoot ||
-      actualIdentity.device !== expectedIdentity.device ||
-      actualIdentity.inode !== expectedIdentity.inode
-    ) {
+    const actualIdentity = await inspectDevelopmentSourceIdentity(
+      candidate.canonicalRoot,
+    );
+    if (!sameDevelopmentSourceIdentity(actualIdentity, expectedIdentity)) {
       throw new RuntimeError("invalid_request");
     }
     return candidate;

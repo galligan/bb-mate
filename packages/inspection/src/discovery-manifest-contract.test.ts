@@ -60,10 +60,6 @@ describe("released bb manifest contract", () => {
         },
       },
     ],
-    [
-      "Windows-style relative non-SVG icon",
-      { ...baseBb, branding: { icon: ".\\icon.png" } },
-    ],
   ])("rejects %s without hiding a valid sibling", async (_label, bb) => {
     const rootPath = await harness.createRoot();
     const brokenRoot = path.join(rootPath, "broken");
@@ -104,7 +100,7 @@ describe("released bb manifest contract", () => {
 
   test.each([
     ["POSIX icon", { icon: "./icon.svg" }],
-    ["Windows-style icon", { icon: ".\\icon.svg" }],
+    ["Windows-style host icon name", { icon: ".\\missing.svg" }],
     [
       "light and dark logos",
       { logo: { light: "./logo.png", dark: "./logo.webp" } },

@@ -15,6 +15,7 @@ import {
 import { ObjectCodecRegistry } from "../contracts/objects.ts";
 import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
 import { DevelopmentTargetCodec } from "../discovery/development-target.ts";
+import { inspectDevelopmentSourceIdentity } from "../discovery/source-identity.ts";
 import {
   createInspectionDevelopmentTargetCandidateBridge,
   type InspectionSourceCandidateFacts,
@@ -30,13 +31,35 @@ const targetId = TargetIdSchema.parse("t".repeat(32));
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
 const bbContextId = BbContextIdSchema.parse("b".repeat(32));
 
-function issueInspectionCandidate(value: InspectionSourceCandidateFacts) {
+async function issueInspectionCandidate(value: InspectionSourceCandidateFacts) {
   const source = Object.freeze({ ...value });
+  const transition = Object.freeze({ transition: true });
+  const identity = await inspectDevelopmentSourceIdentity(value.canonicalRoot);
+  let active = false;
   return createInspectionDevelopmentTargetCandidateBridge({
     clock: () => 1_000,
-    readIssuedSourceCandidate(candidate) {
+    async consumeIssuedSourceCandidate(candidate, consumer) {
       if (candidate !== source) throw new RuntimeError("invalid_request");
-      return Object.freeze({ ...value });
+      active = true;
+      try {
+        return await consumer(transition);
+      } finally {
+        active = false;
+      }
+    },
+    readSourceCandidateTransition(candidate) {
+      if (candidate !== transition || !active) {
+        throw new RuntimeError("invalid_request");
+      }
+      return {
+        ...value,
+        directoryIdentity: {
+          canonicalRoot: identity.canonicalRoot,
+          device: identity.device,
+          inode: identity.inode,
+        },
+        manifestIdentity: identity.manifest,
+      };
     },
   }).issue(source);
 }
@@ -49,6 +72,10 @@ async function makeFixture() {
   temporaryRoots.push(parent);
   const pluginRoot = path.join(parent, "plugin");
   await fs.mkdir(pluginRoot);
+  await fs.writeFile(
+    path.join(pluginRoot, "package.json"),
+    JSON.stringify({ name: "bb-plugin-notes", version: "1.2.3" }),
+  );
   return {
     dataRoot: path.join(parent, "data"),
     pluginRoot: await fs.realpath(pluginRoot),

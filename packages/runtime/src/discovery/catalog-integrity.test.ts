@@ -12,6 +12,7 @@ import {
 } from "../contracts/ids.ts";
 import { RuntimeError } from "../errors.ts";
 import { openDevelopmentTargetCatalog } from "./catalog.ts";
+import { inspectDevelopmentSourceIdentity } from "./source-identity.ts";
 import {
   createInspectionDevelopmentTargetCandidateBridge,
   type InspectionSourceCandidateFacts,
@@ -21,13 +22,35 @@ const temporaryRoots: string[] = [];
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
 const bbContextId = BbContextIdSchema.parse("b".repeat(32));
 
-function issueInspectionCandidate(value: InspectionSourceCandidateFacts) {
+async function issueInspectionCandidate(value: InspectionSourceCandidateFacts) {
   const candidate = Object.freeze({ ...value });
+  const transition = Object.freeze({ transition: true });
+  const identity = await inspectDevelopmentSourceIdentity(value.canonicalRoot);
+  let active = false;
   const bridge = createInspectionDevelopmentTargetCandidateBridge({
     clock: () => 1_000,
-    readIssuedSourceCandidate(input) {
+    async consumeIssuedSourceCandidate(input, consumer) {
       if (input !== candidate) throw new RuntimeError("invalid_request");
-      return Object.freeze({ ...value });
+      active = true;
+      try {
+        return await consumer(transition);
+      } finally {
+        active = false;
+      }
+    },
+    readSourceCandidateTransition(input) {
+      if (input !== transition || !active) {
+        throw new RuntimeError("invalid_request");
+      }
+      return {
+        ...value,
+        directoryIdentity: {
+          canonicalRoot: identity.canonicalRoot,
+          device: identity.device,
+          inode: identity.inode,
+        },
+        manifestIdentity: identity.manifest,
+      };
     },
   });
   return bridge.issue(candidate);
@@ -70,6 +93,10 @@ describe("development-target private-source integrity", () => {
       temporaryRoots.push(parent);
       const pluginRoot = path.join(parent, "plugin");
       await fs.mkdir(pluginRoot);
+      await fs.writeFile(
+        path.join(pluginRoot, "package.json"),
+        JSON.stringify({ name: "bb-plugin-notes", version: "1.2.3" }),
+      );
       const dataRoot = path.join(parent, "data");
       const catalog = await openDevelopmentTargetCatalog({
         dataRoot,

@@ -6,6 +6,10 @@ import * as path from "node:path";
 import { OpaqueIdSchema } from "../contracts/ids.ts";
 import { RuntimeError } from "../errors.ts";
 import {
+  inspectDevelopmentSourceIdentity,
+  sameDevelopmentSourceIdentity,
+} from "./source-identity.ts";
+import {
   createInspectionDevelopmentTargetCandidateBridge,
   validateTrustedDevelopmentTargetCandidate,
   type InspectionSourceCandidateFacts,
@@ -13,17 +17,64 @@ import {
 
 const temporaryRoots: string[] = [];
 
+async function writeManifest(root: string, version = "1.2.3") {
+  await fs.writeFile(
+    path.join(root, "package.json"),
+    JSON.stringify({ name: "bb-plugin-notes", version }),
+  );
+}
+
 function createInspectionHarness(clock = () => 1_000) {
   const issuedFacts = new WeakMap<object, InspectionSourceCandidateFacts>();
+  const consumedCandidates = new WeakSet<object>();
+  const activeTransitions = new WeakMap<object, unknown>();
   const bridge = createInspectionDevelopmentTargetCandidateBridge({
     clock,
-    readIssuedSourceCandidate(candidate) {
+    async consumeIssuedSourceCandidate(candidate, consumer) {
       if (typeof candidate !== "object" || candidate === null) {
         throw new RuntimeError("invalid_request");
       }
       const value = issuedFacts.get(candidate);
+      if (!value || consumedCandidates.has(candidate)) {
+        throw new RuntimeError("invalid_request");
+      }
+      consumedCandidates.add(candidate);
+      const before = await inspectDevelopmentSourceIdentity(
+        value.canonicalRoot,
+      );
+      const transition = Object.freeze({ transition: true });
+      activeTransitions.set(
+        transition,
+        Object.freeze({
+          ...value,
+          directoryIdentity: Object.freeze({
+            canonicalRoot: before.canonicalRoot,
+            device: before.device,
+            inode: before.inode,
+          }),
+          manifestIdentity: Object.freeze({ ...before.manifest }),
+        }),
+      );
+      try {
+        const result = await consumer(transition);
+        const after = await inspectDevelopmentSourceIdentity(
+          value.canonicalRoot,
+        );
+        if (!sameDevelopmentSourceIdentity(before, after)) {
+          throw new RuntimeError("invalid_request");
+        }
+        return result;
+      } finally {
+        activeTransitions.delete(transition);
+      }
+    },
+    readSourceCandidateTransition(transition) {
+      if (typeof transition !== "object" || transition === null) {
+        throw new RuntimeError("invalid_request");
+      }
+      const value = activeTransitions.get(transition);
       if (!value) throw new RuntimeError("invalid_request");
-      return Object.freeze({ ...value });
+      return value;
     },
   });
   return {
@@ -63,25 +114,24 @@ afterEach(async () => {
 });
 
 describe("trusted development-target candidates", () => {
-  test("awaits inspection revalidation before issuing a runtime capability", async () => {
+  test("issues only through an active inspection transition", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
-    const source = Object.freeze({ source: true });
-    const bridge = createInspectionDevelopmentTargetCandidateBridge({
-      clock: () => 1_000,
-      async readIssuedSourceCandidate(candidate) {
-        await Promise.resolve();
-        if (candidate !== source) throw new RuntimeError("invalid_request");
-        return facts(await fs.realpath(pluginRoot));
-      },
-    });
+    await writeManifest(pluginRoot);
+    const harness = createInspectionHarness();
+    const source = harness.issueSourceCandidate(
+      facts(await fs.realpath(pluginRoot)),
+    );
 
-    const issued = await bridge.issue(source);
+    const issued = await harness.bridge.issue(source);
 
     expect(issued.canonicalRoot).toBe(await fs.realpath(pluginRoot));
+    await expect(harness.bridge.issue(source)).rejects.toMatchObject({
+      code: "invalid_request",
+    });
   });
 
   test("derives conservative target state only from an issued inspection candidate", async () => {
@@ -90,6 +140,7 @@ describe("trusted development-target candidates", () => {
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
+    await writeManifest(pluginRoot);
     const canonicalRoot = await fs.realpath(pluginRoot);
     const harness = createInspectionHarness();
     const source = harness.issueSourceCandidate(facts(canonicalRoot), {
@@ -164,6 +215,7 @@ describe("trusted development-target candidates", () => {
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
+    await writeManifest(pluginRoot);
     const harness = createInspectionHarness();
     const issued = await harness.bridge.issue(
       harness.issueSourceCandidate(facts(await fs.realpath(pluginRoot))),
@@ -184,6 +236,24 @@ describe("trusted development-target candidates", () => {
     const originalRoot = path.join(parent, "original-plugin");
     await fs.rename(pluginRoot, originalRoot);
     await fs.mkdir(pluginRoot);
+    await expect(
+      validateTrustedDevelopmentTargetCandidate(issued),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+  });
+
+  test("rejects manifest mutation after runtime issuance and before persistence", async () => {
+    const temporaryRoot = await fs.realpath(os.tmpdir());
+    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    temporaryRoots.push(parent);
+    const pluginRoot = path.join(parent, "plugin");
+    await fs.mkdir(pluginRoot);
+    await writeManifest(pluginRoot);
+    const harness = createInspectionHarness();
+    const issued = await harness.bridge.issue(
+      harness.issueSourceCandidate(facts(await fs.realpath(pluginRoot))),
+    );
+    await writeManifest(pluginRoot, "9.9.9");
+
     await expect(
       validateTrustedDevelopmentTargetCandidate(issued),
     ).rejects.toMatchObject({ code: "invalid_request" });

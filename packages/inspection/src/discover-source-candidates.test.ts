@@ -9,7 +9,6 @@ import {
 } from "./discovery-test-helpers.ts";
 import type { TrustedRoot } from "./discovery-types.ts";
 import { admitTrustedRoots } from "./trusted-roots.ts";
-import { readIssuedSourceCandidate } from "./index.ts";
 
 const harness = createDiscoveryTestHarness();
 
@@ -67,79 +66,6 @@ describe("passive source discovery", () => {
     expect(candidate?.canonicalRoot).toBe(await fs.realpath(rootPath));
     expect(() => JSON.stringify(candidate)).toThrow(
       "source candidates are server-private",
-    );
-  });
-
-  test("reads only exact issued candidate capabilities into fresh frozen facts", async () => {
-    const rootPath = await harness.createRoot();
-    await harness.writePlugin(rootPath, "issued");
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "pinned", path: rootPath },
-    ]);
-    const result = await discoverSourceCandidates(admission.roots);
-    const candidate = result.candidates[0]!;
-
-    const first = await readIssuedSourceCandidate(candidate);
-    const second = await readIssuedSourceCandidate(candidate);
-
-    expect(first).toEqual({
-      rootKey: WORKSPACE_ROOT_KEY,
-      rootKind: "pinned",
-      canonicalRoot: await fs.realpath(rootPath),
-      displayPath: "workspace",
-      packageName: "bb-plugin-issued",
-      version: "1.2.3",
-      pluginId: "issued",
-      displayName: "issued",
-      hasServer: true,
-      hasApp: false,
-    });
-    expect(Object.isFrozen(first)).toBeTrue();
-    expect(first).not.toBe(second);
-    for (const forged of [
-      { ...candidate },
-      Object.create(candidate) as unknown,
-      { ...first },
-      null,
-    ]) {
-      await expect(readIssuedSourceCandidate(forged)).rejects.toThrow(
-        "source candidate was not issued by discovery",
-      );
-    }
-  });
-
-  test("rejects an issued candidate whose directory is replaced at the same path", async () => {
-    const rootPath = await harness.createRoot();
-    const candidateRoot = path.join(rootPath, "plugin");
-    const originalRoot = path.join(rootPath, "plugin-original");
-    await fs.mkdir(candidateRoot);
-    await harness.writePlugin(candidateRoot, "issued");
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: rootPath },
-    ]);
-    const result = await discoverSourceCandidates(admission.roots);
-    const candidate = result.candidates[0]!;
-    await fs.rename(candidateRoot, originalRoot);
-    await fs.mkdir(candidateRoot);
-    await harness.writePlugin(candidateRoot, "replacement");
-
-    await expect(readIssuedSourceCandidate(candidate)).rejects.toThrow(
-      "source candidate was not issued by discovery",
-    );
-  });
-
-  test("rejects stale facts after the bounded manifest changes", async () => {
-    const rootPath = await harness.createRoot();
-    await harness.writePlugin(rootPath, "issued");
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: rootPath },
-    ]);
-    const result = await discoverSourceCandidates(admission.roots);
-    const candidate = result.candidates[0]!;
-    await fs.appendFile(path.join(rootPath, "package.json"), " \n");
-
-    await expect(readIssuedSourceCandidate(candidate)).rejects.toThrow(
-      "source candidate was not issued by discovery",
     );
   });
 

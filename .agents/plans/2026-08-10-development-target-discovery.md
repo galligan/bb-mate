@@ -41,6 +41,10 @@ Issue #57 closes only after both slices merge and reconcile.
 - The public envelope and private source-root record are one SQLite
   transaction. Canonical roots, trusted-root keys, raw inventory, and host
   facts never enter public payloads or event records.
+- Inspection hands a candidate to runtime through a one-use, identity-backed
+  transition. Directory and bounded `package.json` device/inode/hash evidence
+  is attested before and after runtime issuance, retained by the runtime
+  capability, and revalidated again immediately before catalog persistence.
 - IDs are CSPRNG-generated in production and injectable in tests. Refresh and
   restart preserve the same ID for the same private canonical root.
 - The `bb` object in `package.json` is the released plugin manifest. No second

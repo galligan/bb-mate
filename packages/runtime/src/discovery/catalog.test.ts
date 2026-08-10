@@ -11,6 +11,7 @@ import {
 } from "../contracts/ids.ts";
 import { RuntimeError } from "../errors.ts";
 import { openDevelopmentTargetCatalog } from "./catalog.ts";
+import { inspectDevelopmentSourceIdentity } from "./source-identity.ts";
 import {
   createInspectionDevelopmentTargetCandidateBridge,
   type InspectionSourceCandidateFacts,
@@ -22,15 +23,42 @@ const bbContextId = BbContextIdSchema.parse("b".repeat(32));
 
 function createInspectionHarness() {
   const issuedFacts = new WeakMap<object, InspectionSourceCandidateFacts>();
+  const activeTransitions = new WeakMap<object, unknown>();
   const bridge = createInspectionDevelopmentTargetCandidateBridge({
     clock: () => 1_000,
-    readIssuedSourceCandidate(candidate) {
+    async consumeIssuedSourceCandidate(candidate, consumer) {
       if (typeof candidate !== "object" || candidate === null) {
         throw new RuntimeError("invalid_request");
       }
       const value = issuedFacts.get(candidate);
       if (!value) throw new RuntimeError("invalid_request");
-      return Object.freeze({ ...value });
+      issuedFacts.delete(candidate);
+      const identity = await inspectDevelopmentSourceIdentity(
+        value.canonicalRoot,
+      );
+      const transition = Object.freeze({ transition: true });
+      activeTransitions.set(transition, {
+        ...value,
+        directoryIdentity: {
+          canonicalRoot: identity.canonicalRoot,
+          device: identity.device,
+          inode: identity.inode,
+        },
+        manifestIdentity: identity.manifest,
+      });
+      try {
+        return await consumer(transition);
+      } finally {
+        activeTransitions.delete(transition);
+      }
+    },
+    readSourceCandidateTransition(transition) {
+      if (typeof transition !== "object" || transition === null) {
+        throw new RuntimeError("invalid_request");
+      }
+      const value = activeTransitions.get(transition);
+      if (!value) throw new RuntimeError("invalid_request");
+      return value;
     },
   });
   return {
@@ -78,6 +106,10 @@ describe("DevelopmentTargetCatalog capability boundary", () => {
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
+    await fs.writeFile(
+      path.join(pluginRoot, "package.json"),
+      JSON.stringify({ name: "bb-plugin-notes", version: "1.2.3" }),
+    );
     const canonicalRoot = await fs.realpath(pluginRoot);
     const harness = createInspectionHarness();
     const source = harness.issueSourceCandidate(facts(canonicalRoot), {

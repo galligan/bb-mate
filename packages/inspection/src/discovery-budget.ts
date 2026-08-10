@@ -6,9 +6,9 @@ export interface DiscoveryRootBudget {
 }
 
 /**
- * Partition each global bound across admitted roots so an earlier noisy root
- * cannot consume the share needed to inspect an independent later root.
- * Unused shares stay unused; borrowing would make the result order-dependent.
+ * Reserve a deterministic first-pass share for every admitted root so an
+ * earlier noisy root cannot starve a later root. The scan coordinator may
+ * redistribute unused capacity only after every root receives that share.
  */
 export function allocateDiscoveryRootBudgets(
   rootCount: number,

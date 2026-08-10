@@ -4,7 +4,10 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { discoverSourceCandidates } from "../packages/inspection/src/discover-source-candidates.ts";
-import { readIssuedSourceCandidate } from "../packages/inspection/src/discovery-manifest.ts";
+import {
+  consumeIssuedSourceCandidate,
+  readSourceCandidateTransition,
+} from "../packages/inspection/src/source-candidate-transition.ts";
 import { admitTrustedRoots } from "../packages/inspection/src/trusted-roots.ts";
 import { createRequestContext } from "../packages/runtime/src/auth/context.ts";
 import {
@@ -31,7 +34,142 @@ afterEach(async () => {
   );
 });
 
+async function createDiscoveredFixture() {
+  const temporaryRoot = await fs.realpath(os.tmpdir());
+  const parent = await fs.mkdtemp(
+    path.join(temporaryRoot, "bb-mate-source-transition-"),
+  );
+  temporaryRoots.push(parent);
+  const workspaceRoot = path.join(parent, "workspace");
+  const pluginRoot = path.join(workspaceRoot, "plugins", "example");
+  await fs.mkdir(path.join(pluginRoot, "dist"), { recursive: true });
+  const manifest = JSON.stringify({
+    name: "bb-plugin-example",
+    version: "1.2.3",
+    bb: {
+      name: "Example plugin",
+      description: "A passive source transition fixture.",
+      branding: { icon: "extension" },
+      server: "dist/server.js",
+    },
+  });
+  await fs.writeFile(path.join(pluginRoot, "package.json"), manifest);
+  await fs.writeFile(path.join(pluginRoot, "dist", "server.js"), "");
+  const admission = await admitTrustedRoots([
+    {
+      rootKey: ROOT_KEY,
+      kind: "current-project",
+      path: workspaceRoot,
+      displayName: "workspace",
+    },
+  ]);
+  const discovery = await discoverSourceCandidates(admission.roots);
+  expect(discovery.diagnostics).toEqual([]);
+  expect(discovery.candidates).toHaveLength(1);
+  return {
+    parent,
+    pluginRoot,
+    manifest,
+    candidate: discovery.candidates[0]!,
+  };
+}
+
 describe("source discovery to development-target catalog", () => {
+  test("rejects in-place manifest mutation during inspection-to-runtime transition", async () => {
+    const fixture = await createDiscoveredFixture();
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      consumeIssuedSourceCandidate: (candidate, consumer) =>
+        consumeIssuedSourceCandidate(candidate, async (transition) => {
+          await fs.writeFile(
+            path.join(fixture.pluginRoot, "package.json"),
+            fixture.manifest.replace('"1.2.3"', '"9.9.9"'),
+          );
+          return await consumer(transition);
+        }),
+      readSourceCandidateTransition,
+    });
+
+    await expect(bridge.issue(fixture.candidate)).rejects.toMatchObject({
+      code: "invalid_request",
+    });
+  });
+
+  test("rejects package inode replacement during inspection-to-runtime transition", async () => {
+    const fixture = await createDiscoveredFixture();
+    const packagePath = path.join(fixture.pluginRoot, "package.json");
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      consumeIssuedSourceCandidate: (candidate, consumer) =>
+        consumeIssuedSourceCandidate(candidate, async (transition) => {
+          await fs.rename(packagePath, `${packagePath}.original`);
+          await fs.writeFile(packagePath, fixture.manifest);
+          return await consumer(transition);
+        }),
+      readSourceCandidateTransition,
+    });
+
+    await expect(bridge.issue(fixture.candidate)).rejects.toMatchObject({
+      code: "invalid_request",
+    });
+  });
+
+  test("rejects directory replacement during inspection-to-runtime transition", async () => {
+    const fixture = await createDiscoveredFixture();
+    const originalRoot = `${fixture.pluginRoot}.original`;
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      consumeIssuedSourceCandidate: (candidate, consumer) =>
+        consumeIssuedSourceCandidate(candidate, async (transition) => {
+          await fs.rename(fixture.pluginRoot, originalRoot);
+          await fs.mkdir(path.join(fixture.pluginRoot, "dist"), {
+            recursive: true,
+          });
+          await fs.writeFile(
+            path.join(fixture.pluginRoot, "package.json"),
+            fixture.manifest,
+          );
+          await fs.writeFile(
+            path.join(fixture.pluginRoot, "dist", "server.js"),
+            "",
+          );
+          return await consumer(transition);
+        }),
+      readSourceCandidateTransition,
+    });
+
+    await expect(bridge.issue(fixture.candidate)).rejects.toMatchObject({
+      code: "invalid_request",
+    });
+  });
+
+  test("rejects manifest mutation after runtime issuance and before catalog persistence", async () => {
+    const fixture = await createDiscoveredFixture();
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      consumeIssuedSourceCandidate,
+      readSourceCandidateTransition,
+    });
+    const issued = await bridge.issue(fixture.candidate);
+    await fs.writeFile(
+      path.join(fixture.pluginRoot, "package.json"),
+      fixture.manifest.replace('"1.2.3"', '"9.9.9"'),
+    );
+    const context = createRequestContext({
+      id: PRINCIPAL_ID,
+      kind: "plugin-adapter",
+      scopes: ["targets:read", "targets:write"],
+      revoked: false,
+      bbContextId: BB_CONTEXT_ID,
+    });
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: path.join(fixture.parent, "runtime-data"),
+    });
+    const service = createDevelopmentTargetService(catalog);
+
+    await expect(
+      service.refreshFromTrustedCandidate(context, issued),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(service.listTargets(context)).toEqual([]);
+    catalog.close();
+  });
+
   test("rejects a discovered candidate whose directory is replaced before runtime admission", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
@@ -70,7 +208,8 @@ describe("source discovery to development-target catalog", () => {
     await fs.writeFile(path.join(pluginRoot, "dist", "server.js"), "");
 
     const bridge = createInspectionDevelopmentTargetCandidateBridge({
-      readIssuedSourceCandidate,
+      consumeIssuedSourceCandidate,
+      readSourceCandidateTransition,
     });
 
     await expect(bridge.issue(candidate)).rejects.toMatchObject({
@@ -125,7 +264,8 @@ describe("source discovery to development-target catalog", () => {
     expect(candidate.canonicalRoot).toBe(pluginRoot);
 
     const bridge = createInspectionDevelopmentTargetCandidateBridge({
-      readIssuedSourceCandidate,
+      consumeIssuedSourceCandidate,
+      readSourceCandidateTransition,
       clock: () => 1_000,
     });
     for (const forged of [

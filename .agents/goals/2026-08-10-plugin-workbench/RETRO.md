@@ -392,7 +392,29 @@ and all builds.
   The remediation also strengthens the previously accepted internal bridge:
   raw target/native claims have no issuance path, inspection and runtime use
   two exact capability stages, and directory/manifest changes between
-  discovery and persistence fail closed. Fresh exact-head review remains.
+  discovery and persistence fail closed.
+- Source-catalog round 3: standing and targeted both scored 2/5 at exact head
+  `71f2fffc0108b7427f12ba07a1226e2f8c2cf5cc`. `SC-SG-006` / `LR-001`
+  reproduced a transition race after inspection returned plain facts but
+  before runtime captured them; in-place manifest mutation, manifest inode
+  replacement, and whole-directory replacement all admitted stale claims.
+  `SC-SG-004` also remained open because discovery treated `.\\icon.svg` as a
+  plugin-owned path while the released validator treats only `./` paths that
+  way. `LR-006` noted a stale budget comment.
+- The round-3 remediation replaces the plain-facts reader with an exact,
+  one-use transition capability. Inspection pre/post-attests the candidate
+  directory and bounded manifest around runtime issuance; runtime independently
+  verifies the same canonical path, device, inode, and SHA-256 evidence, keeps
+  that identity on its own capability, and revalidates it before catalog
+  persistence. Focused attacks for all three transition races and a
+  post-issuance manifest mutation now fail closed with no catalog mutation.
+  Windows-style `.\\icon.svg` is again a host icon name, matching the released
+  validator, and the budget comment now describes reserved-first
+  redistribution. The remediation gate passes 401 repository tests, all
+  type/compatibility checks, formatting, every build, and the 41-file/13-story
+  package clean room at SHA-256
+  `622b4c8148f0b449c6321c8625b27ac24a84f8a0b662a4b0efcad7997715bed4`.
+  Fresh exact-head review remains.
 
 ## Verification Log
 
