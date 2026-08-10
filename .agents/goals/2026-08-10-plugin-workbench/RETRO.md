@@ -166,6 +166,13 @@ only representation.
   `G0-SG-005` and targeted `PW-GATE0-004` both scored the head 4/5 and required
   “implementation and review complete; merge pending.” The status is corrected;
   completion remains reserved for post-merge reconciliation and #54 closure.
+- Gate 0 round 5: standing and targeted exact-head reviews both reached 5/5 at
+  `87066b4f62f82283fec8f25a912bd48a682f72cb` with zero findings. Hosted
+  verify, visual, and security checks were green, and no review threads remained.
+- PR #68 left draft at that exact head, merged through GitHub's SHA-pinned async
+  merge endpoint as `d40aef0b7b04e6f76982b7203927905fd380c5a8`, closed #54,
+  and reconciled to a clean, lane-free GitButler workspace. Epic #21 now links
+  the capability matrix on `main` and marks Gate 0 complete.
 
 ## Verification Log
 
@@ -199,6 +206,6 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active; next gate is PR #68 ready transition, exact-head pin, async
-merge, and reconciliation, then the domain and standalone-runtime foundation
-lanes.
+Execution active. Gate 0 is merged and reconciled. The standalone-runtime #56
+lane is in progress from the clean post-#68 base; the domain #55 lane remains
+independent and prepared for a separate branch.

@@ -1,7 +1,7 @@
 # Plugin Workbench released-capability Gate 0
 
 Date: 2026-08-10
-Status: Implementation and review complete; merge pending
+Status: Complete
 Issue: [#54](https://github.com/galligan/bb-mate/issues/54)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
@@ -95,3 +95,5 @@ All six rows have reproducible evidence and pass; they are admitted to the goal
 independently; any later failed row has an honest tracked unblock condition; #54
 and the goal ledger are current; the result is merged to `main` with clean
 workspace/CI/reviews.
+
+Merged through PR #68 as `d40aef0b7b04e6f76982b7203927905fd380c5a8`.
