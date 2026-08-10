@@ -74,6 +74,21 @@ Learn more in the
 - Native handoffs target a supported macOS bb host.
 - Fixture and package checks are also exercised in isolated Linux CI.
 
+The repository also builds a separate, unsigned macOS arm64 executable for
+isolated Plugin Workbench development:
+
+```sh
+bun run standalone:build
+bun run standalone:inspect
+bun run standalone:test
+```
+
+That executable embeds the exact deterministic lab and is verified after being
+moved away from the checkout with an empty `PATH` and no global Bun. It is an
+internal build artifact: the npm package still ships the Bun-based CLI, and the
+standalone executable is not published, signed, notarized, or installed by
+these commands.
+
 ## Trust and security
 
 Plugins are full-trust local code. Review a plugin before using native
