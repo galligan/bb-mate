@@ -179,7 +179,12 @@ is recorded in `compatibility/bb-target.json` and checked with:
 
 ```sh
 bun run compatibility:check
+bun run compatibility:latest
 ```
+
+The latest-release check is non-mutating. A scheduled repository workflow uses
+it to report stable bb drift; compatibility updates remain reviewed pull
+requests rather than automatic rewrites.
 
 When a native bb capability replaces a BB Mate seam, this project should adopt
 the upstream path and delete the duplicate. The goal is a useful companion that
