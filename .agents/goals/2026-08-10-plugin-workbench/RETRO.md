@@ -179,7 +179,7 @@ corruption, newer schemas, migration drift, or live-schema drift without
 repairing or deleting caller data.
 
 Generic JSON is bounded to 8,192-character strings/property names, 100 array
-items/object properties, and 256 KiB canonical UTF-8. The HTTP slice is
+items/object properties, and a 256 KiB complete canonical UTF-8 envelope. The HTTP slice is
 handler-only: exact numerical loopback Host/URL/Origin,
 authenticated non-browser absent-Origin access, a constant public health route,
 authenticated capabilities with every deferred feature false, a 256 KiB body
@@ -188,7 +188,7 @@ security headers. Route/export tests prove the absence of bootstrap, target-
 path, artifact, generic object-write, event-stream, MCP, URL-fetch, shell/eval,
 native-lifecycle, destructive, import/export, and remote-bind surfaces.
 
-Focused runtime verification passes 97 tests with 531 assertions. The full
+Focused runtime verification passes 98 tests with 536 assertions. The full
 remediation gate passes formatting, type/compatibility checks, 303 aggregate
 tests, the 41-file/13-story legacy package clean room at SHA-256
 `77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`,
@@ -303,6 +303,15 @@ and all builds.
   canonical stored-byte verification. A two-open-store regression also proves
   optimistic stale-writer conflict across SQLite connections. All three
   findings are fixed for round 2.
+- Runtime full review round 2: standing scored 3/5 at exact head
+  `2bb5d6523398b031211ef23f0bbb5563de68aa8f`; the targeted lane independently
+  reproduced the same remaining boundary defect before its report finalization.
+  `RT-SG-004` found that `parse` bounded only the 261,911-byte payload while
+  `serialize` bounded the 262,199-byte full envelope, breaking the registry's
+  round-trip contract. `parse` now validates the same complete canonical
+  envelope that `serialize` emits, and a generated near-limit regression proves
+  payload-only admission cannot exceed the envelope ceiling. Round 1 findings
+  remain fixed; this new finding is fixed for round 3.
 
 ## Verification Log
 

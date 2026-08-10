@@ -32,8 +32,9 @@ transport.
 - Track issued request-context objects by exact module-private identity. A
   copied, inherited, or symbol-reflected object never inherits authority.
 - Bound every generic JSON value to 8,192-character strings/property names,
-  100 array items/object properties, and 256 KiB of canonical UTF-8 JSON before
-  a concrete codec may admit it.
+  100 array items/object properties, and a 256 KiB canonical UTF-8 envelope
+  before a concrete codec may admit it. Every parsed envelope is therefore
+  serializable under the same bound.
 - Store principal, bb-context, target, optional session, revision, and integer
   timestamps in database columns outside canonical payload JSON. IDs do not
   authorize access. Reads recompute canonical payload bytes and fail closed on
