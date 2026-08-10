@@ -10,9 +10,10 @@ released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
 and reconciled. Source-first development-target discovery #57 is the active
 milestone. Slice 57A is merged and reconciled. Slice 57B1 native inventory,
-reconciliation, and private-host persistence are implemented and locally
-verified on draft PR #74; exact-head review, hosted CI, merge, and
-reconciliation remain before the 57B2 Workbench adapter begins.
+reconciliation, and private-host persistence have passed local verification,
+hosted CI, and two 5/5 exact-head review lanes on draft PR #74. Final
+docs-only exact-head review, ready/merge, and reconciliation remain before the
+57B2 Workbench adapter begins.
 
 ## Readiness
 
@@ -23,8 +24,9 @@ evidence and is reconciled. The transport-neutral runtime foundation #55 has
 passed focused/aggregate verification, two independent exact-head reviews, and
 hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
 and reconciled. Slice 57B1 has passed its local implementation gate; it is not
-done until dual exact-head review, hosted CI, merge, and GitButler
-reconciliation pass. Browser bootstrap/topology is isolated in #70.
+done until the final docs-only exact head is re-pinned clean, then ready/merge
+and GitButler reconciliation pass. Browser bootstrap/topology is isolated in
+#70.
 
 ## Baseline
 
@@ -499,6 +501,13 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   persistence now requires a strictly newer per-target observation; replay
   tests prove the public target, private host row, event ledger, and reopened
   database remain unchanged.
+- Standing and targeted round two each awarded exact head
+  `990ea0be027347192f37f39527ef7e81d8b5e9c5` 5/5 with zero P0-P3 findings.
+  Hosted verify, visual, standalone-arm64, and GitGuardian checks were terminal
+  green; the PR was mergeable, thread-free, fully pushed, and GitButler-clean.
+  Superseded non-clean round-one scratch reports were archived only after their
+  findings and fixed dispositions were recorded here; the packet doctor then
+  passed with 21 active reports.
 - The coordinator walking skeleton proves passive source discovery to stable
   catalog target to released-shape managed inventory to reconciliation and
   reopen. The inventory invokes only `bb plugin list --json`, creates no
@@ -523,7 +532,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
 source-catalog slice 57A are merged and reconciled. Slice 57B1 implementation
-and local verification are complete on draft PR #74; exact-head review,
-hosted CI, merge, and reconciliation remain. Issue #57 stays open for 57B1 and
-the later 57B2 opaque-target Workbench adapter. All
+and review are complete on draft PR #74; final docs-only exact-head review,
+ready/merge, and reconciliation remain. Issue #57 stays open for 57B1 and the
+later 57B2 opaque-target Workbench adapter. All
 release/upstream/Connect/normal-profile stop boundaries remain intact.

@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slice 57A merged; slice 57B1 implemented and locally verified; review pending
+Status: Slice 57A merged; slice 57B1 implementation and review complete; merge pending
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
