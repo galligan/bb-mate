@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: bb-compatibility-watch
+  cancel-in-progress: false
+
 jobs:
   check:
     runs-on: ubuntu-latest
