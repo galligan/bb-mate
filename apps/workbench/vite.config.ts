@@ -6,14 +6,17 @@ import { pluginInspectionPlugin } from "./plugin-inspection-server";
 
 const sourceRoot = path.resolve(__dirname, "../..");
 const workspaceRoot = process.env.BB_MATE_WORKSPACE ?? sourceRoot;
+const dataRoot =
+  process.env.BB_MATE_DATA_DIR ??
+  path.join(sourceRoot, "node_modules", ".bb-mate-workbench");
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     pluginInspectionPlugin({
+      dataRoot,
       workspaceRoot,
-      commandWorkspaceRoot: sourceRoot,
       targetPath: process.env.BB_MATE_PLUGIN,
     }),
   ],

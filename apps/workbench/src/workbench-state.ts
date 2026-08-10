@@ -6,7 +6,8 @@ export type PreviewTheme = "light" | "dark";
 export type PreviewViewport = "desktop" | "compact";
 
 export interface WorkbenchState {
-  plugin: string | null;
+  targetId: string | null;
+  selectionError: string | null;
   surfaceId: string;
   fixtureId: string;
   mode: PreviewMode;
@@ -17,6 +18,27 @@ export interface WorkbenchState {
 const modes = new Set<PreviewMode>(["fixture", "harness", "live"]);
 const themes = new Set<PreviewTheme>(["light", "dark"]);
 const viewports = new Set<PreviewViewport>(["desktop", "compact"]);
+const opaqueTargetId = /^[A-Za-z0-9_-]{32}$/u;
+export const unavailableTargetMessage =
+  "The selected development target is unavailable. Choose a discovered target.";
+
+export function isOpaqueTargetId(value: string): boolean {
+  return opaqueTargetId.test(value);
+}
+
+export function automaticTargetId(
+  currentTargetId: string | null,
+  selectionError: string | null,
+  candidateCount: number,
+  selectedTargetId: string | null,
+): string | null {
+  return !currentTargetId &&
+    !selectionError &&
+    candidateCount === 1 &&
+    selectedTargetId
+    ? selectedTargetId
+    : null;
+}
 
 export function readWorkbenchState(search: string): WorkbenchState {
   const params = new URLSearchParams(search);
@@ -27,9 +49,16 @@ export function readWorkbenchState(search: string): WorkbenchState {
   const requestedMode = params.get("mode") as PreviewMode | null;
   const requestedTheme = params.get("theme") as PreviewTheme | null;
   const requestedViewport = params.get("viewport") as PreviewViewport | null;
+  const requestedTargetId = params.get("target");
+  const targetId =
+    requestedTargetId && isOpaqueTargetId(requestedTargetId)
+      ? requestedTargetId
+      : null;
 
   return {
-    plugin: params.get("plugin") || null,
+    targetId,
+    selectionError:
+      requestedTargetId && !targetId ? unavailableTargetMessage : null,
     surfaceId: selection.surface.id,
     fixtureId: selection.fixture.id,
     mode: requestedMode && modes.has(requestedMode) ? requestedMode : "fixture",
@@ -48,6 +77,7 @@ export function writeWorkbenchState(
 ): string {
   const params = new URLSearchParams(existingSearch);
   for (const key of [
+    "target",
     "plugin",
     "surface",
     "scenario",
@@ -57,7 +87,9 @@ export function writeWorkbenchState(
   ]) {
     params.delete(key);
   }
-  if (state.plugin) params.set("plugin", state.plugin);
+  if (state.targetId && isOpaqueTargetId(state.targetId)) {
+    params.set("target", state.targetId);
+  }
   params.set("surface", state.surfaceId);
   params.set("scenario", state.fixtureId);
   params.set("mode", state.mode);

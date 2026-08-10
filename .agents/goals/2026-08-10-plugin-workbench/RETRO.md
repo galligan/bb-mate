@@ -9,11 +9,8 @@ The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
 and reconciled. Source-first development-target discovery #57 is the active
-milestone. Slice 57A is merged and reconciled. Slice 57B1 native inventory,
-reconciliation, and private-host persistence have passed local verification,
-hosted CI, and two 5/5 exact-head review lanes on draft PR #74. Final
-docs-only exact-head review, ready/merge, and reconciliation remain before the
-57B2 Workbench adapter begins.
+milestone. Slices 57A and 57B1 are merged and reconciled. Slice 57B2, the
+catalog-backed opaque-target Workbench adapter, is now active.
 
 ## Readiness
 
@@ -23,17 +20,16 @@ Standalone #69 passed green local, hosted, and two-lane exact-head review
 evidence and is reconciled. The transport-neutral runtime foundation #55 has
 passed focused/aggregate verification, two independent exact-head reviews, and
 hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
-and reconciled. Slice 57B1 has passed its local implementation gate; it is not
-done until the final docs-only exact head is re-pinned clean, then ready/merge
-and GitButler reconciliation pass. Browser bootstrap/topology is isolated in
-#70.
+and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
+GitButler reconciliation gates. Slice 57B2 is active; browser
+bootstrap/topology remains isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/runtime/native-target-reconciliation`; issue #57; draft
-  PR #74.
-- Current merge base: `52a3274f9981f94a37d296e3f0bfa46bafd7b867`.
+- Active branch: `feat/workbench/opaque-target-adapter`; issue #57; draft PR
+  #75.
+- Current merge base: `73e6865e2a135dfd02dc2429ebc3debaa179d79d`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -455,6 +451,27 @@ and all builds.
   `52a3274f9981f94a37d296e3f0bfa46bafd7b867`. `but pull` removed the integrated
   57A branch and advanced the workspace base without uncommitted changes. #57
   remains open for native reconciliation and the browser adapter.
+- PR #74 was made ready only after final exact head
+  `3f271c462b750cf78e5640be8f797bcf04f25b25` passed two 5/5 review lanes,
+  terminal hosted checks, zero threads, and clean mergeability. GitHub async
+  request `41db3969-c528-49e3-89d2-63d2935b40af` merged it as
+  `73e6865e2a135dfd02dc2429ebc3debaa179d79d`. `but pull` removed the integrated
+  57B1 branch and advanced the workspace base; the unrelated PR #73 lane was
+  only rebased locally and remains unpushed.
+- Slice 57B2 replaces basename/path selection and recursive regex redaction
+  with a lifecycle-open source catalog and schema-v2 browser projection. The
+  browser selects only opaque target IDs, an invalid or foreign selection never
+  falls back, one unambiguous target may auto-select, and the former external
+  symlink acceptance is now a fail-closed no-execution case.
+- The Workbench GET path reads only its prepared public catalog projection. It
+  runs no `bb`, Connect, npm, build, native-observer, or target code and returns
+  no command, URL, provenance, canonical root, principal/context, or host fact.
+  Fixture remains available; Harness, Live, and terminal handoffs remain
+  explicitly unavailable until their owning milestones.
+- The dev adapter persists only stable server identity keys and the catalog
+  under an explicit private data root, checks exact loopback Host/listener port
+  and present Origin, and accepts only zero query parameters or one opaque
+  `target`. Legacy, duplicate, mixed, and unknown query keys return a generic 400. Browser responses pass a strict recursive allowlist and 256 KiB reader.
 
 ## Verification Log
 
@@ -466,6 +483,16 @@ check`, `bun run test`, `bun run build`, and `git diff --check`. The aggregate
   run passed 470 tests: inspection 136, runtime 169, CLI 42, Workbench 53,
   Linear plugin 21, and scripts 49. The package clean room passed with 41
   files, 13 stories, and SHA-256
+  `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
+- Slice 57B2 local implementation gate passed `bun run format:check`, `bun run
+check`, `bun run test`, `bun run build`, `bun run visual:test`, `bun run
+compatibility:latest`, `bun run package:inspect`, and `bun run
+standalone:inspect`. The remediation aggregate test lane passed 483 tests:
+  inspection 136, runtime 169, CLI 42, Workbench 66, Linear plugin 21, and
+  scripts 49. The final focused Workbench rerun recorded 629 assertions; all 14
+  visual/accessibility checks
+  passed. The unchanged package clean room remained 41 files/13 stories at
+  SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
@@ -513,6 +540,47 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   reopen. The inventory invokes only `bb plugin list --json`, creates no
   additional target, exposes no private root/hostname publicly, and executes
   neither package scripts nor the target entrypoint.
+- A real Vite walking skeleton used a disposable canonical `/private/tmp` data
+  root and numerical loopback port 43127. It returned schema v2 with one opaque
+  target, null terminal commands, Fixture available, and Harness/Live
+  unavailable; legacy `plugin` query input returned the generic HTTP 400. SIGINT
+  removed the listener and the disposable evidence roots were deleted. A first
+  `/tmp` attempt failed closed because macOS resolves that path through a
+  symlink, confirming the data-root ancestor policy rather than weakening it.
+- Workbench round-one standing review scored 2/5 and targeted review scored
+  3/5 at implementation head `9d740f01d05c0169c0283bf3fbc4dfb41f9a11dd`.
+  Both found that a malformed launcher selector became a null target before the
+  hook, allowing an empty-query fetch and sole-target fallback. Standing also
+  found that the server admitted malformed target values, while both reviews
+  found that malformed absolute-form request targets could escape the secured
+  response path. The replacement blocks the fetch whenever URL-state parsing
+  has already rejected a selector, requires the exact 32-character opaque ID
+  grammar at the HTTP boundary, rejects non-origin-form request targets, and
+  returns the same secured generic 400 for parsing failures. Focused regressions
+  prove zero fetch/fallback, path/empty selector rejection, valid foreign-ID
+  non-enumeration, and malformed/hostile absolute-form rejection.
+- Replacement-head review then found one more WHATWG parser differential:
+  slash-plus-backslash request targets normalized into a foreign authority even
+  though the raw Host header remained loopback. A RED middleware regression
+  reproduced the unintended 200. The raw origin-form policy now rejects every
+  backslash before URL parsing, and literal `/\\evil…` and `/\\/evil…` attacks
+  receive the same secured generic 400. The complete aggregate, build, and
+  visual gates passed again after this production change.
+- Targeted round three found that a raw HTTP fragment was also outside RFC
+  origin-form even though WHATWG parsing stripped it and reached the endpoint.
+  A RED regression reproduced that 200; the raw request-target gate now rejects
+  `#` before parsing, and the fragment attack receives the secured generic 400.
+  Aggregate, build, and visual gates passed again after the final correction.
+- Standing and targeted round four each awarded exact implementation head
+  `61b13d1f7d299e099525d87044ea74dc5dd9f88a` 5/5 with zero P0-P3 findings.
+  Independent raw-request matrices covered malformed, absolute, scheme-relative,
+  slash-backslash, fragment, control-bearing, encoded, Host, Origin, listener,
+  IPv4, and IPv6 variants; opaque selection and schema-v2 boundaries also
+  passed. Both hosted verify/visual/standalone sets and GitGuardian were terminal
+  green, the PR was cleanly mergeable with zero threads, GitButler was clean,
+  and unrelated #73 remained preserved. Superseded Workbench rounds 1-3 were
+  scratch-archived only after all findings and fixed dispositions were recorded
+  here.
 
 ## Prompt / Goal Alignment
 
@@ -531,8 +599,8 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
-source-catalog slice 57A are merged and reconciled. Slice 57B1 implementation
-and review are complete on draft PR #74; final docs-only exact-head review,
-ready/merge, and reconciliation remain. Issue #57 stays open for 57B1 and the
-later 57B2 opaque-target Workbench adapter. All
-release/upstream/Connect/normal-profile stop boundaries remain intact.
+source-catalog slices 57A and 57B1 are merged and reconciled. Slice 57B2
+implementation, local and hosted verification, and dual 5/5 review are complete
+on draft PR #75; the final docs-only exact-head review, ready/merge, issue
+closure, and reconciliation remain. All release/upstream/Connect/normal-profile
+stop boundaries remain intact.

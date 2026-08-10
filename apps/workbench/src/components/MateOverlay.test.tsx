@@ -4,7 +4,7 @@ import type { PluginInspection } from "@bb-mate/inspection";
 import {
   candidateSelectionValue,
   PluginInspectionCard,
-  pluginKeyFromSelection,
+  targetIdFromSelection,
 } from "./MateOverlay";
 
 function report(overrides: Partial<PluginInspection> = {}): PluginInspection {
@@ -136,17 +136,16 @@ describe("PluginInspectionCard", () => {
   });
 });
 
-describe("MateOverlay plugin selection values", () => {
-  test("keeps reserved-looking plugin keys distinct from workspace control state", () => {
-    expect(candidateSelectionValue("workspace")).toBe("candidate:workspace");
-    expect(pluginKeyFromSelection("candidate:workspace")).toBe("workspace");
-    expect(pluginKeyFromSelection("candidate:selected-plugin")).toBe(
-      "selected-plugin",
-    );
-    expect(pluginKeyFromSelection("control:workspace")).toBeNull();
+describe("MateOverlay target selection values", () => {
+  test("keeps reserved-looking labels separate from opaque target values", () => {
+    const targetId = "t".repeat(32);
+    expect(candidateSelectionValue(targetId)).toBe(`candidate:${targetId}`);
+    expect(targetIdFromSelection(`candidate:${targetId}`)).toBe(targetId);
+    expect(targetIdFromSelection("control:workspace")).toBeNull();
   });
 
-  test("does not pass unknown UI values through as server candidate keys", () => {
-    expect(pluginKeyFromSelection("../plugin")).toBeNull();
+  test("does not pass unknown UI values through as target IDs", () => {
+    expect(targetIdFromSelection("candidate:../plugin")).toBeNull();
+    expect(targetIdFromSelection("candidate:short")).toBeNull();
   });
 });

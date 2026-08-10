@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build && bun run stories:build",
+    "dev": "bun --bun vite",
+    "build": "tsc --noEmit && bun --bun vite build && bun run stories:build",
     "check": "tsc --noEmit",
     "check:surface-catalog": "bun scripts/plugin-surface-declarations.ts",
     "stories": "ladle serve",

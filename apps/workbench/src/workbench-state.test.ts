@@ -1,18 +1,31 @@
 import { describe, expect, test } from "bun:test";
 import {
+  automaticTargetId,
   commitWorkbenchState,
   readWorkbenchState,
   writeWorkbenchState,
 } from "./workbench-state";
 
 describe("workbench URL state", () => {
-  test("round-trips every linkable launcher selection", () => {
+  test("defaults only one unambiguous server-selected target", () => {
+    const targetId = "t".repeat(32);
+    expect(automaticTargetId(null, null, 1, targetId)).toBe(targetId);
+    expect(automaticTargetId(null, null, 2, null)).toBeNull();
+    expect(automaticTargetId(null, "Selection unavailable.", 1, targetId)).toBe(
+      null,
+    );
+    expect(automaticTargetId("c".repeat(32), null, 1, targetId)).toBeNull();
+  });
+
+  test("round-trips a server-issued opaque target selection", () => {
+    const targetId = "a".repeat(32);
     const state = readWorkbenchState(
-      "?plugin=linear&surface=thread-list&scenario=quiet&mode=live&theme=dark&viewport=compact",
+      `?target=${targetId}&surface=thread-list&scenario=quiet&mode=live&theme=dark&viewport=compact`,
     );
 
     expect(state).toEqual({
-      plugin: "linear",
+      targetId,
+      selectionError: null,
       surfaceId: "thread-list",
       fixtureId: "quiet",
       mode: "live",
@@ -28,13 +41,30 @@ describe("workbench URL state", () => {
         "?surface=removed&scenario=removed&mode=magic&theme=system&viewport=wide",
       ),
     ).toMatchObject({
-      plugin: null,
+      targetId: null,
+      selectionError: null,
       surfaceId: "homepage-section",
       fixtureId: "project-selected",
       mode: "fixture",
       theme: "light",
       viewport: "desktop",
     });
+  });
+
+  test("removes legacy and path-like selections without echoing them", () => {
+    const state = readWorkbenchState(
+      "?plugin=legacy-key&target=..%2Fplugins%2Fsecret",
+    );
+
+    expect(state.targetId).toBeNull();
+    expect(state.selectionError).not.toBeNull();
+    expect(state.selectionError).not.toContain("../plugins/secret");
+    const normalized = writeWorkbenchState(state);
+    expect(normalized).not.toContain("plugin=");
+    expect(normalized).not.toContain("target=");
+    expect(
+      writeWorkbenchState({ ...state, targetId: "../plugins/secret" }),
+    ).not.toContain("target=");
   });
 
   test("uses the selected surface default when its scenario is stale", () => {
