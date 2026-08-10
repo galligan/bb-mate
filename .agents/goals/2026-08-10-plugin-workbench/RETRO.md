@@ -189,7 +189,7 @@ path, artifact, generic object-write, event-stream, MCP, URL-fetch, shell/eval,
 native-lifecycle, destructive, import/export, and remote-bind surfaces.
 
 Focused runtime verification passes 98 tests with 536 assertions. The full
-remediation gate passes formatting, type/compatibility checks, 303 aggregate
+remediation gate passes formatting, type/compatibility checks, 304 aggregate
 tests, the 41-file/13-story legacy package clean room at SHA-256
 `77f7cb2e924e047d09c53237e28eeeee5a69c2023829134ba497ba69d7530ba2`,
 and all builds.
@@ -312,6 +312,13 @@ and all builds.
   envelope that `serialize` emits, and a generated near-limit regression proves
   payload-only admission cannot exceed the envelope ceiling. Round 1 findings
   remain fixed; this new finding is fixed for round 3.
+- Runtime full review round 3: standing reached 5/5 with zero P0-P3 at exact
+  head `2696d61941002e3fa7fe89c0d6aaa8c1d42de9f6`, independently proving the
+  262,144-byte complete-envelope boundary and rejecting 262,145 bytes. The
+  targeted lane found one P2 evidence defect: this retrospective counted 303
+  aggregate tests even though the exact-head run contains 304. The count is
+  corrected for the final docs-only exact-head recheck; no runtime behavior or
+  prior verification result changed.
 
 ## Verification Log
 
