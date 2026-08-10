@@ -13,7 +13,8 @@ const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 100;
 const CURSOR_PATTERN = /^v1_([0-9a-z]+)$/u;
 
-export type ObjectEventType = "object.created" | "object.updated";
+export type ObjectEventType =
+  "object.created" | "object.updated" | "target.native-reconciled";
 
 export interface ObjectEvent {
   readonly cursor: string;
@@ -49,7 +50,8 @@ function parseEventRow(row: EventRow): ObjectEvent {
     !Number.isSafeInteger(row.sequence) ||
     row.sequence < 1 ||
     (row.event_type !== "object.created" &&
-      row.event_type !== "object.updated") ||
+      row.event_type !== "object.updated" &&
+      row.event_type !== "target.native-reconciled") ||
     !Number.isSafeInteger(row.revision) ||
     row.revision < 1 ||
     !Number.isSafeInteger(row.occurred_at) ||

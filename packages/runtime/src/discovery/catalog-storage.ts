@@ -14,6 +14,10 @@ import {
   type PrivateDevelopmentTargetSource,
 } from "./private-source.ts";
 import type { TrustedDevelopmentTargetCandidate } from "./trusted-candidate.ts";
+import {
+  parsePrivateHostObservation,
+  type PrivateHostObservation,
+} from "./private-host-observation.ts";
 
 interface ObjectRow {
   readonly id: string;
@@ -32,6 +36,43 @@ interface PrivateRow {
   readonly canonical_root: string;
   readonly root_key: string;
   readonly root_kind: string;
+}
+
+interface PrivateHostRow {
+  readonly runtime_instance_id: string;
+  readonly hostname: string;
+  readonly bb_host_id: string | null;
+  readonly bb_host_name: string | null;
+  readonly bb_host_is_server: number | null;
+  readonly observed_at: number;
+}
+
+function parsePrivateHostRow(row: PrivateHostRow): PrivateHostObservation {
+  try {
+    return parsePrivateHostObservation({
+      runtimeInstanceId: row.runtime_instance_id,
+      hostname: row.hostname,
+      ...(row.bb_host_id === null &&
+      row.bb_host_name === null &&
+      row.bb_host_is_server === null
+        ? {}
+        : {
+            bbHost: {
+              id: row.bb_host_id,
+              name: row.bb_host_name,
+              isServer:
+                row.bb_host_is_server === 1
+                  ? true
+                  : row.bb_host_is_server === 0
+                    ? false
+                    : row.bb_host_is_server,
+            },
+          }),
+      observedAt: row.observed_at,
+    });
+  } catch (error) {
+    throw new RuntimeError("corrupt_data", { cause: error });
+  }
 }
 
 function parseRow(row: ObjectRow): DevelopmentTargetEnvelope {
@@ -81,6 +122,11 @@ export interface DevelopmentTargetCatalogStorage {
     bbContextId: BbContextId,
     id: ObjectId,
   ): PrivateDevelopmentTargetSource | undefined;
+  resolvePrivateHostObservation(
+    principalId: PrincipalId,
+    bbContextId: BbContextId,
+    id: ObjectId,
+  ): PrivateHostObservation | undefined;
   persistCreation(
     envelope: DevelopmentTargetEnvelope,
     candidate: TrustedDevelopmentTargetCandidate,
@@ -88,6 +134,11 @@ export interface DevelopmentTargetCatalogStorage {
   persistUpdate(
     envelope: DevelopmentTargetEnvelope,
     candidate: TrustedDevelopmentTargetCandidate,
+    expectedRevision: number,
+  ): void;
+  persistNativeReconciliation(
+    envelope: DevelopmentTargetEnvelope,
+    observation: PrivateHostObservation,
     expectedRevision: number,
   ): void;
 }
@@ -121,6 +172,12 @@ export function createDevelopmentTargetCatalogStorage(
     FROM development_target_sources
     WHERE object_id = ? AND principal_id = ? AND bb_context_id = ?
   `);
+  const selectPrivateHost = database.query<PrivateHostRow, SQLQueryBindings[]>(`
+    SELECT runtime_instance_id, hostname, bb_host_id, bb_host_name,
+      bb_host_is_server, observed_at
+    FROM development_target_host_observations
+    WHERE object_id = ? AND principal_id = ? AND bb_context_id = ?
+  `);
   const insertObject = database.query(`
     INSERT INTO runtime_objects (
       id, kind, principal_id, bb_context_id, target_id, session_id,
@@ -141,6 +198,18 @@ export function createDevelopmentTargetCatalogStorage(
   const updatePrivate = database.query(`
     UPDATE development_target_sources
     SET root_key = ?, root_kind = ?
+    WHERE object_id = ? AND principal_id = ? AND bb_context_id = ?
+  `);
+  const insertPrivateHost = database.query(`
+    INSERT INTO development_target_host_observations (
+      object_id, principal_id, bb_context_id, runtime_instance_id, hostname,
+      bb_host_id, bb_host_name, bb_host_is_server, observed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const updatePrivateHost = database.query(`
+    UPDATE development_target_host_observations
+    SET runtime_instance_id = ?, hostname = ?, bb_host_id = ?,
+      bb_host_name = ?, bb_host_is_server = ?, observed_at = ?
     WHERE object_id = ? AND principal_id = ? AND bb_context_id = ?
   `);
 
@@ -201,6 +270,62 @@ export function createDevelopmentTargetCatalogStorage(
       eventFeed.append("object.updated", envelope);
     },
   );
+  const persistNativeReconciliation = database.transaction(
+    (
+      envelope: DevelopmentTargetEnvelope,
+      observation: PrivateHostObservation,
+      expectedRevision: number,
+    ) => {
+      const result = updateObject.run(
+        envelope.revision,
+        envelope.updatedAt,
+        canonicalJson(envelope.payload),
+        envelope.id,
+        envelope.bindings.principalId,
+        envelope.bindings.bbContextId,
+        envelope.bindings.targetId,
+        expectedRevision,
+      );
+      if (result.changes !== 1) throw new RuntimeError("conflict");
+
+      const existing = selectPrivateHost.get(
+        envelope.id,
+        envelope.bindings.principalId,
+        envelope.bindings.bbContextId,
+      );
+      const values = [
+        observation.runtimeInstanceId,
+        observation.hostname,
+        observation.bbHost?.id ?? null,
+        observation.bbHost?.name ?? null,
+        observation.bbHost === undefined
+          ? null
+          : observation.bbHost.isServer
+            ? 1
+            : 0,
+        observation.observedAt,
+      ] as const;
+      if (existing) {
+        const privateResult = updatePrivateHost.run(
+          ...values,
+          envelope.id,
+          envelope.bindings.principalId,
+          envelope.bindings.bbContextId,
+        );
+        if (privateResult.changes !== 1) {
+          throw new RuntimeError("corrupt_data");
+        }
+      } else {
+        insertPrivateHost.run(
+          envelope.id,
+          envelope.bindings.principalId,
+          envelope.bindings.bbContextId,
+          ...values,
+        );
+      }
+      eventFeed.append("target.native-reconciled", envelope);
+    },
+  );
 
   return {
     assertIntegrity,
@@ -225,7 +350,12 @@ export function createDevelopmentTargetCatalogStorage(
           })
         : undefined;
     },
+    resolvePrivateHostObservation(principalId, bbContextId, id) {
+      const row = selectPrivateHost.get(id, principalId, bbContextId);
+      return row ? parsePrivateHostRow(row) : undefined;
+    },
     persistCreation,
     persistUpdate,
+    persistNativeReconciliation,
   };
 }

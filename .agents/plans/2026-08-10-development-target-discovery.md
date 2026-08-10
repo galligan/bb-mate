@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slice 57A merged; slice 57B1 native reconciliation next
+Status: Slice 57A merged; slice 57B1 implemented and locally verified; review pending
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
@@ -96,7 +96,7 @@ decision; #70 owns that gate.
        authorization, stable reopen/refresh IDs, optimistic revisions, and
        redacted events.
 4. [x] Review, verify, merge, and reconcile slice 57A with two 5/5 lanes.
-5. [ ] Add a one-use bounded native-inventory capability, pure reconciliation
+5. [x] Add a one-use bounded native-inventory capability, pure reconciliation
        fixtures for every required state, and atomic private host observations
        without lifecycle mutation, candidate seeding, or topology conclusions.
 6. [ ] Run aggregate gates and two 5/5 lanes, then merge and reconcile 57B1.
@@ -127,6 +127,6 @@ leave the dependent behavior unavailable and track the exact unblock.
 
 ## Done
 
-Both slices are merged to `main`; #57 and #21 are current; exact local and
-hosted gates pass; two independent review lanes score 5/5 with zero P0-P2;
+All three slices are merged to `main`; #57 and #21 are current; exact local and
+hosted gates pass; two independent review lanes score 5/5 with zero P0-P3;
 GitButler is clean/reconciled; and the goal retrospective records exact proof.
