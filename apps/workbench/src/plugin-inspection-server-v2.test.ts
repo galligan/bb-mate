@@ -400,6 +400,9 @@ describe("catalog-backed plugin inspection session", () => {
     const slashBackslashAuthority = await request(
       "/\\/evil.example/bb-mate-session.json",
     );
+    const fragmentTarget = await request(
+      "/bb-mate-session.json#not-an-http-request-target",
+    );
     const malformed = await request("http://[");
     const foreign = await request("/bb-mate-session.json", {
       host: "evil.example",
@@ -421,6 +424,7 @@ describe("catalog-backed plugin inspection session", () => {
       absoluteTarget,
       backslashAuthority,
       slashBackslashAuthority,
+      fragmentTarget,
       malformed,
     ]) {
       expect(rejected.statusCode).toBe(400);
@@ -445,6 +449,7 @@ describe("catalog-backed plugin inspection session", () => {
       absoluteTarget,
       backslashAuthority,
       slashBackslashAuthority,
+      fragmentTarget,
       malformed,
       foreign,
     ]) {

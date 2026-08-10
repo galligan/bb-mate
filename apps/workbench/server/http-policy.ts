@@ -28,7 +28,8 @@ export function attachCatalogMiddleware(
     if (
       !requestTarget.startsWith("/") ||
       requestTarget.startsWith("//") ||
-      requestTarget.includes("\\")
+      requestTarget.includes("\\") ||
+      requestTarget.includes("#")
     ) {
       response.statusCode = 400;
       setSecurityHeaders(response);

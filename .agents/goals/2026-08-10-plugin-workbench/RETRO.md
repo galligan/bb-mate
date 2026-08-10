@@ -489,7 +489,7 @@ check`, `bun run test`, `bun run build`, `bun run visual:test`, `bun run
 compatibility:latest`, `bun run package:inspect`, and `bun run
 standalone:inspect`. The remediation aggregate test lane passed 483 tests:
   inspection 136, runtime 169, CLI 42, Workbench 66, Linear plugin 21, and
-  scripts 49. The final focused Workbench rerun recorded 626 assertions; all 14
+  scripts 49. The final focused Workbench rerun recorded 629 assertions; all 14
   visual/accessibility checks
   passed. The unchanged package clean room remained 41 files/13 stories at
   SHA-256
@@ -566,6 +566,11 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   backslash before URL parsing, and literal `/\\evil…` and `/\\/evil…` attacks
   receive the same secured generic 400. The complete aggregate, build, and
   visual gates passed again after this production change.
+- Targeted round three found that a raw HTTP fragment was also outside RFC
+  origin-form even though WHATWG parsing stripped it and reached the endpoint.
+  A RED regression reproduced that 200; the raw request-target gate now rejects
+  `#` before parsing, and the fragment attack receives the secured generic 400.
+  Aggregate, build, and visual gates passed again after the final correction.
 
 ## Prompt / Goal Alignment
 
