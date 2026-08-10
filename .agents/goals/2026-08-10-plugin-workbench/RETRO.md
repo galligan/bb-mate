@@ -462,6 +462,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 Execution active. Gate 0, standalone-runtime #56, and runtime foundation #55
 are merged, closed, and reconciled. Source-catalog slice 57A implementation
-and review are complete on draft PR #72; the final docs-only readiness head,
-ready transition, merge, and reconciliation remain before 57B starts. All
-release/upstream/Connect/normal-profile stop boundaries remain intact.
+and code review are complete on draft PR #72; this docs-only readiness head
+still needs its narrow exact-head review, ready transition, merge, and
+reconciliation before 57B starts. All release/upstream/Connect/normal-profile
+stop boundaries remain intact.
