@@ -99,6 +99,14 @@ run check && bun run test && bun run build`. The aggregate test lane contains
   and scripts 43. The legacy package clean room remained 41 files/13 stories
   with SHA-256
   `22e87071a14f060029f77500449991005de5eb88c06f7a29fa749f83848e7fb1`.
+- Slice 57A round-one remediation tightened root admission, fixed bounded
+  manifest reads, made scan budgets fair across admitted roots, validates the
+  released manifest shape, reports unreadable directories, binds issued
+  source candidates to filesystem identity, and attests every private source
+  row on reopen. The fresh aggregate gate passes with 387 tests: inspection
+  113, runtime 115, Linear plugin 21, CLI 42, Workbench 53, and scripts 43. The
+  legacy package clean room remains 41 files/13 stories with SHA-256
+  `dd6e1966905ea2e3c848d9cfedaaa341c23f1a606d98892312856700c08c757d`.
 - 2026-08-10: created the packet from the accepted design record and four
   bounded preparation audits.
 - 2026-08-10: activated the direct execution goal. Found one unresolved P2 on
@@ -352,6 +360,18 @@ and all builds.
   request `690f515a-0651-47ef-aa7a-852e9efe02cd` to
   `ac419ae1c87f7c5186b848bc937591cf45f57560`; #55 closed and GitButler
   reconciled without dirt or a residual lane.
+- Source-catalog round 1: standing and targeted both scored 2/5 at exact head
+  `5df4564d5673dafe54311b590dc5380e80d310ac`. Their security findings covered
+  broad or ignored roots, an unbounded manifest-growth race, private-source
+  rows that accepted invalid root identity, a forgeable/retargetable runtime
+  candidate bridge, cross-root scan starvation, released-manifest drift, and
+  swallowed directory-read failures. All are fixed for round 2: root policy
+  rejects filesystem/home ancestors and ignored components; manifest reads use
+  a fixed 256 KiB + 1 buffer; global budgets are partitioned across admitted
+  roots; discovery mirrors the released manifest contract and emits bounded
+  read diagnostics; issued candidates are module-private identity capabilities
+  bound to canonical path/device/inode; and stored private rows are strictly
+  parsed and fail closed without repair.
 
 ## Verification Log
 
