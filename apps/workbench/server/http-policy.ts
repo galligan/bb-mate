@@ -25,7 +25,11 @@ export function attachCatalogMiddleware(
   server.httpServer?.once("close", () => sessionServer.close());
   server.middlewares.use((request, response, next) => {
     const requestTarget = request.url ?? "/";
-    if (!requestTarget.startsWith("/") || requestTarget.startsWith("//")) {
+    if (
+      !requestTarget.startsWith("/") ||
+      requestTarget.startsWith("//") ||
+      requestTarget.includes("\\")
+    ) {
       response.statusCode = 400;
       setSecurityHeaders(response);
       response.end(JSON.stringify({ error: "Request unavailable." }));
