@@ -15,7 +15,10 @@ import {
 import { ObjectCodecRegistry } from "../contracts/objects.ts";
 import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
 import { DevelopmentTargetCodec } from "../discovery/development-target.ts";
-import { issueTrustedDevelopmentTargetCandidateFromInspection } from "../discovery/trusted-candidate.ts";
+import {
+  createInspectionDevelopmentTargetCandidateBridge,
+  type InspectionSourceCandidateFacts,
+} from "../discovery/trusted-candidate.ts";
 import { RuntimeError } from "../errors.ts";
 import { openRuntimeStore } from "../persistence/store.ts";
 import { createWorkbenchService } from "./workbench-service.ts";
@@ -26,6 +29,17 @@ const objectId = ObjectIdSchema.parse("t".repeat(32));
 const targetId = TargetIdSchema.parse("t".repeat(32));
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
 const bbContextId = BbContextIdSchema.parse("b".repeat(32));
+
+function issueInspectionCandidate(value: InspectionSourceCandidateFacts) {
+  const source = Object.freeze({ ...value });
+  return createInspectionDevelopmentTargetCandidateBridge({
+    clock: () => 1_000,
+    readIssuedSourceCandidate(candidate) {
+      if (candidate !== source) throw new RuntimeError("invalid_request");
+      return Object.freeze({ ...value });
+    },
+  }).issue(source);
+}
 
 async function makeFixture() {
   const temporaryRoot = await fs.realpath(os.tmpdir());
@@ -74,9 +88,35 @@ function candidateInput(canonicalRoot: string) {
 }
 
 async function candidate(canonicalRoot: string) {
-  return issueTrustedDevelopmentTargetCandidateFromInspection(
-    candidateInput(canonicalRoot),
-  );
+  const input = candidateInput(canonicalRoot);
+  return issueInspectionCandidate({
+    rootKey: input.rootKey,
+    rootKind: input.rootKind,
+    canonicalRoot: input.canonicalRoot,
+    displayName: input.target.displayName,
+    displayPath: input.target.displayPath,
+    packageName: input.target.manifest.packageName,
+    version: input.target.manifest.version,
+    pluginId: input.target.manifest.pluginId,
+    hasServer: input.target.manifest.hasServer,
+    hasApp: input.target.manifest.hasApp,
+  });
+}
+
+async function candidateNamed(canonicalRoot: string, displayName: string) {
+  const input = candidateInput(canonicalRoot);
+  return issueInspectionCandidate({
+    rootKey: input.rootKey,
+    rootKind: input.rootKind,
+    canonicalRoot: input.canonicalRoot,
+    displayName,
+    displayPath: input.target.displayPath,
+    packageName: input.target.manifest.packageName,
+    version: input.target.manifest.version,
+    pluginId: input.target.manifest.pluginId,
+    hasServer: input.target.manifest.hasServer,
+    hasApp: input.target.manifest.hasApp,
+  });
 }
 
 afterEach(async () => {
@@ -253,13 +293,7 @@ describe("DevelopmentTargetService", () => {
       );
       const refreshed = await service.refreshFromTrustedCandidate(
         context(),
-        await issueTrustedDevelopmentTargetCandidateFromInspection({
-          ...candidateInput(fixture.pluginRoot),
-          target: {
-            ...candidateInput(fixture.pluginRoot).target,
-            displayName: "Notes refreshed",
-          },
-        }),
+        await candidateNamed(fixture.pluginRoot, "Notes refreshed"),
         { expectedRevision: 1 },
       );
       expect(refreshed.revision).toBe(2);

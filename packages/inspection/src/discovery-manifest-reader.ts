@@ -1,12 +1,26 @@
 import { constants, promises as fs } from "node:fs";
+import { createHash } from "node:crypto";
 import { DiscoveryFailure } from "./discovery-errors.ts";
 import { runDiscoveryTestHook } from "./discovery-test-hook.ts";
 
 const MAX_MANIFEST_BYTES = 256 * 1024;
 
+export interface BoundedManifestSnapshot {
+  readonly source: string;
+  readonly device: number;
+  readonly inode: number;
+  readonly sha256: string;
+}
+
 export async function readBoundedManifest(
   packagePath: string,
 ): Promise<string | null> {
+  return (await readBoundedManifestSnapshot(packagePath))?.source ?? null;
+}
+
+export async function readBoundedManifestSnapshot(
+  packagePath: string,
+): Promise<BoundedManifestSnapshot | null> {
   const leaf = await fs.lstat(packagePath).catch((error: unknown) => {
     if (hasErrorCode(error, "ENOENT")) return null;
     throw new DiscoveryFailure("manifest-unreadable", "manifest is unreadable");
@@ -86,7 +100,12 @@ export async function readBoundedManifest(
         "package.json changed while it was read",
       );
     }
-    return bytes.toString("utf8");
+    return {
+      source: bytes.toString("utf8"),
+      device: after.dev,
+      inode: after.ino,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    };
   } finally {
     await handle.close();
   }

@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { discoverSourceCandidates } from "../packages/inspection/src/discover-source-candidates.ts";
+import { readIssuedSourceCandidate } from "../packages/inspection/src/discovery-manifest.ts";
 import { admitTrustedRoots } from "../packages/inspection/src/trusted-roots.ts";
 import { createRequestContext } from "../packages/runtime/src/auth/context.ts";
 import {
@@ -13,7 +14,7 @@ import {
   PrincipalIdSchema,
 } from "../packages/runtime/src/contracts/ids.ts";
 import { openDevelopmentTargetCatalog } from "../packages/runtime/src/discovery/catalog.ts";
-import { issueTrustedDevelopmentTargetCandidateFromInspection } from "../packages/runtime/src/discovery/trusted-candidate.ts";
+import { createInspectionDevelopmentTargetCandidateBridge } from "../packages/runtime/src/discovery/trusted-candidate.ts";
 import { createDevelopmentTargetService } from "../packages/runtime/src/service/development-target-service.ts";
 
 const ROOT_KEY = OpaqueIdSchema.parse("r".repeat(32));
@@ -31,6 +32,52 @@ afterEach(async () => {
 });
 
 describe("source discovery to development-target catalog", () => {
+  test("rejects a discovered candidate whose directory is replaced before runtime admission", async () => {
+    const temporaryRoot = await fs.realpath(os.tmpdir());
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-mate-source-catalog-"),
+    );
+    temporaryRoots.push(parent);
+    const workspaceRoot = path.join(parent, "workspace");
+    const pluginRoot = path.join(workspaceRoot, "plugins", "example");
+    const originalRoot = path.join(workspaceRoot, "plugins", "example-old");
+    await fs.mkdir(path.join(pluginRoot, "dist"), { recursive: true });
+    const manifest = JSON.stringify({
+      name: "bb-plugin-example",
+      version: "1.2.3",
+      bb: {
+        name: "Example plugin",
+        description: "A passive source-catalog integration fixture.",
+        branding: { icon: "extension" },
+        server: "dist/server.js",
+      },
+    });
+    await fs.writeFile(path.join(pluginRoot, "package.json"), manifest);
+    await fs.writeFile(path.join(pluginRoot, "dist", "server.js"), "");
+    const admission = await admitTrustedRoots([
+      {
+        rootKey: ROOT_KEY,
+        kind: "current-project",
+        path: workspaceRoot,
+        displayName: "workspace",
+      },
+    ]);
+    const discovery = await discoverSourceCandidates(admission.roots);
+    const candidate = discovery.candidates[0]!;
+    await fs.rename(pluginRoot, originalRoot);
+    await fs.mkdir(path.join(pluginRoot, "dist"), { recursive: true });
+    await fs.writeFile(path.join(pluginRoot, "package.json"), manifest);
+    await fs.writeFile(path.join(pluginRoot, "dist", "server.js"), "");
+
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      readIssuedSourceCandidate,
+    });
+
+    await expect(bridge.issue(candidate)).rejects.toMatchObject({
+      code: "invalid_request",
+    });
+  });
+
   test("persists and reopens one passive source target without revealing or executing its root", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
@@ -77,32 +124,23 @@ describe("source discovery to development-target catalog", () => {
     const candidate = discovery.candidates[0]!;
     expect(candidate.canonicalRoot).toBe(pluginRoot);
 
-    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection({
-      rootKey: candidate.rootKey,
-      rootKind: "current-project",
-      canonicalRoot: candidate.canonicalRoot,
-      target: {
-        displayName: candidate.displayName,
-        displayPath: candidate.displayPath,
-        sourceKind: "workspace-discovered",
-        manifest: {
-          pluginId: candidate.pluginId,
-          packageName: candidate.packageName,
-          version: candidate.version,
-          hasServer: candidate.hasServer,
-          hasApp: candidate.hasApp,
-        },
-        native: {
-          status: "absent",
-          observedAt: 1_000,
-        },
-        capabilities: {
-          fixture: true,
-          harness: false,
-          live: false,
-        },
-      },
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      readIssuedSourceCandidate,
+      clock: () => 1_000,
     });
+    for (const forged of [
+      { ...candidate },
+      {
+        ...candidate,
+        native: { status: "exact-path", pluginId: "spoofed" },
+        capabilities: { fixture: true, harness: true, live: true },
+      },
+    ]) {
+      await expect(bridge.issue(forged)).rejects.toMatchObject({
+        code: "invalid_request",
+      });
+    }
+    const issued = await bridge.issue(candidate);
     const context = createRequestContext({
       id: PRINCIPAL_ID,
       kind: "plugin-adapter",
@@ -117,9 +155,24 @@ describe("source discovery to development-target catalog", () => {
       clock: () => 1_000,
     });
     let service = createDevelopmentTargetService(catalog);
+    expect(service.listTargets(context)).toEqual([]);
+    await expect(
+      service.refreshFromTrustedCandidate(context, {
+        ...candidate,
+        native: { status: "exact-path" },
+        capabilities: { fixture: true, harness: true, live: true },
+      } as never),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(service.listTargets(context)).toEqual([]);
     const created = await service.refreshFromTrustedCandidate(context, issued);
     expect(String(created.id)).toBe(String(TARGET_ID));
     expect(created.revision).toBe(1);
+    expect(created.native).toEqual({ status: "absent", observedAt: 1_000 });
+    expect(created.capabilities).toEqual({
+      fixture: false,
+      harness: false,
+      live: false,
+    });
     expect(JSON.stringify(created)).not.toContain(parent);
     expect(JSON.stringify(created)).not.toContain(ROOT_KEY);
     expect(

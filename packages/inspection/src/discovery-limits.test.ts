@@ -144,6 +144,35 @@ describe("source discovery limits", () => {
     );
   });
 
+  test("borrows an unused entry share after every root receives its reservation", async () => {
+    const busyRoot = await harness.createRoot("busy");
+    const emptyRoot = await harness.createRoot("empty");
+    await Promise.all(
+      Array.from({ length: 1500 }, (_, index) =>
+        fs.writeFile(
+          path.join(busyRoot, `entry-${index.toString().padStart(4, "0")}`),
+          "",
+        ),
+      ),
+    );
+    const latePlugin = path.join(busyRoot, "z-late-plugin");
+    await fs.mkdir(latePlugin);
+    await harness.writePlugin(latePlugin, "late");
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: busyRoot },
+      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: emptyRoot },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates.map((candidate) => candidate.pluginId)).toEqual([
+      "late",
+    ]);
+    expect(result.diagnostics).not.toContainEqual(
+      expect.objectContaining({ code: "scan-entry-limit" }),
+    );
+  });
+
   test("reserves the global candidate budget fairly across independent roots", async () => {
     const noisyRoot = await harness.createRoot("noisy");
     const safeRoot = await harness.createRoot("safe-root");
@@ -165,15 +194,39 @@ describe("source discovery limits", () => {
 
     const result = await discoverSourceCandidates(admission.roots);
 
-    expect(result.candidates).toHaveLength(65);
+    expect(result.candidates).toHaveLength(128);
     expect(result.candidates.map((candidate) => candidate.pluginId)).toContain(
       "safe",
     );
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
         code: "candidate-limit",
-        displayPath: "noisy/plugin-064",
+        displayPath: "noisy/plugin-127",
       }),
+    );
+  });
+
+  test("borrows an unused candidate share after every root receives its reservation", async () => {
+    const busyRoot = await harness.createRoot("busy");
+    const emptyRoot = await harness.createRoot("empty");
+    for (let index = 0; index < 65; index += 1) {
+      const pluginRoot = path.join(
+        busyRoot,
+        `plugin-${index.toString().padStart(3, "0")}`,
+      );
+      await fs.mkdir(pluginRoot);
+      await harness.writePlugin(pluginRoot, `busy-${index}`);
+    }
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: busyRoot },
+      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: emptyRoot },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates).toHaveLength(65);
+    expect(result.diagnostics).not.toContainEqual(
+      expect.objectContaining({ code: "candidate-limit" }),
     );
   });
 });

@@ -112,7 +112,8 @@ describe("released bb manifest contract", () => {
   ])("accepts supported %s asset declarations", async (_label, branding) => {
     const rootPath = await harness.createRoot();
     await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
-    for (const asset of ["icon.svg", "logo.png", "logo.webp"]) {
+    await fs.writeFile(path.join(rootPath, "icon.svg"), "<svg />\n");
+    for (const asset of ["logo.png", "logo.webp"]) {
       await fs.writeFile(path.join(rootPath, asset), "fixture\n");
     }
     await fs.writeFile(
@@ -133,5 +134,66 @@ describe("released bb manifest contract", () => {
     expect(result.candidates.map((candidate) => candidate.pluginId)).toEqual([
       "valid-assets",
     ]);
+  });
+
+  test("rejects an invalid engines shape without hiding a safe sibling", async () => {
+    const rootPath = await harness.createRoot();
+    const brokenRoot = path.join(rootPath, "broken");
+    const safeRoot = path.join(rootPath, "safe");
+    await fs.mkdir(brokenRoot);
+    await fs.mkdir(safeRoot);
+    await fs.writeFile(path.join(brokenRoot, "server.ts"), "export {};\n");
+    await fs.writeFile(
+      path.join(brokenRoot, "package.json"),
+      JSON.stringify({
+        name: "bb-plugin-broken",
+        version: "1.0.0",
+        engines: "invalid",
+        bb: baseBb,
+      }),
+    );
+    await harness.writePlugin(safeRoot, "safe");
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: rootPath },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates.map((candidate) => candidate.pluginId)).toEqual([
+      "safe",
+    ]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "manifest-invalid",
+        displayPath: "workspace/broken",
+      }),
+    );
+  });
+
+  test("rejects invalid bytes in a plugin-owned compact SVG", async () => {
+    const rootPath = await harness.createRoot();
+    await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
+    await fs.writeFile(path.join(rootPath, "icon.svg"), "not an svg\n");
+    await fs.writeFile(
+      path.join(rootPath, "package.json"),
+      JSON.stringify({
+        name: "bb-plugin-invalid-icon",
+        version: "1.0.0",
+        bb: { ...baseBb, branding: { icon: "./icon.svg" } },
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: rootPath },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "manifest-invalid",
+        displayPath: "workspace",
+      }),
+    );
   });
 });

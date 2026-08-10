@@ -42,6 +42,9 @@ describe("@bb-mate/runtime public surface", () => {
     expect(runtime).not.toHaveProperty(
       "issueTrustedDevelopmentTargetCandidateFromInspection",
     );
+    expect(runtime).not.toHaveProperty(
+      "createInspectionDevelopmentTargetCandidateBridge",
+    );
     expect(runtime).not.toHaveProperty("openRuntimeDatabase");
     expect(runtime).not.toHaveProperty("applyRuntimeMigrations");
     expect(runtime).not.toHaveProperty("createEventFeed");

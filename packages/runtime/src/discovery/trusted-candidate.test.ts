@@ -4,32 +4,53 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { OpaqueIdSchema } from "../contracts/ids.ts";
+import { RuntimeError } from "../errors.ts";
 import {
-  issueTrustedDevelopmentTargetCandidateFromInspection,
+  createInspectionDevelopmentTargetCandidateBridge,
   validateTrustedDevelopmentTargetCandidate,
+  type InspectionSourceCandidateFacts,
 } from "./trusted-candidate.ts";
 
 const temporaryRoots: string[] = [];
 
-function candidate(canonicalRoot: string) {
+function createInspectionHarness(clock = () => 1_000) {
+  const issuedFacts = new WeakMap<object, InspectionSourceCandidateFacts>();
+  const bridge = createInspectionDevelopmentTargetCandidateBridge({
+    clock,
+    readIssuedSourceCandidate(candidate) {
+      if (typeof candidate !== "object" || candidate === null) {
+        throw new RuntimeError("invalid_request");
+      }
+      const value = issuedFacts.get(candidate);
+      if (!value) throw new RuntimeError("invalid_request");
+      return Object.freeze({ ...value });
+    },
+  });
+  return {
+    bridge,
+    issueSourceCandidate(
+      value: InspectionSourceCandidateFacts,
+      claims: object = {},
+    ) {
+      const candidate = Object.freeze({ ...value, ...claims });
+      issuedFacts.set(candidate, Object.freeze({ ...value }));
+      return candidate;
+    },
+  };
+}
+
+function facts(canonicalRoot: string) {
   return {
     rootKey: OpaqueIdSchema.parse("r".repeat(32)),
     rootKind: "current-project" as const,
     canonicalRoot,
-    target: {
-      displayName: "Notes",
-      displayPath: "plugins/notes",
-      sourceKind: "workspace-discovered" as const,
-      manifest: {
-        pluginId: "notes",
-        packageName: "bb-plugin-notes",
-        version: "1.2.3",
-        hasServer: true,
-        hasApp: true,
-      },
-      native: { status: "absent" as const, observedAt: 1_000 },
-      capabilities: { fixture: true, harness: false, live: false },
-    },
+    displayName: "Notes",
+    displayPath: "plugins/notes",
+    packageName: "bb-plugin-notes",
+    version: "1.2.3",
+    pluginId: "notes",
+    hasServer: true,
+    hasApp: true,
   };
 }
 
@@ -42,31 +63,58 @@ afterEach(async () => {
 });
 
 describe("trusted development-target candidates", () => {
-  test("accepts only an existing canonical directory with no caller identity fields", async () => {
+  test("awaits inspection revalidation before issuing a runtime capability", async () => {
+    const temporaryRoot = await fs.realpath(os.tmpdir());
+    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    temporaryRoots.push(parent);
+    const pluginRoot = path.join(parent, "plugin");
+    await fs.mkdir(pluginRoot);
+    const source = Object.freeze({ source: true });
+    const bridge = createInspectionDevelopmentTargetCandidateBridge({
+      clock: () => 1_000,
+      async readIssuedSourceCandidate(candidate) {
+        await Promise.resolve();
+        if (candidate !== source) throw new RuntimeError("invalid_request");
+        return facts(await fs.realpath(pluginRoot));
+      },
+    });
+
+    const issued = await bridge.issue(source);
+
+    expect(issued.canonicalRoot).toBe(await fs.realpath(pluginRoot));
+  });
+
+  test("derives conservative target state only from an issued inspection candidate", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
     const canonicalRoot = await fs.realpath(pluginRoot);
+    const harness = createInspectionHarness();
+    const source = harness.issueSourceCandidate(facts(canonicalRoot), {
+      native: { status: "exact-path" },
+      capabilities: { fixture: true, harness: true, live: true },
+    });
 
-    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection(
-      candidate(canonicalRoot),
-    );
-    expect(Object.fromEntries(Object.entries(issued))).toEqual(
-      candidate(canonicalRoot),
-    );
+    const issued = await harness.bridge.issue(source);
+
+    expect(issued.target).toMatchObject({
+      displayName: "Notes",
+      displayPath: "plugins/notes",
+      sourceKind: "workspace-discovered",
+      native: { status: "absent", observedAt: 1_000 },
+      capabilities: { fixture: false, harness: false, live: false },
+    });
     await expect(
-      issueTrustedDevelopmentTargetCandidateFromInspection({
-        ...candidate(canonicalRoot),
-        id: "x".repeat(32),
-        bindings: {},
-        path: canonicalRoot,
-      }),
+      harness.bridge.issue(facts(canonicalRoot)),
     ).rejects.toMatchObject({ code: "invalid_request" });
+    await expect(harness.bridge.issue({ ...source })).rejects.toMatchObject({
+      code: "invalid_request",
+    });
   });
 
-  test("rejects missing roots, symlink aliases, and mismatched admission kinds", async () => {
+  test("rejects missing roots, symlink aliases, and invalid discovery facts", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
     temporaryRoots.push(parent);
@@ -74,21 +122,18 @@ describe("trusted development-target candidates", () => {
     const alias = path.join(parent, "alias");
     await fs.mkdir(pluginRoot);
     await fs.symlink(pluginRoot, alias);
+    const harness = createInspectionHarness();
 
-    await expect(
-      issueTrustedDevelopmentTargetCandidateFromInspection(candidate(alias)),
-    ).rejects.toMatchObject({ code: "invalid_request" });
-    await expect(
-      issueTrustedDevelopmentTargetCandidateFromInspection(
-        candidate(path.join(parent, "missing")),
-      ),
-    ).rejects.toMatchObject({ code: "invalid_request" });
-    await expect(
-      issueTrustedDevelopmentTargetCandidateFromInspection({
-        ...candidate(await fs.realpath(pluginRoot)),
-        rootKind: "explicit",
-      }),
-    ).rejects.toMatchObject({ code: "invalid_request" });
+    for (const invalidFacts of [
+      facts(alias),
+      facts(path.join(parent, "missing")),
+      { ...facts(await fs.realpath(pluginRoot)), rootKind: "unknown" },
+    ]) {
+      const source = harness.issueSourceCandidate(invalidFacts as never);
+      await expect(harness.bridge.issue(source)).rejects.toMatchObject({
+        code: "invalid_request",
+      });
+    }
   });
 
   test("rejects filesystem-wide, home, and ignored source roots", async () => {
@@ -97,37 +142,37 @@ describe("trusted development-target candidates", () => {
     temporaryRoots.push(parent);
     const ignoredRoot = path.join(parent, "node_modules", "plugin");
     await fs.mkdir(ignoredRoot, { recursive: true });
-
     const canonicalHome = await fs.realpath(os.homedir());
+    const harness = createInspectionHarness();
+
     for (const forbidden of [
       await fs.realpath(path.parse(parent).root),
       canonicalHome,
       path.dirname(canonicalHome),
       await fs.realpath(ignoredRoot),
     ]) {
-      await expect(
-        issueTrustedDevelopmentTargetCandidateFromInspection(
-          candidate(forbidden),
-        ),
-      ).rejects.toMatchObject({ code: "invalid_request" });
+      const source = harness.issueSourceCandidate(facts(forbidden));
+      await expect(harness.bridge.issue(source)).rejects.toMatchObject({
+        code: "invalid_request",
+      });
     }
   });
 
-  test("recognizes only the exact issued capability and rejects structural clones", async () => {
+  test("recognizes only the exact runtime capability and its source identity", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
-    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection(
-      candidate(await fs.realpath(pluginRoot)),
+    const harness = createInspectionHarness();
+    const issued = await harness.bridge.issue(
+      harness.issueSourceCandidate(facts(await fs.realpath(pluginRoot))),
     );
 
     await expect(
       validateTrustedDevelopmentTargetCandidate(issued),
     ).resolves.toBe(issued);
     for (const forged of [
-      candidate(await fs.realpath(pluginRoot)),
       { ...issued },
       Object.create(issued) as unknown,
       Object.fromEntries(Object.entries(issued)),

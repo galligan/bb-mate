@@ -43,6 +43,10 @@ export interface SourceCandidate {
   readonly hasApp: boolean;
 }
 
+export interface IssuedSourceCandidateFacts extends SourceCandidate {
+  readonly rootKind: TrustedRootKind;
+}
+
 export interface SourceDiscoveryResult {
   readonly candidates: readonly SourceCandidate[];
   readonly diagnostics: readonly DiscoveryDiagnostic[];

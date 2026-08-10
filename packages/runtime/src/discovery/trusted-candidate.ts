@@ -37,6 +37,27 @@ const TrustedDevelopmentTargetCandidateSchema = z.strictObject({
   target: DevelopmentTargetPayloadSchema,
 });
 
+const InspectionSourceCandidateFactsSchema = z.strictObject({
+  rootKey: OpaqueIdSchema,
+  rootKind: DevelopmentTargetRootKindSchema,
+  canonicalRoot: z.string(),
+  displayPath: z.string(),
+  packageName: z.string(),
+  version: z.string(),
+  pluginId: z.string(),
+  displayName: z.string(),
+  hasServer: z.boolean(),
+  hasApp: z.boolean(),
+});
+
+export type InspectionSourceCandidateFacts = z.infer<
+  typeof InspectionSourceCandidateFactsSchema
+>;
+
+export interface InspectionDevelopmentTargetCandidateBridge {
+  issue(candidate: unknown): Promise<TrustedDevelopmentTargetCandidate>;
+}
+
 export interface TrustedDevelopmentTargetCandidate {
   readonly rootKey: OpaqueId;
   readonly rootKind: DevelopmentTargetRootKind;
@@ -72,11 +93,34 @@ async function inspectCanonicalRoot(
   };
 }
 
-export async function issueTrustedDevelopmentTargetCandidateFromInspection(
-  input: unknown,
+async function issueTrustedDevelopmentTargetCandidate(
+  input: InspectionSourceCandidateFacts,
+  observedAt: number,
 ): Promise<TrustedDevelopmentTargetCandidate> {
   try {
-    const candidate = TrustedDevelopmentTargetCandidateSchema.parse(input);
+    const sourceKind =
+      input.rootKind === "current-project"
+        ? "workspace-discovered"
+        : input.rootKind;
+    const candidate = TrustedDevelopmentTargetCandidateSchema.parse({
+      rootKey: input.rootKey,
+      rootKind: input.rootKind,
+      canonicalRoot: input.canonicalRoot,
+      target: {
+        displayName: input.displayName,
+        displayPath: input.displayPath,
+        sourceKind,
+        manifest: {
+          pluginId: input.pluginId,
+          packageName: input.packageName,
+          version: input.version,
+          hasServer: input.hasServer,
+          hasApp: input.hasApp,
+        },
+        native: { status: "absent", observedAt },
+        capabilities: { fixture: false, harness: false, live: false },
+      },
+    });
     if (
       !isCanonicalSourcePathFormat(candidate.canonicalRoot) ||
       (candidate.rootKind === "explicit" &&
@@ -106,6 +150,35 @@ export async function issueTrustedDevelopmentTargetCandidateFromInspection(
     if (error instanceof RuntimeError) throw error;
     throw new RuntimeError("invalid_request", { cause: error });
   }
+}
+
+export function createInspectionDevelopmentTargetCandidateBridge(options: {
+  readonly readIssuedSourceCandidate: (
+    candidate: unknown,
+  ) => unknown | Promise<unknown>;
+  readonly clock?: () => number;
+}): InspectionDevelopmentTargetCandidateBridge {
+  if (typeof options.readIssuedSourceCandidate !== "function") {
+    throw new TypeError("Inspection candidate reader must be a function");
+  }
+  const clock = options.clock ?? Date.now;
+  return Object.freeze({
+    async issue(candidate: unknown) {
+      try {
+        const facts = InspectionSourceCandidateFactsSchema.parse(
+          await options.readIssuedSourceCandidate(candidate),
+        );
+        const observedAt = clock();
+        if (!Number.isSafeInteger(observedAt) || observedAt < 0) {
+          throw new RuntimeError("invalid_request");
+        }
+        return await issueTrustedDevelopmentTargetCandidate(facts, observedAt);
+      } catch (error) {
+        if (error instanceof RuntimeError) throw error;
+        throw new RuntimeError("invalid_request", { cause: error });
+      }
+    },
+  });
 }
 
 export async function validateTrustedDevelopmentTargetCandidate(

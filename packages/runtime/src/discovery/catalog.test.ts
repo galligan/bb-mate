@@ -9,32 +9,55 @@ import {
   OpaqueIdSchema,
   PrincipalIdSchema,
 } from "../contracts/ids.ts";
+import { RuntimeError } from "../errors.ts";
 import { openDevelopmentTargetCatalog } from "./catalog.ts";
-import { issueTrustedDevelopmentTargetCandidateFromInspection } from "./trusted-candidate.ts";
+import {
+  createInspectionDevelopmentTargetCandidateBridge,
+  type InspectionSourceCandidateFacts,
+} from "./trusted-candidate.ts";
 
 const temporaryRoots: string[] = [];
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
 const bbContextId = BbContextIdSchema.parse("b".repeat(32));
 
-function candidateInput(canonicalRoot: string) {
+function createInspectionHarness() {
+  const issuedFacts = new WeakMap<object, InspectionSourceCandidateFacts>();
+  const bridge = createInspectionDevelopmentTargetCandidateBridge({
+    clock: () => 1_000,
+    readIssuedSourceCandidate(candidate) {
+      if (typeof candidate !== "object" || candidate === null) {
+        throw new RuntimeError("invalid_request");
+      }
+      const value = issuedFacts.get(candidate);
+      if (!value) throw new RuntimeError("invalid_request");
+      return Object.freeze({ ...value });
+    },
+  });
+  return {
+    bridge,
+    issueSourceCandidate(
+      value: InspectionSourceCandidateFacts,
+      claims: object = {},
+    ) {
+      const candidate = Object.freeze({ ...value, ...claims });
+      issuedFacts.set(candidate, Object.freeze({ ...value }));
+      return candidate;
+    },
+  };
+}
+
+function facts(canonicalRoot: string) {
   return {
     rootKey: OpaqueIdSchema.parse("r".repeat(32)),
     rootKind: "current-project" as const,
     canonicalRoot,
-    target: {
-      displayName: "Notes",
-      displayPath: "plugins/notes",
-      sourceKind: "workspace-discovered" as const,
-      manifest: {
-        pluginId: "notes",
-        packageName: "bb-plugin-notes",
-        version: "1.2.3",
-        hasServer: true,
-        hasApp: true,
-      },
-      native: { status: "absent" as const, observedAt: 1_000 },
-      capabilities: { fixture: true, harness: false, live: false },
-    },
+    displayName: "Notes",
+    displayPath: "plugins/notes",
+    packageName: "bb-plugin-notes",
+    version: "1.2.3",
+    pluginId: "notes",
+    hasServer: true,
+    hasApp: true,
   };
 }
 
@@ -47,7 +70,7 @@ afterEach(async () => {
 });
 
 describe("DevelopmentTargetCatalog capability boundary", () => {
-  test("rejects raw and cloned candidates before direct catalog mutation", async () => {
+  test("persists only derived facts from an exact inspection and runtime capability", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
       path.join(temporaryRoot, "bb-mate-catalog-capability-"),
@@ -56,32 +79,51 @@ describe("DevelopmentTargetCatalog capability boundary", () => {
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
     const canonicalRoot = await fs.realpath(pluginRoot);
-    const issued = await issueTrustedDevelopmentTargetCandidateFromInspection(
-      candidateInput(canonicalRoot),
-    );
+    const harness = createInspectionHarness();
+    const source = harness.issueSourceCandidate(facts(canonicalRoot), {
+      native: { status: "exact-path", pluginId: "spoofed" },
+      capabilities: { fixture: true, harness: true, live: true },
+      target: { displayName: "Spoofed target", live: true },
+    });
+    const issued = await harness.bridge.issue(source);
     const catalog = await openDevelopmentTargetCatalog({
       dataRoot: path.join(parent, "data"),
       id: () => ObjectIdSchema.parse("t".repeat(32)),
       clock: () => 1_000,
     });
     try {
+      await expect(
+        harness.bridge.issue(facts(canonicalRoot)),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      await expect(harness.bridge.issue({ ...source })).rejects.toMatchObject({
+        code: "invalid_request",
+      });
       for (const forged of [
-        candidateInput(canonicalRoot),
         { ...issued },
         Object.create(issued) as unknown,
         Object.fromEntries(Object.entries(issued)),
       ]) {
         await expect(
-          Promise.resolve().then(() =>
-            catalog.refresh({
-              principalId,
-              bbContextId,
-              candidate: forged as never,
-            }),
-          ),
+          catalog.refresh({
+            principalId,
+            bbContextId,
+            candidate: forged as never,
+          }),
         ).rejects.toMatchObject({ code: "invalid_request" });
       }
       expect(catalog.list({ principalId, bbContextId })).toEqual([]);
+
+      const persisted = await catalog.refresh({
+        principalId,
+        bbContextId,
+        candidate: issued,
+      });
+      expect(persisted.payload).toMatchObject({
+        native: { status: "absent", observedAt: 1_000 },
+        capabilities: { fixture: false, harness: false, live: false },
+      });
+      expect(JSON.stringify(persisted)).not.toContain("spoofed");
+      expect(JSON.stringify(persisted)).not.toContain("Spoofed target");
     } finally {
       catalog.close();
     }

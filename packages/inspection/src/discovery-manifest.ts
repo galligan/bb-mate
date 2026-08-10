@@ -1,11 +1,23 @@
 import path from "node:path";
-import type { SourceCandidate, TrustedRoot } from "./discovery-types.ts";
+import type {
+  IssuedSourceCandidateFacts,
+  SourceCandidate,
+  TrustedRoot,
+} from "./discovery-types.ts";
+import { readBoundedPluginIcon } from "./discovery-asset-reader.ts";
 import { DiscoveryFailure } from "./discovery-errors.ts";
-import { readBoundedManifest } from "./discovery-manifest-reader.ts";
 import {
+  readBoundedManifestSnapshot,
+  type BoundedManifestSnapshot,
+} from "./discovery-manifest-reader.ts";
+import {
+  attestScanDirectory,
   displayPathFor,
+  isContained,
   validateDeclaredPath,
 } from "./discovery-path-safety.ts";
+import { assertValidCompactSvg } from "./svg.ts";
+import { trustedRootDetails } from "./trusted-roots.ts";
 
 const MAX_MANIFEST_STRING_CHARACTERS = 8192;
 const MAX_DISPLAY_NAME_CHARACTERS = 128;
@@ -13,19 +25,36 @@ const MAX_PACKAGE_NAME_CHARACTERS = 214;
 const MAX_VERSION_CHARACTERS = 64;
 const MAX_PLUGIN_ID_CHARACTERS = 64;
 
+const issuedCandidates = new WeakMap<
+  object,
+  {
+    readonly root: TrustedRoot;
+    readonly facts: IssuedSourceCandidateFacts;
+    readonly directoryIdentity: CandidateDirectoryIdentity;
+    readonly manifestIdentity: BoundedManifestSnapshot;
+  }
+>();
+
+interface CandidateDirectoryIdentity {
+  readonly canonicalPath: string;
+  readonly device: number;
+  readonly inode: number;
+}
+
 export async function candidateAtRoot(
   root: TrustedRoot,
   candidateRoot: string,
   relativeRoot: string,
 ): Promise<SourceCandidate | null> {
-  const source = await readBoundedManifest(
+  const manifest = await readBoundedManifestSnapshot(
     path.join(candidateRoot, "package.json"),
   );
-  if (source === null) return null;
-  const packageJson = record(JSON.parse(source) as unknown);
+  if (manifest === null) return null;
+  const packageJson = record(JSON.parse(manifest.source) as unknown);
   if (!packageJson) throw invalid("package.json must contain an object");
   const bb = record(packageJson.bb);
   if (!bb) return null;
+  validateEngines(packageJson.engines);
   rejectUnknownKeys(
     bb,
     ["name", "description", "branding", "server", "app", "skills", "themes"],
@@ -78,7 +107,94 @@ export async function candidateAtRoot(
       throw new TypeError("source candidates are server-private");
     },
   });
-  return Object.freeze(candidate);
+  Object.freeze(candidate);
+  const directoryIdentity = await captureCandidateDirectoryIdentity(
+    root,
+    candidateRoot,
+  );
+  issuedCandidates.set(candidate, {
+    root,
+    facts: Object.freeze({
+      ...candidate,
+      rootKind: root.kind,
+    }),
+    directoryIdentity,
+    manifestIdentity: manifest,
+  });
+  return candidate;
+}
+
+export async function readIssuedSourceCandidate(
+  candidate: unknown,
+): Promise<Readonly<IssuedSourceCandidateFacts>> {
+  try {
+    if (typeof candidate !== "object" || candidate === null) throw notIssued();
+    const issued = issuedCandidates.get(candidate);
+    if (!issued) throw notIssued();
+    const rootDetails = trustedRootDetails(issued.root);
+    if (
+      issued.facts.rootKey !== issued.root.rootKey ||
+      issued.facts.rootKind !== issued.root.kind ||
+      !isContained(rootDetails.canonicalRoot, issued.facts.canonicalRoot)
+    ) {
+      throw notIssued();
+    }
+    const before = await captureCandidateDirectoryIdentity(
+      issued.root,
+      issued.facts.canonicalRoot,
+    );
+    if (!sameDirectoryIdentity(before, issued.directoryIdentity)) {
+      throw notIssued();
+    }
+    const manifest = await readBoundedManifestSnapshot(
+      path.join(issued.facts.canonicalRoot, "package.json"),
+    );
+    if (
+      manifest === null ||
+      manifest.device !== issued.manifestIdentity.device ||
+      manifest.inode !== issued.manifestIdentity.inode ||
+      manifest.sha256 !== issued.manifestIdentity.sha256
+    ) {
+      throw notIssued();
+    }
+    const after = await captureCandidateDirectoryIdentity(
+      issued.root,
+      issued.facts.canonicalRoot,
+    );
+    if (!sameDirectoryIdentity(after, issued.directoryIdentity)) {
+      throw notIssued();
+    }
+    return Object.freeze({ ...issued.facts });
+  } catch {
+    throw notIssued();
+  }
+}
+
+async function captureCandidateDirectoryIdentity(
+  root: TrustedRoot,
+  candidateRoot: string,
+): Promise<CandidateDirectoryIdentity> {
+  const attestation = await attestScanDirectory(
+    candidateRoot,
+    trustedRootDetails(root).canonicalRoot,
+  );
+  if (attestation.canonicalPath !== candidateRoot) throw notIssued();
+  return {
+    canonicalPath: attestation.canonicalPath,
+    device: attestation.dev,
+    inode: attestation.ino,
+  };
+}
+
+function sameDirectoryIdentity(
+  left: CandidateDirectoryIdentity,
+  right: CandidateDirectoryIdentity,
+): boolean {
+  return (
+    left.canonicalPath === right.canonicalPath &&
+    left.device === right.device &&
+    left.inode === right.inode
+  );
 }
 
 async function validateSkills(
@@ -124,6 +240,9 @@ async function validateBranding(
       throw invalid("plugin-owned bb.branding.icon must be an SVG path");
     }
     await validateDeclaredPath(candidateRoot, icon, "bb.branding.icon", "file");
+    assertValidCompactSvg(
+      await readBoundedPluginIcon(resolveDeclaredPath(candidateRoot, icon)),
+    );
   }
   if (logo !== null) {
     rejectUnknownKeys(logo, ["light", "dark"], "bb.branding.logo");
@@ -146,6 +265,26 @@ async function validateBranding(
       );
     }
   }
+}
+
+function validateEngines(value: unknown): void {
+  if (value === undefined) return;
+  const engines = record(value);
+  if (!engines) throw invalid("engines must be an object");
+  if (engines.bb !== undefined) requiredString(engines.bb, "engines.bb");
+  if (engines.bbPluginSdk !== undefined) {
+    requiredString(engines.bbPluginSdk, "engines.bbPluginSdk");
+  }
+}
+
+function resolveDeclaredPath(
+  candidateRoot: string,
+  declaredPath: string,
+): string {
+  const segments = declaredPath
+    .split(/[\\/]/u)
+    .filter((segment) => segment.length > 0 && segment !== ".");
+  return path.join(candidateRoot, ...segments);
 }
 
 async function validateThemes(
@@ -246,4 +385,8 @@ function derivePluginId(packageName: string): string {
 
 function invalid(message: string): DiscoveryFailure {
   return new DiscoveryFailure("manifest-invalid", message);
+}
+
+function notIssued(): TypeError {
+  return new TypeError("source candidate was not issued by discovery");
 }
