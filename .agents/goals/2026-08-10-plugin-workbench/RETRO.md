@@ -5,23 +5,23 @@ Status: Active
 
 ## Summary
 
-The execution goal is active. Compatibility baseline #52 and spec/goal PR #53
-are merged. Released-capability Gate 0 implementation and review are complete
-with all six rows passing and both independent reviewers at 5/5; PR #68 is at
-its final ready/merge gate.
+The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
+and released-capability Gate 0 PR #68 are merged. Standalone-runtime #56 is
+implemented and independently reviewed at 5/5; PR #69 is at its final
+ready/merge gate.
 
 ## Readiness
 
-Active. Prompt/doctor/formatting and packet reviews pass; #52 and #53 are
+Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
 merged. Gate 0 admits all released host-plugin rows to downstream execution.
-Its exact-head review and hosted CI gates pass; only the ready/merge transition
-and reconciliation remain.
+Standalone #69 has green local, hosted, and two-lane exact-head review evidence;
+only its ready/merge transition and reconciliation remain.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Gate branch: `test/plugin-workbench/released-capability-gate`; issue #54.
-- Current merge base: `59479253b2c0f6b465d5da870958267f846f42de`.
+- Standalone branch: `feat/cli/standalone-executable`; issue #56; PR #69.
+- Current merge base: `d40aef0b7b04e6f76982b7203927905fd380c5a8`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -29,7 +29,10 @@ and reconciliation remain.
   `e48e0306f2eb01c167aca19ce349c5b54bfcfc80` through GitHub async request
   `3227e20c-b82b-4b20-9138-e7b17bd95d77`. Merge commit:
   `59479253b2c0f6b465d5da870958267f846f42de`.
-- GitButler is clean with only the Gate 0 branch active.
+- Gate 0 PR #68 merged from exact reviewed head
+  `87066b4f62f82283fec8f25a912bd48a682f72cb` to merge commit
+  `d40aef0b7b04e6f76982b7203927905fd380c5a8`; issue #54 is closed.
+- GitButler is clean with only the standalone branch active.
 
 ## Preparation findings
 
@@ -225,11 +228,16 @@ visual/accessibility checks passed. Draft PR #69 is pushed, and its dedicated
   rejects symlinks before creating the leaf, then verifies the real output root
   remains beneath the real allowed base. A focused no-write test uses an
   outside task-owned directory and proves the symlink target remains empty.
+- Standalone round 4: standing and targeted exact-head reviews both reached
+  5/5 at `c6d0e93109f492cad754f270adef5ec6a39935c2` with zero findings. The
+  original symlink-parent attack now rejects without touching its target;
+  transactional rollback, moved empty-PATH execution, legacy package,
+  aggregate, visual, hosted CI, thread, tracker, and clean-workspace gates pass.
 
 ## Verification Log
 
 - `check-goal-prompt --no-placeholders`: passed at 3,216/4,000 characters.
-- `goal-loop-doctor`: passed with both active round-three reports clean.
+- `goal-loop-doctor`: passed with every active review report clean.
 - `bun run format:check`: passed for the reviewed packet and design record.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
@@ -258,6 +266,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0 is merged and reconciled. Standalone-runtime #56
-implementation is locally green and entering review from the clean post-#68
-base; domain #55 remains independent and prepared for a separate branch.
+Execution active. Gate 0 is merged and reconciled. Standalone-runtime #56 has
+completed implementation and two independent review lanes; PR #69 is ready for
+its final merge transition. Domain #55 remains independent and prepared for a
+separate branch.

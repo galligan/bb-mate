@@ -1,7 +1,7 @@
 # Self-contained bb-mate executable
 
 Date: 2026-08-10
-Status: Implementation complete; review pending
+Status: Implementation and review complete; merge pending
 Issue: [#56](https://github.com/galligan/bb-mate/issues/56)
 Goal: `.agents/goals/2026-08-10-plugin-workbench/`
 
