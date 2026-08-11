@@ -855,8 +855,9 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   identity publication recovers only the exact principal-bound, same-inode,
   two-link crash remnant while all ambiguous hardlinks remain corrupt; and the
   Summary, Readiness, Baseline, and Final State sections now describe 62C and
-  PR #79. Both round-one reports remain active until replacement-head reviews
-  independently verify these fixes.
+  PR #79. Both superseded round-one reports were scratch-archived after these
+  dispositions were recorded; replacement-head reviews independently verify
+  the fixes against the current code.
 - Replacement review then caught two adjacent empty-state gaps. After the
   adapter became eligible-only, an empty project list no longer proved that bb
   had no projects; the panel now says no eligible local projects and directs
