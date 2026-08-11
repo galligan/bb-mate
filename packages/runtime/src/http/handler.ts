@@ -1,12 +1,24 @@
 import { authorize } from "../auth/authorize.ts";
 import type { RequestContext } from "../auth/context.ts";
-import type { OpaqueId } from "../contracts/ids.ts";
+import {
+  BbContextIdSchema,
+  PrincipalIdSchema,
+  type BbContextId,
+  type OpaqueId,
+  type PrincipalId,
+} from "../contracts/ids.ts";
 import { RuntimeError, type RuntimeErrorCode } from "../errors.ts";
 import {
   RUNTIME_API_VERSION,
   RuntimeCapabilityDocumentSchema,
   type RuntimeCapabilitiesV1,
 } from "../supervision/protocol.ts";
+import {
+  CurrentProjectTargetAdmissionRequestSchema,
+  DevelopmentTargetListResponseSchema,
+  type CurrentProjectTargetAdmissionRequest,
+  type DevelopmentTargetListResponse,
+} from "../supervision/targets.ts";
 
 export type RuntimeHttpAuthenticator = (
   request: Request,
@@ -16,6 +28,7 @@ export interface RuntimeHttpHandlerOptions {
   port: number;
   identity: RuntimeHttpIdentity;
   authenticate?: RuntimeHttpAuthenticator;
+  targets?: RuntimeTargetController;
 }
 
 export interface RuntimeHttpIdentity {
@@ -25,6 +38,18 @@ export interface RuntimeHttpIdentity {
 }
 
 export type RuntimeHttpHandler = (request: Request) => Promise<Response>;
+
+export interface RuntimeTargetController {
+  readonly principalId: PrincipalId;
+  readonly bbContextId: BbContextId;
+  admit(
+    context: RequestContext,
+    input: CurrentProjectTargetAdmissionRequest,
+  ): DevelopmentTargetListResponse | Promise<DevelopmentTargetListResponse>;
+  list(
+    context: RequestContext,
+  ): DevelopmentTargetListResponse | Promise<DevelopmentTargetListResponse>;
+}
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -88,31 +113,46 @@ function forRequestMethod(request: Request, response: Response): Response {
     : response;
 }
 
-type RequestBodyPolicyResult = "accepted" | "invalid" | "too-large";
+type RequestBodyPolicyResult =
+  | { readonly kind: "accepted"; readonly bytes: Uint8Array }
+  | { readonly kind: "invalid" }
+  | { readonly kind: "too-large" };
 
-async function validateRequestBody(
+async function readRequestBody(
   request: Request,
 ): Promise<RequestBodyPolicyResult> {
   const contentLength = request.headers.get("content-length");
   if (contentLength !== null) {
-    if (!/^\d+$/u.test(contentLength)) return "invalid";
+    if (!/^\d+$/u.test(contentLength)) return { kind: "invalid" };
     if (BigInt(contentLength) > BigInt(MAX_REQUEST_BODY_BYTES)) {
-      return "too-large";
+      return { kind: "too-large" };
     }
   }
 
-  if (request.body === null) return "accepted";
+  if (request.body === null) {
+    return { kind: "accepted", bytes: new Uint8Array() };
+  }
   const reader = request.body.getReader();
   let bytes = 0;
+  const chunks: Uint8Array[] = [];
   try {
     while (true) {
       const chunk = await reader.read();
-      if (chunk.done) return "accepted";
+      if (chunk.done) {
+        const body = new Uint8Array(bytes);
+        let offset = 0;
+        for (const value of chunks) {
+          body.set(value, offset);
+          offset += value.byteLength;
+        }
+        return { kind: "accepted", bytes: body };
+      }
       bytes += chunk.value.byteLength;
       if (bytes > MAX_REQUEST_BODY_BYTES) {
         await reader.cancel();
-        return "too-large";
+        return { kind: "too-large" };
       }
+      chunks.push(chunk.value);
     }
   } finally {
     reader.releaseLock();
@@ -139,10 +179,31 @@ function statusForRuntimeError(error: RuntimeError): number {
   }
 }
 
+function parseTargetAdmissionRequest(
+  bytes: Uint8Array,
+): CurrentProjectTargetAdmissionRequest {
+  try {
+    return CurrentProjectTargetAdmissionRequestSchema.parse(
+      JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
+    );
+  } catch (error) {
+    throw new RuntimeError("invalid_request", { cause: error });
+  }
+}
+
+function parseTargetResponse(input: unknown): DevelopmentTargetListResponse {
+  try {
+    return DevelopmentTargetListResponseSchema.parse(input);
+  } catch (error) {
+    throw new RuntimeError("internal", { cause: error });
+  }
+}
+
 export function createRuntimeHttpHandler({
   port,
   identity,
   authenticate = async () => undefined,
+  targets,
 }: RuntimeHttpHandlerOptions): RuntimeHttpHandler {
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new TypeError(
@@ -153,11 +214,24 @@ export function createRuntimeHttpHandler({
   let parsedIdentity: RuntimeHttpIdentity;
   try {
     parsedIdentity = RuntimeHttpIdentitySchema.parse(identity);
+    if (parsedIdentity.capabilities.targets !== (targets !== undefined)) {
+      throw new TypeError();
+    }
+    if (targets !== undefined) {
+      if (
+        typeof targets.admit !== "function" ||
+        typeof targets.list !== "function"
+      ) {
+        throw new TypeError();
+      }
+      PrincipalIdSchema.parse(targets.principalId);
+      BbContextIdSchema.parse(targets.bbContextId);
+    }
   } catch {
     throw new TypeError("Invalid runtime HTTP identity");
   }
   const capabilitiesDocument = Object.freeze({
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     runtimeVersion: parsedIdentity.runtimeVersion,
     apiVersion: RUNTIME_API_VERSION,
     instanceId: parsedIdentity.instanceId,
@@ -229,30 +303,62 @@ export function createRuntimeHttpHandler({
 
       let bodyPolicy: RequestBodyPolicyResult;
       try {
-        bodyPolicy = await validateRequestBody(request);
+        bodyPolicy = await readRequestBody(request);
       } catch {
         return runtimeProblem(400, "invalid_request", requestOrigin);
       }
-      if (bodyPolicy === "invalid") {
+      if (bodyPolicy.kind === "invalid") {
         return runtimeProblem(400, "invalid_request", requestOrigin);
       }
-      if (bodyPolicy === "too-large") {
+      if (bodyPolicy.kind === "too-large") {
         return runtimeProblem(413, "invalid_request", requestOrigin);
+      }
+      const bodyBytes = bodyPolicy.bytes;
+
+      const isTargetRoute =
+        targets !== undefined &&
+        (routePath === "/v2/targets" || routePath === "/v2/targets/admit");
+      if (isTargetRoute && requestOrigin !== undefined) {
+        return runtimeProblem(403, "forbidden");
       }
 
       if (request.method === "OPTIONS") {
+        return runtimeProblem(405, "invalid_request", requestOrigin, {
+          allow:
+            routePath === "/v2/targets/admit" && isTargetRoute
+              ? "POST"
+              : "GET, HEAD",
+        });
+      }
+
+      if (
+        (routePath === "/healthz" || routePath === "/v2/capabilities") &&
+        request.method !== "GET" &&
+        request.method !== "HEAD"
+      ) {
         return runtimeProblem(405, "invalid_request", requestOrigin, {
           allow: "GET, HEAD",
         });
       }
 
       if (
-        (routePath === "/healthz" || routePath === "/v1/capabilities") &&
+        isTargetRoute &&
+        routePath === "/v2/targets" &&
         request.method !== "GET" &&
         request.method !== "HEAD"
       ) {
         return runtimeProblem(405, "invalid_request", requestOrigin, {
           allow: "GET, HEAD",
+        });
+      }
+
+      if (
+        isTargetRoute &&
+        routePath === "/v2/targets/admit" &&
+        request.method !== "POST"
+      ) {
+        return runtimeProblem(405, "invalid_request", requestOrigin, {
+          allow: "POST",
         });
       }
 
@@ -266,7 +372,7 @@ export function createRuntimeHttpHandler({
 
       if (
         (request.method === "GET" || request.method === "HEAD") &&
-        routePath === "/v1/capabilities"
+        routePath === "/v2/capabilities"
       ) {
         try {
           const authorized =
@@ -291,6 +397,51 @@ export function createRuntimeHttpHandler({
             statusForRuntimeError(runtimeError),
             runtimeError.code,
             requestOrigin,
+          );
+        }
+      }
+
+      if (targets !== undefined && isTargetRoute) {
+        try {
+          const scope =
+            routePath === "/v2/targets/admit"
+              ? "targets:write"
+              : "targets:read";
+          const authorized = authorize(authenticatedContext, { scope });
+          const principal = authorized.principal;
+          if (
+            principal.kind !== "supervisor" ||
+            principal.id !== targets.principalId ||
+            principal.bbContextId !== targets.bbContextId ||
+            principal.targetId !== undefined ||
+            principal.sessionId !== undefined
+          ) {
+            throw new RuntimeError("forbidden");
+          }
+          const result =
+            routePath === "/v2/targets/admit"
+              ? await targets.admit(
+                  authorized,
+                  (() => {
+                    if (
+                      request.headers.get("content-type") !== "application/json"
+                    ) {
+                      throw new RuntimeError("invalid_request");
+                    }
+                    return parseTargetAdmissionRequest(bodyBytes);
+                  })(),
+                )
+              : await targets.list(authorized);
+          const response = json(parseTargetResponse(result));
+          return forRequestMethod(request, response);
+        } catch (error) {
+          const runtimeError =
+            error instanceof RuntimeError
+              ? error
+              : new RuntimeError("internal", { cause: error });
+          return runtimeProblem(
+            statusForRuntimeError(runtimeError),
+            runtimeError.code,
           );
         }
       }

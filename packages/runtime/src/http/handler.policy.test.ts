@@ -104,10 +104,10 @@ describe("runtime loopback HTTP transport policy", () => {
       },
     });
     const hostileHost = await handle(
-      request("/v1/capabilities", {}, "localhost:41721"),
+      request("/v2/capabilities", {}, "localhost:41721"),
     );
     const hostileOrigin = await handle(
-      request("/v1/capabilities", {
+      request("/v2/capabilities", {
         headers: { origin: "https://evil.example" },
       }),
     );

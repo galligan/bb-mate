@@ -58,13 +58,11 @@ async function rejectWalDatabaseHeader(databasePath: string): Promise<void> {
   }
 }
 
-export async function openRuntimeDatabase(
-  options: OpenRuntimeDatabaseOptions,
-): Promise<RuntimeDatabase> {
-  if (!options.dataRoot || !path.isAbsolute(options.dataRoot)) {
+export async function prepareRuntimeDataRoot(input: string): Promise<string> {
+  if (!input || !path.isAbsolute(input)) {
     throw new RuntimeError("invalid_request");
   }
-  const dataRoot = path.resolve(options.dataRoot);
+  const dataRoot = path.resolve(input);
   await rejectSymlinkComponents(dataRoot);
   const existingRoot = await fs.lstat(dataRoot).catch((error: unknown) => {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
@@ -95,6 +93,13 @@ export async function openRuntimeDatabase(
     await fs.mkdir(dataRoot, { mode: 0o700 });
     await fs.chmod(dataRoot, 0o700);
   }
+  return dataRoot;
+}
+
+export async function openRuntimeDatabase(
+  options: OpenRuntimeDatabaseOptions,
+): Promise<RuntimeDatabase> {
+  const dataRoot = await prepareRuntimeDataRoot(options.dataRoot);
 
   const databasePath = path.join(dataRoot, DATABASE_NAME);
   const existingDatabase = await fs

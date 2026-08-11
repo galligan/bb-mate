@@ -5,6 +5,7 @@ import {
   createRequestContext,
   createRuntimeHttpHandler,
   type OpaqueId,
+  type RuntimeIdentity,
 } from "@bb-mate/runtime";
 import {
   parseSupervisorFrame,
@@ -20,6 +21,10 @@ import {
   type SupervisorChannel,
 } from "./supervisor-channel.ts";
 import { listenRuntimeHttp } from "./runtime-http-listener.ts";
+import {
+  openRuntimeTargetResources,
+  type RuntimeTargetResources,
+} from "./runtime-target-resources.ts";
 
 interface RuntimeServer {
   readonly port: number;
@@ -36,6 +41,7 @@ export interface SupervisedServePlatform {
   listen(
     fetch: (request: Request) => Promise<Response>,
   ): RuntimeServer | Promise<RuntimeServer>;
+  openTargetResources(dataRoot: string): Promise<RuntimeTargetResources>;
   stdout(value: string): void;
   stderr(value: string): void;
 }
@@ -63,17 +69,17 @@ function tokenMatches(request: Request, expected: Buffer): boolean {
 }
 
 function authenticatedContext(
-  frame: SupervisorFrame,
+  identity: RuntimeIdentity,
   token: Buffer,
   request: Request,
 ) {
   if (!tokenMatches(request, token)) return undefined;
   return createRequestContext({
-    id: frame.principalId,
+    id: identity.principalId,
     kind: "supervisor",
-    scopes: ["runtime:read"],
+    scopes: ["runtime:read", "targets:read", "targets:write"],
     revoked: false,
-    bbContextId: frame.bbContextId,
+    bbContextId: identity.bbContextId,
   });
 }
 
@@ -147,6 +153,7 @@ function productionPlatform(): SupervisedServePlatform {
         signal.addEventListener("abort", cleanup, { once: true });
       }),
     listen: listenRuntimeHttp,
+    openTargetResources: openRuntimeTargetResources,
     stdout: (value) => process.stdout.write(value),
     stderr: (value) => process.stderr.write(value),
   };
@@ -167,6 +174,8 @@ export async function runSupervisedServe(
 
   let server: RuntimeServer | undefined;
   let expectedToken: Buffer | undefined;
+  let targetResources: RuntimeTargetResources | undefined;
+  const inFlight = new Set<Promise<Response>>();
   const lifecycle = new AbortController();
   try {
     const channel = await platform.openChannel(options.supervisorFd);
@@ -181,10 +190,20 @@ export async function runSupervisedServe(
     const instanceId = platform.createInstanceId();
     const token = Buffer.from(channel.frame.token, "base64url");
     expectedToken = token;
+    targetResources = await platform.openTargetResources(
+      channel.frame.dataRoot,
+    );
     let handler: ((request: Request) => Promise<Response>) | undefined;
     server = await platform.listen((request) => {
-      if (!handler) return Promise.resolve(new Response(null, { status: 503 }));
-      return handler(request);
+      const pending = handler
+        ? handler(request)
+        : Promise.resolve(new Response(null, { status: 503 }));
+      inFlight.add(pending);
+      pending.then(
+        () => inFlight.delete(pending),
+        () => inFlight.delete(pending),
+      );
+      return pending;
     });
     handler = createRuntimeHttpHandler({
       port: server.port,
@@ -194,12 +213,13 @@ export async function runSupervisedServe(
         capabilities: RUNTIME_CAPABILITIES,
       },
       authenticate: async (request) =>
-        authenticatedContext(channel.frame, token, request),
+        authenticatedContext(targetResources!.identity, token, request),
+      targets: targetResources.controller,
     });
 
     platform.stdout(
       serializeRuntimeLaunchDescriptor({
-        schemaVersion: 1,
+        schemaVersion: 2,
         protocol: "bb-mate-runtime",
         runtimeVersion: runtime.runtimeVersion,
         apiVersion: RUNTIME_API_VERSION,
@@ -237,6 +257,14 @@ export async function runSupervisedServe(
   } finally {
     lifecycle.abort();
     expectedToken?.fill(0);
-    await server?.stop();
+    let listenerError: unknown;
+    try {
+      await server?.stop();
+    } catch (error) {
+      listenerError = error;
+    }
+    await Promise.allSettled([...inFlight]);
+    targetResources?.close();
+    if (listenerError !== undefined) throw listenerError;
   }
 }

@@ -7,8 +7,11 @@ describe("@bb-mate/runtime public surface", () => {
     expect(Object.keys(runtime).sort()).toEqual([
       "AuthenticatedPrincipalSchema",
       "BbContextIdSchema",
+      "CurrentProjectTargetAdmissionRequestSchema",
       "DevelopmentTargetCodec",
+      "DevelopmentTargetListResponseSchema",
       "DevelopmentTargetPayloadSchema",
+      "DevelopmentTargetProjectionSchema",
       "DevelopmentTargetRootKindSchema",
       "DevelopmentTargetSourceKindSchema",
       "NativeReconciliationStatusSchema",
@@ -27,12 +30,14 @@ describe("@bb-mate/runtime public surface", () => {
       "authorize",
       "canonicalJson",
       "createDevelopmentTargetService",
+      "createInspectionDevelopmentTargetCandidateBridge",
       "createOpaqueId",
       "createRequestContext",
       "createRuntimeHttpHandler",
       "createWorkbenchService",
       "defineObjectCodec",
       "isRequestContext",
+      "loadOrCreateRuntimeIdentity",
       "openDevelopmentTargetCatalog",
       "openRuntimeStore",
     ]);
@@ -41,9 +46,6 @@ describe("@bb-mate/runtime public surface", () => {
   test("does not expose persistence, event-feed, or schema internals", () => {
     expect(runtime).not.toHaveProperty(
       "issueTrustedDevelopmentTargetCandidateFromInspection",
-    );
-    expect(runtime).not.toHaveProperty(
-      "createInspectionDevelopmentTargetCandidateBridge",
     );
     expect(runtime).not.toHaveProperty("openRuntimeDatabase");
     expect(runtime).not.toHaveProperty("applyRuntimeMigrations");

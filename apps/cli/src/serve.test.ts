@@ -1,10 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { createOpaqueId } from "@bb-mate/runtime";
+import {
+  BbContextIdSchema,
+  createOpaqueId,
+  PrincipalIdSchema,
+} from "@bb-mate/runtime";
 import {
   parseSupervisorFrame,
   RUNTIME_CAPABILITIES,
 } from "@bb-mate/runtime/supervision";
 import { runSupervisedServe, type SupervisedServePlatform } from "./serve.ts";
+import type { RuntimeTargetResources } from "./runtime-target-resources.ts";
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -18,14 +23,31 @@ function deferred<T>() {
 
 const token = Buffer.alloc(32, 7).toString("base64url");
 const instanceId = createOpaqueId(() => Buffer.alloc(24, 13));
+const identity = {
+  principalId: PrincipalIdSchema.parse("a".repeat(32)),
+  bbContextId: BbContextIdSchema.parse("b".repeat(32)),
+} as const;
+function resources(
+  close: () => void = () => undefined,
+): RuntimeTargetResources {
+  return {
+    identity,
+    controller: {
+      ...identity,
+      admit: () => ({ schemaVersion: 1, state: "ready", targets: [] }),
+      list: () => ({ schemaVersion: 1, state: "ready", targets: [] }),
+    },
+    close,
+  };
+}
+const openTargetResources = async () => resources();
 const frame = parseSupervisorFrame(
   JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     expectedRuntimeVersion: "0.1.0-alpha.2",
-    expectedApiVersion: 1,
+    expectedApiVersion: 2,
     token,
-    principalId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    bbContextId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    dataRoot: "/private/runtime-data",
   }),
 );
 
@@ -37,10 +59,13 @@ describe("supervised serve", () => {
     const stdout: string[] = [];
     const stderr: string[] = [];
     let stopCalls = 0;
+    let resourceCloseCalls = 0;
     let fetchHandler: ((request: Request) => Promise<Response>) | undefined;
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources: async () =>
+        resources(() => void (resourceCloseCalls += 1)),
       openChannel: async () => ({ frame, closed: liveness.promise }),
       isParentAlive: () => true,
       waitForParentExit: () => parentExit.promise,
@@ -61,14 +86,14 @@ describe("supervised serve", () => {
 
     expect(stdout).toHaveLength(1);
     expect(JSON.parse(stdout[0] ?? "")).toEqual({
-      apiVersion: 1,
+      apiVersion: 2,
       baseUrl: "http://127.0.0.1:41721",
       capabilities: RUNTIME_CAPABILITIES,
       instanceId,
       pid: 9001,
       protocol: "bb-mate-runtime",
       runtimeVersion: "0.1.0-alpha.2",
-      schemaVersion: 1,
+      schemaVersion: 2,
     });
     expect(fetchHandler).toBeFunction();
     expect(stderr).toEqual([]);
@@ -76,6 +101,7 @@ describe("supervised serve", () => {
     liveness.resolve();
     await expect(running).resolves.toEqual({ exitCode: 0, signal: null });
     expect(stopCalls).toBe(1);
+    expect(resourceCloseCalls).toBe(1);
   });
 
   test("authenticates capabilities with only the inherited bearer token", async () => {
@@ -86,6 +112,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => ({ frame, closed: liveness.promise }),
       isParentAlive: () => true,
       waitForParentExit: () => new Promise(() => undefined),
@@ -104,7 +131,7 @@ describe("supervised serve", () => {
     while (!fetchHandler) await Bun.sleep(0);
 
     const request = (authorization?: string) =>
-      new Request("http://127.0.0.1:41721/v1/capabilities", {
+      new Request("http://127.0.0.1:41721/v2/capabilities", {
         headers: {
           host: "127.0.0.1:41721",
           ...(authorization ? { authorization } : {}),
@@ -122,9 +149,9 @@ describe("supervised serve", () => {
     const authorized = await fetchHandler(request(`Bearer ${token}`));
     expect(authorized.status).toBe(200);
     expect(await authorized.json()).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       runtimeVersion: "0.1.0-alpha.2",
-      apiVersion: 1,
+      apiVersion: 2,
       instanceId,
       capabilities: RUNTIME_CAPABILITIES,
     });
@@ -133,6 +160,79 @@ describe("supervised serve", () => {
 
     liveness.resolve();
     await running;
+  });
+
+  test("drains an admitted target request before closing its catalog", async () => {
+    const liveness = deferred<void>();
+    const admission = deferred<{
+      schemaVersion: 1;
+      state: "ready";
+      targets: [];
+    }>();
+    const calls: unknown[] = [];
+    const events: string[] = [];
+    let fetchHandler: ((request: Request) => Promise<Response>) | undefined;
+    const platform: SupervisedServePlatform = {
+      pid: 9001,
+      createInstanceId: () => instanceId,
+      openTargetResources: async () => ({
+        identity,
+        controller: {
+          ...identity,
+          admit: (_context, input) => {
+            calls.push(input);
+            return admission.promise;
+          },
+          list: () => ({ schemaVersion: 1, state: "ready", targets: [] }),
+        },
+        close: () => events.push("catalog-close"),
+      }),
+      openChannel: async () => ({ frame, closed: liveness.promise }),
+      isParentAlive: () => true,
+      waitForParentExit: () => new Promise(() => undefined),
+      waitForSignal: () => new Promise(() => undefined),
+      listen: (fetch) => {
+        fetchHandler = fetch;
+        return {
+          port: 41721,
+          stop: () => void events.push("listener-stop"),
+        };
+      },
+      stdout: () => undefined,
+      stderr: () => undefined,
+    };
+    const running = runSupervisedServe(
+      { port: 0, parentPid: 4321, supervisorFd: 3 },
+      { runtimeVersion: "0.1.0-alpha.2", platform },
+    );
+    while (!fetchHandler) await Bun.sleep(0);
+
+    const request = fetchHandler(
+      new Request("http://127.0.0.1:41721/v2/targets/admit", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+          host: "127.0.0.1:41721",
+        },
+        body: JSON.stringify({
+          schemaVersion: 1,
+          sourcePath: "/private/source",
+        }),
+      }),
+    );
+    while (calls.length === 0) await Bun.sleep(0);
+    liveness.resolve();
+    await Bun.sleep(0);
+
+    expect(events).toEqual(["listener-stop"]);
+    admission.resolve({ schemaVersion: 1, state: "ready", targets: [] });
+    expect((await request).status).toBe(200);
+    await expect(running).resolves.toEqual({ exitCode: 0, signal: null });
+    expect(calls).toEqual([
+      { schemaVersion: 1, sourcePath: "/private/source" },
+    ]);
+    expect(events).toEqual(["listener-stop", "catalog-close"]);
   });
 
   test("refuses a mismatched supervisor before binding or describing a listener", async () => {
@@ -148,6 +248,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => ({
         frame: incompatible,
         closed: new Promise(() => undefined),
@@ -184,6 +285,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => {
         opened = true;
         throw new Error("must not open");
@@ -216,6 +318,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => ({
         frame,
         closed: new Promise(() => undefined),
@@ -251,6 +354,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => ({
         frame,
         closed: new Promise(() => undefined),
@@ -283,6 +387,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => ({ frame, closed: liveness.promise }),
       isParentAlive: () => true,
       waitForParentExit: () => new Promise(() => undefined),
@@ -313,6 +418,7 @@ describe("supervised serve", () => {
     const platform: SupervisedServePlatform = {
       pid: 9001,
       createInstanceId: () => instanceId,
+      openTargetResources,
       openChannel: async () => ({ frame, closed: liveness.promise }),
       isParentAlive: () => true,
       waitForParentExit: () => parentExit.promise,

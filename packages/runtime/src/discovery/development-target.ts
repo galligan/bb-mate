@@ -96,6 +96,16 @@ export interface DevelopmentTargetProjection extends DevelopmentTargetPayload {
   readonly updatedAt: number;
 }
 
+export const DevelopmentTargetProjectionSchema = z.strictObject({
+  schemaVersion: z.literal(1),
+  kind: z.literal("development-target"),
+  id: TargetIdSchema,
+  revision: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  createdAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  updatedAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  ...developmentTargetShape,
+});
+
 export function parseDevelopmentTargetEnvelope(
   input: unknown,
 ): DevelopmentTargetEnvelope {
@@ -119,7 +129,7 @@ export function projectDevelopmentTarget(
   envelope: DevelopmentTargetEnvelope,
 ): DevelopmentTargetProjection {
   const parsed = parseDevelopmentTargetEnvelope(envelope);
-  return {
+  return DevelopmentTargetProjectionSchema.parse({
     schemaVersion: 1,
     kind: "development-target",
     id: TargetIdSchema.parse(parsed.id),
@@ -127,5 +137,5 @@ export function projectDevelopmentTarget(
     createdAt: parsed.createdAt,
     updatedAt: parsed.updatedAt,
     ...parsed.payload,
-  };
+  });
 }

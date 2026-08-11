@@ -9,7 +9,7 @@ import {
 const TEST_IDENTITY = {
   runtimeVersion: "0.1.0",
   instanceId: OpaqueIdSchema.parse("d".repeat(32)),
-  capabilities: RUNTIME_CAPABILITIES,
+  capabilities: { ...RUNTIME_CAPABILITIES, targets: false },
 } as const;
 
 type TestHandlerOptions = Omit<RuntimeHttpHandlerOptions, "identity"> & {

@@ -1,10 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import {
-  BbContextIdSchema,
-  OpaqueIdSchema,
-  PrincipalIdSchema,
-} from "../contracts/ids.ts";
+import { OpaqueIdSchema } from "../contracts/ids.ts";
 import {
   parseRuntimeLaunchDescriptor,
   parseSupervisorFrame,
@@ -13,29 +9,25 @@ import {
   serializeRuntimeLaunchDescriptor,
 } from "./protocol.ts";
 
-const principalId = PrincipalIdSchema.parse("a".repeat(32));
-const bbContextId = BbContextIdSchema.parse("b".repeat(32));
 const instanceId = OpaqueIdSchema.parse("d".repeat(32));
 const token = Buffer.alloc(32, 7).toString("base64url");
 
 const validFrame = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   expectedRuntimeVersion: "0.1.0",
-  expectedApiVersion: 1,
+  expectedApiVersion: 2,
   token,
-  principalId,
-  bbContextId,
+  dataRoot: "/private/runtime-data",
 } as const;
 
 describe("supervised runtime protocol", () => {
-  test("parses the strict v1 supervisor frame", () => {
+  test("parses the strict v2 supervisor frame", () => {
     expect(parseSupervisorFrame(`${JSON.stringify(validFrame)}\n`)).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       expectedRuntimeVersion: "0.1.0",
-      expectedApiVersion: 1,
+      expectedApiVersion: 2,
       token,
-      principalId,
-      bbContextId,
+      dataRoot: "/private/runtime-data",
     });
   });
 
@@ -47,6 +39,14 @@ describe("supervised runtime protocol", () => {
       JSON.stringify({ ...validFrame, token: token.slice(1) }),
       JSON.stringify({ ...validFrame, expectedRuntimeVersion: "latest" }),
       JSON.stringify({ ...validFrame, expectedRuntimeVersion: "1.0.0-01" }),
+      JSON.stringify({ ...validFrame, schemaVersion: 1 }),
+      JSON.stringify({ ...validFrame, expectedApiVersion: 1 }),
+      JSON.stringify({ ...validFrame, dataRoot: "relative/runtime-data" }),
+      JSON.stringify({ ...validFrame, dataRoot: "/private/../runtime-data" }),
+      JSON.stringify({ ...validFrame, dataRoot: "/private//runtime-data" }),
+      JSON.stringify({ ...validFrame, dataRoot: "/private/runtime\u0000data" }),
+      JSON.stringify({ ...validFrame, dataRoot: `/${"x".repeat(1_025)}` }),
+      JSON.stringify({ ...validFrame, principalId: "a".repeat(32) }),
       `${JSON.stringify(validFrame)}\n\n`,
       `${JSON.stringify(validFrame)}\n{}`,
       `${JSON.stringify(validFrame)}${" ".repeat(4 * 1024)}`,
@@ -62,10 +62,10 @@ describe("supervised runtime protocol", () => {
 
   test("serializes and parses one canonical bounded launch descriptor line", () => {
     const descriptor = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       protocol: "bb-mate-runtime",
       runtimeVersion: "0.1.0-beta.1+build.2",
-      apiVersion: 1,
+      apiVersion: 2,
       pid: 42,
       instanceId,
       baseUrl: "http://127.0.0.1:41721",
@@ -80,24 +80,24 @@ describe("supervised runtime protocol", () => {
     expect(parseRuntimeLaunchDescriptor(line)).toEqual(descriptor);
     expect(line).toBe(
       `${JSON.stringify({
-        apiVersion: 1,
+        apiVersion: 2,
         baseUrl: "http://127.0.0.1:41721",
         capabilities: RUNTIME_CAPABILITIES,
         instanceId,
         pid: 42,
         protocol: "bb-mate-runtime",
         runtimeVersion: "0.1.0-beta.1+build.2",
-        schemaVersion: 1,
+        schemaVersion: 2,
       })}\n`,
     );
   });
 
   test("rejects descriptor drift, secrets, non-loopback URLs, and overflow", () => {
     const descriptor = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       protocol: "bb-mate-runtime",
       runtimeVersion: "0.1.0",
-      apiVersion: 1,
+      apiVersion: 2,
       pid: 42,
       instanceId,
       baseUrl: "http://127.0.0.1:41721",
@@ -105,7 +105,8 @@ describe("supervised runtime protocol", () => {
     } as const;
     const invalid = [
       { ...descriptor, token },
-      { ...descriptor, apiVersion: 2 },
+      { ...descriptor, apiVersion: 1 },
+      { ...descriptor, schemaVersion: 1 },
       { ...descriptor, pid: 0 },
       { ...descriptor, baseUrl: "http://localhost:41721" },
       { ...descriptor, baseUrl: "http://127.0.0.1:41721/healthz" },
@@ -134,9 +135,9 @@ describe("supervised runtime protocol", () => {
 
   test("defines the exact public capability handshake document", () => {
     const document = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       runtimeVersion: "0.1.0",
-      apiVersion: 1,
+      apiVersion: 2,
       instanceId,
       capabilities: RUNTIME_CAPABILITIES,
     } as const;

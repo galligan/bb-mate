@@ -61,7 +61,7 @@ describe("runtime loopback HTTP routes", () => {
 
   test("rejects preflight and mutation methods on both read-only routes", async () => {
     const handle = createRuntimeHttpHandler({ port: 41_721 });
-    for (const path of ["/healthz", "/v1/capabilities"]) {
+    for (const path of ["/healthz", "/v2/capabilities"]) {
       for (const method of ["OPTIONS", "POST", "PUT", "PATCH", "DELETE"]) {
         const response = await handle(
           request(path, {
@@ -99,21 +99,21 @@ describe("runtime loopback HTTP routes", () => {
       identity: {
         runtimeVersion: "0.1.0",
         instanceId,
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: { ...RUNTIME_CAPABILITIES, targets: false },
       },
       authenticate: async () => context,
     });
     const response = await handle(
-      request("/v1/capabilities", {
+      request("/v2/capabilities", {
         headers: { origin: "http://127.0.0.1:41721" },
       }),
     );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       runtimeVersion: "0.1.0",
-      apiVersion: 1,
+      apiVersion: 2,
       instanceId: "dddddddddddddddddddddddddddddddd",
       capabilities: {
         browserBootstrap: false,
@@ -160,7 +160,7 @@ describe("runtime loopback HTTP routes", () => {
   test("returns redacted errors for missing or insufficient authentication", async () => {
     const unauthenticated = createRuntimeHttpHandler({ port: 41_721 });
     const missing = await unauthenticated(
-      request("/v1/capabilities", {
+      request("/v2/capabilities", {
         headers: { origin: "http://127.0.0.1:41721" },
       }),
     );
@@ -181,7 +181,7 @@ describe("runtime loopback HTTP routes", () => {
       authenticate: async () => insufficientContext,
     });
     const denied = await insufficient(
-      request("/v1/capabilities", {
+      request("/v2/capabilities", {
         headers: { origin: "http://127.0.0.1:41721" },
       }),
     );
@@ -196,7 +196,7 @@ describe("runtime loopback HTTP routes", () => {
       port: 41_721,
       authenticate: async () => runtimeReader("browser-session"),
     });
-    const browserResponse = await browser(request("/v1/capabilities"));
+    const browserResponse = await browser(request("/v2/capabilities"));
     expect(browserResponse.status).toBe(403);
 
     for (const kind of [
@@ -208,7 +208,7 @@ describe("runtime loopback HTTP routes", () => {
         port: 41_721,
         authenticate: async () => runtimeReader(kind),
       });
-      expect((await adapter(request("/v1/capabilities"))).status, kind).toBe(
+      expect((await adapter(request("/v2/capabilities"))).status, kind).toBe(
         200,
       );
     }
@@ -268,7 +268,7 @@ describe("runtime loopback HTTP routes", () => {
       },
     });
     const response = await handle(
-      request("/v1/capabilities", { method: "HEAD" }),
+      request("/v2/capabilities", { method: "HEAD" }),
     );
 
     expect(response.status).toBe(200);
@@ -282,7 +282,7 @@ describe("runtime loopback HTTP routes", () => {
   test("keeps typed authentication failures bodyless for HEAD", async () => {
     const handle = createRuntimeHttpHandler({ port: 41_721 });
     const response = await handle(
-      request("/v1/capabilities", { method: "HEAD" }),
+      request("/v2/capabilities", { method: "HEAD" }),
     );
 
     expect(response.status).toBe(401);
@@ -301,7 +301,7 @@ describe("runtime loopback HTTP routes", () => {
         return runtimeReader("plugin-adapter");
       },
     });
-    for (const path of ["/healthz?verbose=true", "/v1/capabilities?all=true"]) {
+    for (const path of ["/healthz?verbose=true", "/v2/capabilities?all=true"]) {
       expect(
         (
           await handle(
@@ -324,7 +324,7 @@ describe("runtime loopback HTTP routes", () => {
       },
     });
     const response = await handle(
-      request("/v1/capabilities", {
+      request("/v2/capabilities", {
         headers: { origin: "http://127.0.0.1:41721" },
       }),
     );

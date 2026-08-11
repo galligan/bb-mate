@@ -1,13 +1,10 @@
 import { z } from "zod";
+import path from "node:path";
 
-import {
-  BbContextIdSchema,
-  OpaqueIdSchema,
-  PrincipalIdSchema,
-} from "../contracts/ids.ts";
+import { OpaqueIdSchema } from "../contracts/ids.ts";
 import { canonicalJson } from "../contracts/objects.ts";
 
-export const RUNTIME_API_VERSION = 1 as const;
+export const RUNTIME_API_VERSION = 2 as const;
 export const SUPERVISOR_FRAME_MAX_BYTES = 4 * 1024;
 export const RUNTIME_DESCRIPTOR_MAX_BYTES = 8 * 1024;
 
@@ -26,13 +23,20 @@ const SupervisorTokenSchema = z
     return decoded.byteLength === 32 && decoded.toString("base64url") === value;
   }, "Expected a canonical 32-byte base64url token");
 
+const RuntimeDataRootSchema = z
+  .string()
+  .min(1)
+  .refine((value) => Buffer.byteLength(value, "utf8") <= 1024)
+  .refine((value) => !/[\u0000-\u001f\u007f]/u.test(value))
+  .refine((value) => path.isAbsolute(value))
+  .refine((value) => path.normalize(value) === value);
+
 export const SupervisorFrameSchema = z.strictObject({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   expectedRuntimeVersion: RuntimeVersionSchema,
   expectedApiVersion: z.literal(RUNTIME_API_VERSION),
   token: SupervisorTokenSchema,
-  principalId: PrincipalIdSchema,
-  bbContextId: BbContextIdSchema,
+  dataRoot: RuntimeDataRootSchema,
 });
 
 export type SupervisorFrame = z.infer<typeof SupervisorFrameSchema>;
@@ -93,7 +97,7 @@ export const RUNTIME_CAPABILITIES: Readonly<RuntimeCapabilitiesV1> =
     pluginBriefs: false,
     reviews: false,
     sessions: false,
-    targets: false,
+    targets: true,
   });
 
 const LoopbackBaseUrlSchema = z
@@ -102,7 +106,7 @@ const LoopbackBaseUrlSchema = z
   .refine((value) => Number(value.slice(value.lastIndexOf(":") + 1)) <= 65_535);
 
 export const RuntimeLaunchDescriptorSchema = z.strictObject({
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   protocol: z.literal("bb-mate-runtime"),
   runtimeVersion: RuntimeVersionSchema,
   apiVersion: z.literal(RUNTIME_API_VERSION),

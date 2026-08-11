@@ -12,7 +12,7 @@ const context = createRequestContext({
 });
 
 function capabilitiesRequest(): Request {
-  return new Request("http://127.0.0.1:41721/v1/capabilities", {
+  return new Request("http://127.0.0.1:41721/v2/capabilities", {
     headers: {
       host: "127.0.0.1:41721",
       origin: "http://127.0.0.1:41721",
@@ -61,7 +61,7 @@ describe("runtime HTTP concurrency", () => {
     expect(authenticationCalls).toBe(32);
 
     const hostileHost = await handle(
-      new Request("http://127.0.0.1:41721/v1/capabilities", {
+      new Request("http://127.0.0.1:41721/v2/capabilities", {
         headers: { host: "localhost:41721" },
       }),
     );

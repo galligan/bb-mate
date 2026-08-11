@@ -40,6 +40,7 @@ export {
 export {
   DevelopmentTargetCodec,
   DevelopmentTargetPayloadSchema,
+  DevelopmentTargetProjectionSchema,
   DevelopmentTargetSourceKindSchema,
   NativeReconciliationStatusSchema,
 } from "./discovery/development-target.ts";
@@ -56,8 +57,10 @@ export type {
   RefreshDevelopmentTargetInput,
 } from "./discovery/catalog.ts";
 export { DevelopmentTargetRootKindSchema } from "./discovery/trusted-candidate.ts";
+export { createInspectionDevelopmentTargetCandidateBridge } from "./discovery/trusted-candidate.ts";
 export type {
   DevelopmentTargetRootKind,
+  InspectionDevelopmentTargetCandidateBridge,
   TrustedDevelopmentTargetCandidate,
 } from "./discovery/trusted-candidate.ts";
 export type {
@@ -82,6 +85,20 @@ export type {
   RuntimeHttpHandler,
   RuntimeHttpHandlerOptions,
 } from "./http/handler.ts";
+export type { RuntimeTargetController } from "./http/handler.ts";
+export { loadOrCreateRuntimeIdentity } from "./supervision/identity.ts";
+export type {
+  LoadOrCreateRuntimeIdentityOptions,
+  RuntimeIdentity,
+} from "./supervision/identity.ts";
+export {
+  CurrentProjectTargetAdmissionRequestSchema,
+  DevelopmentTargetListResponseSchema,
+} from "./supervision/targets.ts";
+export type {
+  CurrentProjectTargetAdmissionRequest,
+  DevelopmentTargetListResponse,
+} from "./supervision/targets.ts";
 export { openRuntimeStore } from "./persistence/store.ts";
 export type {
   CreateObjectInput,
