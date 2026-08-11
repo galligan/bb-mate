@@ -498,15 +498,15 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
 check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
 run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
 run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
-  passed 515 tests: inspection 136, runtime 175, CLI 65, Workbench 66, Linear
+  passed 518 tests: inspection 136, runtime 175, CLI 68, Workbench 66, Linear
   plugin 21, and scripts 52. One initial aggregate run hit the existing
   five-second standalone symlink-ancestor test timeout; the focused 6/6 retry
   and complete aggregate rerun passed. The legacy package clean room contained
   41 files and 13 stories with SHA-256
-  `c0a077788d0b2870baf91a0c0aa218d1836fa37c140c2ff0455d632622c340a0`.
+  `7376eb25f413e2d2cec1c4f1b208549a0839b319aef31c2ac8b12c2b609ca718`.
   The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
   64,783,586 bytes, 35 assets, 13 stories, and SHA-256
-  `25401cda38e0c46e8b052d026b6734d812f80309935fb3d29c85dd641f6444ee`.
+  `cadf0105d4a9e71142cfc053e9cb0ef6ae25b6cbaf9856e8d5329e93613013f8`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -631,6 +631,15 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   closes the connection, and destroys the unread request after the response.
   Slow chunked GET/HEAD, Content-Length zero plus trailing bytes, nonzero length,
   duplicate length, canonical bodyless reads, and streamed POST regressions pass.
+- Exact-head round 3 showed that THS-004 still applied to noncanonical targets:
+  target validation returned the secured 400 before the framing cleanup path,
+  leaving an incomplete keep-alive socket open outside request accounting. Every
+  listener-level pre-dispatch rejection now uses one close path that disables
+  keep-alive, flushes the secured generic 400, and then destroys the unread
+  request. Slow encoded-dot GET, fragment HEAD, absolute-form POST, and 33-way
+  concurrent incomplete-request regressions all close within the bounded window
+  with zero runtime-handler calls. The replacement aggregate passed 518 tests;
+  package and moved-standalone proofs produced the hashes recorded above.
 
 ## Prompt / Goal Alignment
 

@@ -102,9 +102,15 @@ async function sendResponse(
   nodeResponse.end(body);
 }
 
-function rejectInvalidTarget(response: ServerResponse): void {
+function rejectBeforeDispatch(
+  request: IncomingMessage,
+  response: ServerResponse,
+): void {
   response.statusCode = 400;
+  response.shouldKeepAlive = false;
+  response.setHeader("Connection", "close");
   setSecurityHeaders(response);
+  response.once("finish", () => request.destroy());
   response.end(INVALID_REQUEST_BODY);
 }
 
@@ -119,14 +125,11 @@ export async function listenRuntimeHttp(
       const origin = `http://127.0.0.1:${port}`;
       const url = canonicalOriginForm(target, origin);
       if (!url) {
-        rejectInvalidTarget(response);
+        rejectBeforeDispatch(request, response);
         return;
       }
       if (hasReadBodyFraming(request)) {
-        response.shouldKeepAlive = false;
-        response.setHeader("Connection", "close");
-        response.once("finish", () => request.destroy());
-        rejectInvalidTarget(response);
+        rejectBeforeDispatch(request, response);
         return;
       }
       void handle(toRequest(request, url))
