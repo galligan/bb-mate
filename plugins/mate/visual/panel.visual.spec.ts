@@ -15,12 +15,26 @@ const fixtures = [
   { state: "changed", theme: "light" },
   { state: "hostile", theme: "light" },
   { state: "detail", theme: "light" },
+  { state: "single", theme: "light", width: 420 },
   { state: "multiple", theme: "dark" },
 ] as const;
 
 for (const fixture of fixtures) {
-  test(`${fixture.state} ${fixture.theme} panel`, async ({ page }) => {
+  const width = "width" in fixture ? fixture.width : null;
+  test(`${fixture.state} ${fixture.theme}${width ? ` ${width}px` : ""} panel`, async ({
+    page,
+  }) => {
+    if (width) await page.setViewportSize({ width, height: 900 });
     await page.goto(`?state=${fixture.state}&theme=${fixture.theme}`);
+    if (width) {
+      await page.locator(".fixture-host").evaluate((host) => {
+        host.style.width = "100%";
+        host.style.padding = "0";
+      });
+      await page.locator(".fixture-host > h1").evaluate((heading) => {
+        heading.style.display = "none";
+      });
+    }
     const panel = page.locator("#panel-fixture");
     await expect(panel).toBeVisible();
     await expect(
@@ -46,7 +60,7 @@ for (const fixture of fixtures) {
     }
 
     await expect(panel).toHaveScreenshot(
-      `plugin-workbench-${fixture.state}-${fixture.theme}.png`,
+      `plugin-workbench-${fixture.state}-${fixture.theme}${width ? `-${width}` : ""}.png`,
     );
   });
 }

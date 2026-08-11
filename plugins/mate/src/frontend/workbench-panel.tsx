@@ -293,6 +293,16 @@ export function PluginWorkbenchView({
           onRefresh={onRefresh}
         />
 
+        {selectionMessage && openedProjectId === null ? (
+          <p
+            className="text-xs leading-snug text-subtle-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            {selectionMessage}
+          </p>
+        ) : null}
+
         <NativeSettingsSection
           headingId="pw-projects-heading"
           title="Projects"
@@ -372,9 +382,12 @@ export function PluginWorkbenchView({
 
 export interface PluginWorkbenchTargetDetailProps {
   snapshot: PluginWorkbenchSnapshot;
+  busy: boolean;
+  message: string | null;
   projectLabel: string;
   target: DevelopmentTarget;
   threads: readonly WorkbenchProjectThread[];
+  threadsState: "loading" | "ready" | "unavailable";
   onBack(): void;
   onOpenThread(threadId: string): void;
   onNewThread(): void;
@@ -383,9 +396,12 @@ export interface PluginWorkbenchTargetDetailProps {
 
 export function PluginWorkbenchTargetDetail({
   snapshot,
+  busy,
+  message,
   projectLabel,
   target,
   threads,
+  threadsState,
   onBack,
   onOpenThread,
   onNewThread,
@@ -394,11 +410,16 @@ export function PluginWorkbenchTargetDetail({
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
-        <RuntimeSummary
-          snapshot={snapshot}
-          busy={false}
-          onRefresh={onRefresh}
-        />
+        <RuntimeSummary snapshot={snapshot} busy={busy} onRefresh={onRefresh} />
+        {message ? (
+          <p
+            className="text-xs leading-snug text-subtle-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            {message}
+          </p>
+        ) : null}
         <div>
           <Button
             type="button"
@@ -449,7 +470,21 @@ export function PluginWorkbenchTargetDetail({
           }
           cardClassName="divide-y divide-border p-0"
         >
-          {threads.length === 0 ? (
+          {threadsState === "loading" ? (
+            <div className="p-4">
+              <EmptyInset
+                title="Loading project threads"
+                detail="Reading active threads from bb."
+              />
+            </div>
+          ) : threadsState === "unavailable" ? (
+            <div className="p-4">
+              <EmptyInset
+                title="Project threads unavailable"
+                detail="bb could not provide the project thread list right now."
+              />
+            </div>
+          ) : threads.length === 0 ? (
             <div className="p-4">
               <EmptyInset
                 title="No active project threads"

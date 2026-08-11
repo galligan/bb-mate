@@ -221,12 +221,15 @@ function VisualFixture({ fixture }: { fixture: Fixture }) {
     return (
       <PluginWorkbenchTargetDetail
         snapshot={fixture.snapshot}
+        busy={false}
+        message={fixture.selectionMessage}
         projectLabel="BB Mate"
         target={target}
         threads={[
           { id: "thread_01", title: "Native Workbench design", updatedAt: 2 },
           { id: "thread_02", title: "Plugin target admission", updatedAt: 1 },
         ]}
+        threadsState="ready"
         onBack={() => {}}
         onOpenThread={() => {}}
         onNewThread={() => {}}

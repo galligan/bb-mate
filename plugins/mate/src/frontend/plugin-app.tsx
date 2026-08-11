@@ -22,6 +22,7 @@ import {
 } from "./workbench-snapshot";
 
 const listChangedMessage = "The plugin list changed.";
+const projectOpenFailedMessage = "Project open failed safely. Try again.";
 const targetRoute = /^projects\/([^/]+)\/targets\/([^/]+)$/u;
 
 function parseTargetRoute(subPath: string) {
@@ -43,7 +44,9 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const sidebar = experimental_useSidebarThreads();
   const threadActions = experimental_useSidebarThreadActions();
   const generation = useRef(0);
-  const previousTargetIds = useRef<readonly string[]>([]);
+  const recoveredSubPath = useRef<string | null>(null);
+  const attemptedRouteSubPath = useRef<string | null>(null);
+  const previousTargetIds = useRef(new Map<string, readonly string[]>());
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
     null,
   );
@@ -62,7 +65,10 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
         (next.targets.state === "ready" || next.targets.state === "partial")
           ? next.targets.items.map(({ id }) => id)
           : [];
-      const previous = previousTargetIds.current;
+      const previous =
+        openedProject === null
+          ? []
+          : (previousTargetIds.current.get(openedProject) ?? []);
       setSelectionMessage(
         previous.length > 0 &&
           (previous.length !== nextTargetIds.length ||
@@ -70,7 +76,9 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
           ? listChangedMessage
           : null,
       );
-      previousTargetIds.current = nextTargetIds;
+      if (openedProject !== null) {
+        previousTargetIds.current.set(openedProject, nextTargetIds);
+      }
       setSnapshot(next);
       setOpenedProjectId(openedProject);
       return next;
@@ -118,7 +126,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
           try {
             acceptSnapshot(value, projectId);
           } catch {
-            setSelectionMessage("Project open failed safely. Try again.");
+            setSelectionMessage(projectOpenFailedMessage);
           } finally {
             if (request === generation.current) setAdmittingProjectId(null);
           }
@@ -126,7 +134,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
         () => {
           if (request !== generation.current) return;
           setAdmittingProjectId(null);
-          setSelectionMessage("Project open failed safely. Try again.");
+          setSelectionMessage(projectOpenFailedMessage);
         },
       );
     },
@@ -150,15 +158,27 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const route = useMemo(() => parseTargetRoute(subPath), [subPath]);
 
   useEffect(() => {
+    if (route === null) {
+      attemptedRouteSubPath.current = null;
+      return;
+    }
     if (
       snapshot !== null &&
-      route !== null &&
       openedProjectId !== route.projectId &&
-      admittingProjectId === null
+      admittingProjectId === null &&
+      attemptedRouteSubPath.current !== subPath
     ) {
+      attemptedRouteSubPath.current = subPath;
       openProject(route.projectId);
     }
-  }, [admittingProjectId, openProject, openedProjectId, route, snapshot]);
+  }, [
+    admittingProjectId,
+    openProject,
+    openedProjectId,
+    route,
+    snapshot,
+    subPath,
+  ]);
 
   const target =
     route !== null &&
@@ -171,6 +191,46 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
     route !== null && snapshot?.projects.state === "ready"
       ? snapshot.projects.items.find(({ id }) => id === route.projectId)
       : undefined;
+  useEffect(() => {
+    const malformedRoute = subPath !== "" && route === null;
+    const missingProject =
+      route !== null &&
+      snapshot?.projects.state === "ready" &&
+      project === undefined;
+    const missingTerminalTarget =
+      route !== null &&
+      openedProjectId === route.projectId &&
+      snapshot !== null &&
+      snapshot.targets.state !== "project_not_selected" &&
+      target === undefined;
+    const routeOpenFailed =
+      route !== null &&
+      admittingProjectId === null &&
+      openedProjectId !== route.projectId &&
+      selectionMessage === projectOpenFailedMessage;
+    if (
+      !malformedRoute &&
+      !missingProject &&
+      !missingTerminalTarget &&
+      !routeOpenFailed
+    ) {
+      recoveredSubPath.current = null;
+      return;
+    }
+    if (recoveredSubPath.current === subPath) return;
+    recoveredSubPath.current = subPath;
+    navigate.toPluginPanel("workbench", { replace: true });
+  }, [
+    admittingProjectId,
+    navigate,
+    openedProjectId,
+    project,
+    route,
+    selectionMessage,
+    snapshot,
+    subPath,
+    target,
+  ]);
   const threads = useMemo<readonly WorkbenchProjectThread[]>(() => {
     if (route === null || sidebar.status !== "ready") return [];
     return sidebar.threads
@@ -197,9 +257,14 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
     return (
       <PluginWorkbenchTargetDetail
         snapshot={snapshot}
+        busy={admittingProjectId !== null}
+        message={selectionMessage}
         projectLabel={project.label}
         target={target}
         threads={threads}
+        threadsState={
+          sidebar.status === "error" ? "unavailable" : sidebar.status
+        }
         onBack={() => navigate.toPluginPanel("workbench")}
         onOpenThread={(threadId) => threadActions.open(threadId)}
         onNewThread={() =>

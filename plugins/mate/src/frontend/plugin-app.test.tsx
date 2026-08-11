@@ -204,6 +204,87 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
+  test("recovers a malformed detail route back to the project list once", async () => {
+    await renderPanel("not-a-plugin-detail");
+    await flush();
+
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("recovers a detail route for a project that is no longer available", async () => {
+    await renderPanel(`projects/missing_project/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("recovers when a requested plugin is absent after project discovery", async () => {
+    rpcImplementation = () =>
+      Promise.resolve(snapshot({ state: "ready", items: [] }));
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(2);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("attempts a routed project once and recovers when opening fails", async () => {
+    rpcImplementation = (method) =>
+      method === "status"
+        ? Promise.resolve(snapshot())
+        : Promise.reject(new Error("open failed"));
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(2);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("keeps a detail open and reports a failed refresh in place", async () => {
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      return calls < 3
+        ? Promise.resolve(targetSnapshot)
+        : Promise.reject(new Error("reload failed"));
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).toContain(
+      "Project open failed safely. Try again.",
+    );
+    expect(navigateToPluginPanel).not.toHaveBeenCalled();
+  });
+
   test("shows active project threads on a target detail and uses host actions", async () => {
     const targetSnapshot = snapshot({
       state: "ready",
@@ -293,6 +374,42 @@ describe("Plugin Workbench app registration", () => {
     expect(document.body.textContent).toContain("The plugin list changed.");
     expect(document.body.textContent).toContain("Linear");
     expect(document.body.textContent).not.toContain("mate · revision 1");
+  });
+
+  test("compares plugin-list changes within a project instead of across projects", async () => {
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      const projectId = (input as { projectId: string }).projectId;
+      return Promise.resolve(
+        snapshot({
+          state: "ready",
+          items: [
+            projectId === "project_01"
+              ? {
+                  id: targetA,
+                  label: "Mate",
+                  pluginId: "mate",
+                  revision: 1,
+                }
+              : {
+                  id: targetB,
+                  label: "Remote plugin",
+                  pluginId: "remote",
+                  revision: 1,
+                },
+          ],
+        }),
+      );
+    };
+
+    await renderPanel();
+    await act(async () => button("Open")?.click());
+    await flush();
+    await act(async () => button("Open")?.click());
+    await flush();
+
+    expect(document.body.textContent).toContain("Remote plugin");
+    expect(document.body.textContent).not.toContain("The plugin list changed.");
   });
 
   test("ignores superseded reload responses and never polls", async () => {

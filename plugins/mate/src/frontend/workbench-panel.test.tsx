@@ -117,6 +117,15 @@ describe("Plugin Workbench nav panel", () => {
     );
   });
 
+  test("keeps reload and open failures visible without an opened project", () => {
+    const html = render(snapshot(), {
+      selectionMessage: "Project open failed safely. Try again.",
+    });
+
+    expect(html).toContain("Project open failed safely. Try again.");
+    expect(html).toContain('role="status"');
+  });
+
   test("keeps failure, partial-empty, and empty plugin states distinct", () => {
     const unavailable = render(
       snapshot({ projects: { state: "unavailable", items: [] } }),
@@ -165,6 +174,8 @@ describe("Plugin Workbench nav panel", () => {
     const html = renderToStaticMarkup(
       <PluginWorkbenchTargetDetail
         snapshot={snapshot()}
+        busy={false}
+        message="Project open failed safely. Try again."
         projectLabel="BB Mate"
         target={{
           id: targetId,
@@ -175,6 +186,7 @@ describe("Plugin Workbench nav panel", () => {
         threads={[
           { id: "thread_01", title: "Native design pass", updatedAt: 1 },
         ]}
+        threadsState="ready"
         onBack={() => {}}
         onOpenThread={() => {}}
         onNewThread={() => {}}
@@ -186,6 +198,62 @@ describe("Plugin Workbench nav panel", () => {
     expect(html).toContain("Preview unavailable");
     expect(html).toContain("Native design pass");
     expect(html).toContain("New thread");
+    expect(html).toContain("Project open failed safely. Try again.");
+  });
+
+  test("disables the detail refresh affordance while reloading", () => {
+    const html = renderToStaticMarkup(
+      <PluginWorkbenchTargetDetail
+        snapshot={snapshot()}
+        busy
+        message={null}
+        projectLabel="BB Mate"
+        target={{
+          id: targetId,
+          label: "Plugin Workbench",
+          pluginId: "mate",
+          revision: 3,
+        }}
+        threads={[]}
+        threadsState="ready"
+        onBack={() => {}}
+        onOpenThread={() => {}}
+        onNewThread={() => {}}
+        onRefresh={() => {}}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Reloading Workbench data"');
+    expect(html).toContain("disabled");
+  });
+
+  test("distinguishes loading and unavailable project-thread states", () => {
+    const renderDetail = (threadsState: "loading" | "unavailable") =>
+      renderToStaticMarkup(
+        <PluginWorkbenchTargetDetail
+          snapshot={snapshot()}
+          busy={false}
+          message={null}
+          projectLabel="BB Mate"
+          target={{
+            id: targetId,
+            label: "Plugin Workbench",
+            pluginId: "mate",
+            revision: 3,
+          }}
+          threads={[]}
+          threadsState={threadsState}
+          onBack={() => {}}
+          onOpenThread={() => {}}
+          onNewThread={() => {}}
+          onRefresh={() => {}}
+        />,
+      );
+
+    expect(renderDetail("loading")).toContain("Loading project threads");
+    expect(renderDetail("unavailable")).toContain(
+      "Project threads unavailable",
+    );
   });
 
   test("keeps callbacks as explicit actions", () => {

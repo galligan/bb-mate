@@ -40,7 +40,7 @@ export function PluginWorkbenchBoundary({
           <p className="text-xs text-subtle-foreground" aria-live="polite">
             {failed
               ? "The current status is unknown."
-              : "The runtime remains idle until a project is admitted."}
+              : "The runtime remains idle until you open a project."}
           </p>
         </NativeSettingsSection>
       </div>
