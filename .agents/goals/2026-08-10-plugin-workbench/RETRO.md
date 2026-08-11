@@ -12,8 +12,8 @@ and reconciled. Source-first development-target discovery #57 is merged,
 reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A is
 merged and reconciled through PR #76. Slice 62B's installed host/status shell,
 exact packaged-runtime adapter, and disposable released-bb lifecycle proof are
-locally complete; independent pre-commit audit, PR review, hosted verification,
-merge, and reconciliation remain.
+locally complete and the pre-commit audit is clean. Exact-head PR review, hosted
+verification, merge, and reconciliation remain in draft PR #78.
 
 ## Readiness
 
@@ -26,16 +26,16 @@ hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
 and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
 GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
 passed local, hosted, two-lane exact-head review, merge, and reconciliation
-gates. Slice 62B passes its focused, aggregate, build, visual, package, and
-managed-lifecycle gates and is undergoing the required independent audit before
-a draft PR is opened.
+gates. Slice 62B passes its focused, aggregate, build, visual, package,
+managed-lifecycle, and pre-commit audit gates. Exact-head standing and targeted
+reviews plus hosted CI remain before draft PR #78 can leave draft.
 Browser bootstrap/topology remains isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/plugin-workbench/mate-host-package`; issue #62; no 62B PR
-  yet.
+- Active branch: `feat/plugin-workbench/mate-host-package`; issue #62; draft PR
+  #78.
 - Current merge base: `09f27471ae3bb768272c9103278425bcb03e27b4`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
@@ -761,6 +761,11 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   tar end, real browser gate, route hardening, CI artifact upload, and explicit
   snapshot semantics resolved every finding. The final exact-tree audit reports
   zero P0-P3 and a clean pre-commit verdict.
+- Implementation head `f4968e7c29e56216567175b395b643df721d85f6` is
+  pushed in draft PR #78 with an exact verification and distribution-boundary
+  body. Issue #62 carries the slice handoff, remains open for 62C, and issue #77
+  remains the independent public-distribution blocker. Hosted checks and the two
+  exact-head review lanes are pending.
 
 ## Prompt / Goal Alignment
 
@@ -782,6 +787,6 @@ Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
 source-catalog slices 57A, 57B1, and 57B2, and host-shell slice 62A are merged
 and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B's
 installed `bb-plugin-mate` host/status shell is locally complete and awaits its
-PR review, hosted, merge, and reconciliation gates. Slice 62C still owns runtime
+PR #78 review, hosted, merge, and reconciliation gates. Slice 62C still owns runtime
 source admission and opaque target listing. All release/upstream/Connect/
 normal-profile stop boundaries remain intact.
