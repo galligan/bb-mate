@@ -17,6 +17,7 @@ type FixtureName =
   | "empty"
   | "single"
   | "multiple"
+  | "partial-empty"
   | "partial"
   | "unavailable"
   | "changed"
@@ -135,6 +136,15 @@ const fixtures: Record<FixtureName, Fixture> = {
           { id: targetB, label: "Linear", pluginId: "linear", revision: 2 },
         ],
       },
+    }),
+    selectedProjectId: project.id,
+    selectedTargetId: null,
+    selectionMessage: null,
+  },
+  "partial-empty": {
+    snapshot: parsePluginWorkbenchSnapshot({
+      ...readyBase,
+      targets: { state: "partial", items: [] },
     }),
     selectedProjectId: project.id,
     selectedTargetId: null,

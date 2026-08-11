@@ -9,6 +9,7 @@ const fixtures = [
   { state: "empty", theme: "light" },
   { state: "single", theme: "light" },
   { state: "multiple", theme: "light" },
+  { state: "partial-empty", theme: "light" },
   { state: "partial", theme: "light" },
   { state: "unavailable", theme: "light" },
   { state: "changed", theme: "light" },

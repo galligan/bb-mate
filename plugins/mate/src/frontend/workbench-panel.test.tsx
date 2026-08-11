@@ -114,6 +114,15 @@ describe("Plugin Workbench nav panel", () => {
       }),
     ).toContain("No development plugins found in this project");
 
+    const partialEmpty = render(
+      snapshot({ targets: { state: "partial", items: [] } }),
+      { selectedProjectId: "project_01" },
+    );
+    expect(partialEmpty).toContain("No development targets could be admitted");
+    expect(partialEmpty).not.toContain(
+      "No development plugins found in this project",
+    );
+
     const one = render(
       snapshot({ targets: { state: "ready", items: [item] } }),
       { selectedProjectId: "project_01", selectedTargetId: targetId },

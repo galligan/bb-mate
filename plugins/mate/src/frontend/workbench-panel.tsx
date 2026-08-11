@@ -100,6 +100,19 @@ function TargetCatalogView({
       </div>
     );
   }
+  if (catalog.state === "partial" && catalog.items.length === 0) {
+    return (
+      <div className="pw-empty-state">
+        <span className="pw-empty-mark" aria-hidden="true">
+          !
+        </span>
+        <div>
+          <h3>No development targets could be admitted</h3>
+          <p>Refresh the project to retry the bounded source scan.</p>
+        </div>
+      </div>
+    );
+  }
   if (catalog.items.length === 0) {
     return (
       <div className="pw-empty-state">
