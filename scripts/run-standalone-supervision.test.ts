@@ -7,13 +7,13 @@ describe("Node-hosted standalone supervision entry", () => {
       parseStandaloneSupervisionArgs([
         "/tmp/bb-mate",
         "/tmp/cwd",
-        "0.1.0-alpha.2",
+        "0.1.0-alpha.3",
         "/tmp/root",
       ]),
     ).toEqual({
       executable: "/tmp/bb-mate",
       cwd: "/tmp/cwd",
-      runtimeVersion: "0.1.0-alpha.2",
+      runtimeVersion: "0.1.0-alpha.3",
       temporaryRoot: "/tmp/root",
     });
     expect(() => parseStandaloneSupervisionArgs([])).toThrow("exactly four");

@@ -41,7 +41,7 @@ describe("runtime HTTP response headers", () => {
       ordinary(request("/healthz")),
       ordinary(request("/healthz", {}, "localhost:41721")),
       ordinary(
-        request("/v1/capabilities", {
+        request("/v2/capabilities", {
           headers: { origin: URL },
         }),
       ),
@@ -66,7 +66,7 @@ describe("runtime HTTP response headers", () => {
           body: "{}",
         }),
       ),
-      internalFailure(request("/v1/capabilities")),
+      internalFailure(request("/v2/capabilities")),
     ]);
 
     expect(responses.map(({ status }) => status)).toEqual([

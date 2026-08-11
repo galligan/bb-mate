@@ -17,7 +17,7 @@ export interface RuntimeArtifactStamp {
   readonly manifestSize: number;
   readonly manifestSha256: string;
   readonly runtimeVersion: string;
-  readonly expectedApiVersion: 1;
+  readonly expectedApiVersion: 2;
 }
 
 export type RuntimeArtifactUnavailableReason =
@@ -31,7 +31,7 @@ export type RuntimeArtifactResolution =
       readonly kind: "available";
       readonly executablePath: string;
       readonly runtimeVersion: string;
-      readonly apiVersion: 1;
+      readonly apiVersion: 2;
       readonly size: number;
       readonly sha256: string;
     }
@@ -106,7 +106,7 @@ function validStamp(value: RuntimeArtifactStamp): boolean {
     value.manifestSize <= MAX_MANIFEST_BYTES &&
     /^[a-f0-9]{64}$/u.test(value.manifestSha256) &&
     SEMVER.test(value.runtimeVersion) &&
-    value.expectedApiVersion === 1
+    value.expectedApiVersion === 2
   );
 }
 
@@ -160,7 +160,7 @@ function manifestStamp(
     sha256: manifest.sha256 as string,
     ...binding,
     runtimeVersion: manifest.runtimeVersion as string,
-    expectedApiVersion: 1,
+    expectedApiVersion: 2,
   };
 }
 

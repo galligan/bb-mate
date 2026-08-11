@@ -58,13 +58,13 @@ export async function verifyStandaloneSupervision(options: {
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
     await waitForRuntimeHealth(descriptor.baseUrl, { runtime });
-    const unauthorized = await fetch(`${descriptor.baseUrl}/v1/capabilities`);
+    const unauthorized = await fetch(`${descriptor.baseUrl}/v2/capabilities`);
     assert(
       unauthorized.status === 401,
       "Supervised runtime capabilities were available without authentication.",
     );
     const capabilitiesResponse = await fetch(
-      `${descriptor.baseUrl}/v1/capabilities`,
+      `${descriptor.baseUrl}/v2/capabilities`,
       { headers: { authorization: `Bearer ${runtime.token}` } },
     );
     assert(

@@ -25,7 +25,7 @@ function standaloneManifest(): StandaloneManifest {
     size: 64_783_586,
     sha256: "a".repeat(64),
     bunVersion: "1.3.14",
-    runtimeVersion: "0.1.0-alpha.2",
+    runtimeVersion: "0.1.0-alpha.3",
     storyCount: 13,
     assets: [],
   };
@@ -45,11 +45,11 @@ describe("Mate package runtime artifact", () => {
       mode: "0755",
       size: 64_783_586,
       sha256: "a".repeat(64),
-      runtimeVersion: "0.1.0-alpha.2",
+      runtimeVersion: "0.1.0-alpha.3",
       manifestSize: 20,
       manifestSha256:
         "80f3d90666804a9335821cdb40782458835ffedaef33088bd1dc5eb3ef85ce61",
-      expectedApiVersion: 1,
+      expectedApiVersion: 2,
     });
     expect(serializeMateRuntimeStamp(stamp)).toBe(`${JSON.stringify(stamp)}\n`);
     expect(generateMateRuntimeStampModule(stamp)).toBe(
@@ -64,10 +64,10 @@ describe("Mate package runtime artifact", () => {
         '  mode: "0755",',
         "  size: 64783586,",
         `  sha256: "${"a".repeat(64)}",`,
-        '  runtimeVersion: "0.1.0-alpha.2",',
+        '  runtimeVersion: "0.1.0-alpha.3",',
         "  manifestSize: 20,",
         '  manifestSha256: "80f3d90666804a9335821cdb40782458835ffedaef33088bd1dc5eb3ef85ce61",',
-        "  expectedApiVersion: 1,",
+        "  expectedApiVersion: 2,",
         "} as const);",
         "",
       ].join("\n"),
@@ -120,7 +120,7 @@ describe("Mate package runtime artifact", () => {
   test("rewrites the staged manifest to built public entrypoints", () => {
     const staged = createMateStagedManifest({
       name: "bb-plugin-mate",
-      version: "0.1.0-alpha.1",
+      version: "0.1.0-alpha.2",
       private: true,
       type: "module",
       license: "MIT",
@@ -140,7 +140,7 @@ describe("Mate package runtime artifact", () => {
 
     expect(staged).toEqual({
       name: "bb-plugin-mate",
-      version: "0.1.0-alpha.1",
+      version: "0.1.0-alpha.2",
       private: true,
       type: "module",
       license: "MIT",
@@ -169,7 +169,7 @@ describe("Mate package runtime artifact", () => {
       String(stamp.size),
       String(stamp.manifestSize),
       stamp.manifestSha256,
-      "expectedApiVersion:1",
+      "expectedApiVersion:2",
     ].join(";");
 
     expect(() => assertMateRuntimeStampEmbedded(compiled, stamp)).not.toThrow();
@@ -181,7 +181,7 @@ describe("Mate package runtime artifact", () => {
     ).toThrow("does not embed the exact runtime stamp");
     expect(() =>
       assertMateRuntimeStampEmbedded(
-        compiled.replace("expectedApiVersion:1", "expectedApiVersion:2"),
+        compiled.replace("expectedApiVersion:2", "expectedApiVersion:1"),
         stamp,
       ),
     ).toThrow("does not embed the exact runtime stamp");

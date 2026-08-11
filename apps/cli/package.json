@@ -1,6 +1,6 @@
 {
   "name": "bb-mate",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "A fixture-driven authoring companion for native bb plugins",
   "homepage": "https://github.com/galligan/bb-mate#readme",
   "repository": {

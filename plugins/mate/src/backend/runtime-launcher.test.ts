@@ -42,10 +42,11 @@ const artifact: Extract<RuntimeArtifactResolution, { kind: "available" }> = {
   kind: "available",
   executablePath: "/installed/bb-plugin-mate/runtime/darwin-arm64/bb-mate",
   runtimeVersion: "0.1.0-alpha.2",
-  apiVersion: 1,
+  apiVersion: 2,
   size: 32,
   sha256: "a".repeat(64),
 };
+const DATA_ROOT = "/bb-data/plugins/mate/runtime";
 
 describe("packaged runtime launcher", () => {
   for (const mode of ["closed-before-write", "closed-during-write"] as const) {
@@ -57,6 +58,7 @@ describe("packaged runtime launcher", () => {
       if (mode === "closed-before-write") child.supervisor.destroy();
       await expect(
         launchPackagedRuntime(artifact, {
+          dataRoot: DATA_ROOT,
           attest: async () => true,
           randomBytes: (size) => Buffer.alloc(size, size),
           spawn: (() => child) as never,
@@ -80,6 +82,7 @@ describe("packaged runtime launcher", () => {
     let spawns = 0;
     await expect(
       launchPackagedRuntime(artifact, {
+        dataRoot: DATA_ROOT,
         attest: async () => false,
         spawn: (() => {
           spawns += 1;
@@ -105,6 +108,7 @@ describe("packaged runtime launcher", () => {
       { baseUrl: string; token: string; timeoutMs: number } | undefined;
 
     const launching = launchPackagedRuntime(artifact, {
+      dataRoot: DATA_ROOT,
       parentPid: 4321,
       attest: async () => true,
       randomBytes: (size) => Buffer.alloc(size, size),
@@ -115,9 +119,9 @@ describe("packaged runtime launcher", () => {
       requestCapabilities: async (request) => {
         capabilityRequest = request;
         return RuntimeCapabilityDocumentSchema.parse({
-          schemaVersion: 1,
+          schemaVersion: 2,
           runtimeVersion: artifact.runtimeVersion,
-          apiVersion: 1,
+          apiVersion: 2,
           instanceId: "i".repeat(32),
           capabilities: RUNTIME_CAPABILITIES,
         });
@@ -131,10 +135,10 @@ describe("packaged runtime launcher", () => {
     };
     child.stdout.write(
       serializeRuntimeLaunchDescriptor({
-        schemaVersion: 1,
+        schemaVersion: 2,
         protocol: "bb-mate-runtime",
         runtimeVersion: artifact.runtimeVersion,
-        apiVersion: 1,
+        apiVersion: 2,
         pid: child.pid,
         instanceId: "i".repeat(32),
         baseUrl: "http://127.0.0.1:41721",
@@ -166,12 +170,11 @@ describe("packaged runtime launcher", () => {
       ],
     ]);
     expect(frame).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       expectedRuntimeVersion: artifact.runtimeVersion,
-      expectedApiVersion: 1,
+      expectedApiVersion: 2,
       token: Buffer.alloc(32, 32).toString("base64url"),
-      principalId: Buffer.alloc(24, 24).toString("base64url"),
-      bbContextId: Buffer.alloc(24, 24).toString("base64url"),
+      dataRoot: DATA_ROOT,
     });
     expect(capabilityRequest).toEqual({
       baseUrl: "http://127.0.0.1:41721",
@@ -180,12 +183,15 @@ describe("packaged runtime launcher", () => {
     });
     expect(runtime.identity).toEqual({
       runtimeVersion: artifact.runtimeVersion,
-      apiVersion: 1,
+      apiVersion: 2,
       instanceId: "i".repeat(32),
     });
 
     await runtime.stop();
     await expect(runtime.closed).resolves.toBeUndefined();
+    await expect(runtime.targets.list()).rejects.toThrow(
+      "Runtime target request failed",
+    );
     expect(child.supervisor.writableEnded).toBe(true);
   });
 
@@ -198,6 +204,7 @@ describe("packaged runtime launcher", () => {
     child.supervisor.once("finish", () => child.emit("close", 0, null));
     let handshakeCalls = 0;
     const launching = launchPackagedRuntime(artifact, {
+      dataRoot: DATA_ROOT,
       attest: async () => true,
       randomBytes: (size) => Buffer.alloc(size, size),
       spawn: (() => child) as never,
@@ -211,10 +218,10 @@ describe("packaged runtime launcher", () => {
     }
     child.stdout.write(
       serializeRuntimeLaunchDescriptor({
-        schemaVersion: 1,
+        schemaVersion: 2,
         protocol: "bb-mate-runtime",
         runtimeVersion: artifact.runtimeVersion,
-        apiVersion: 1,
+        apiVersion: 2,
         pid: child.pid + 1,
         instanceId: "i".repeat(32),
         baseUrl: "http://127.0.0.1:41721",
@@ -235,14 +242,15 @@ describe("packaged runtime launcher", () => {
     });
     const signals: NodeJS.Signals[] = [];
     const launching = launchPackagedRuntime(artifact, {
+      dataRoot: DATA_ROOT,
       attest: async () => true,
       randomBytes: (size) => Buffer.alloc(size, size),
       spawn: (() => child) as never,
       requestCapabilities: async () =>
         RuntimeCapabilityDocumentSchema.parse({
-          schemaVersion: 1,
+          schemaVersion: 2,
           runtimeVersion: artifact.runtimeVersion,
-          apiVersion: 1,
+          apiVersion: 2,
           instanceId: "i".repeat(32),
           capabilities: RUNTIME_CAPABILITIES,
         }),
@@ -258,10 +266,10 @@ describe("packaged runtime launcher", () => {
     }
     child.stdout.write(
       serializeRuntimeLaunchDescriptor({
-        schemaVersion: 1,
+        schemaVersion: 2,
         protocol: "bb-mate-runtime",
         runtimeVersion: artifact.runtimeVersion,
-        apiVersion: 1,
+        apiVersion: 2,
         pid: child.pid,
         instanceId: "i".repeat(32),
         baseUrl: "http://127.0.0.1:41721",
@@ -284,14 +292,15 @@ describe("packaged runtime launcher", () => {
     let groupAlive = true;
     const signals: NodeJS.Signals[] = [];
     const launching = launchPackagedRuntime(artifact, {
+      dataRoot: DATA_ROOT,
       attest: async () => true,
       randomBytes: (size) => Buffer.alloc(size, size),
       spawn: (() => child) as never,
       requestCapabilities: async () =>
         RuntimeCapabilityDocumentSchema.parse({
-          schemaVersion: 1,
+          schemaVersion: 2,
           runtimeVersion: artifact.runtimeVersion,
-          apiVersion: 1,
+          apiVersion: 2,
           instanceId: "i".repeat(32),
           capabilities: RUNTIME_CAPABILITIES,
         }),
@@ -308,10 +317,10 @@ describe("packaged runtime launcher", () => {
     }
     child.stdout.write(
       serializeRuntimeLaunchDescriptor({
-        schemaVersion: 1,
+        schemaVersion: 2,
         protocol: "bb-mate-runtime",
         runtimeVersion: artifact.runtimeVersion,
-        apiVersion: 1,
+        apiVersion: 2,
         pid: child.pid,
         instanceId: "i".repeat(32),
         baseUrl: "http://127.0.0.1:41721",

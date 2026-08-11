@@ -1,10 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
+import { promises as fs } from "node:fs";
 import { createServer } from "node:http";
+import os from "node:os";
+import path from "node:path";
 import { Writable } from "node:stream";
 import {
   observeChildClose,
   requestRuntimeHealth,
+  runtimeDataRootForCwd,
   superviseWritable,
   type StandaloneRuntimeDescriptor,
   validateStandaloneDescriptor,
@@ -14,10 +18,10 @@ import {
 
 function descriptor(): StandaloneRuntimeDescriptor & Record<string, unknown> {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     protocol: "bb-mate-runtime",
-    runtimeVersion: "0.1.0-alpha.2",
-    apiVersion: 1,
+    runtimeVersion: "0.1.0-alpha.3",
+    apiVersion: 2,
     pid: 42,
     instanceId: "i".repeat(32),
     baseUrl: "http://127.0.0.1:41721",
@@ -32,16 +36,30 @@ function descriptor(): StandaloneRuntimeDescriptor & Record<string, unknown> {
       pluginBriefs: false,
       reviews: false,
       sessions: false,
-      targets: false,
+      targets: true,
     },
   };
 }
 
 describe("standalone supervision proof", () => {
+  test("uses the physical disposable workspace for runtime persistence", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-data-root-"));
+    const alias = `${root}-alias`;
+    await fs.symlink(root, alias);
+    try {
+      expect(runtimeDataRootForCwd(alias)).toBe(
+        path.join(await fs.realpath(root), ".bb-mate-runtime-data"),
+      );
+    } finally {
+      await fs.unlink(alias);
+      await fs.rm(root, { recursive: true });
+    }
+  });
+
   test("accepts only the exact bounded-loopback descriptor identity", () => {
     expect(
       validateStandaloneDescriptor(descriptor(), {
-        runtimeVersion: "0.1.0-alpha.2",
+        runtimeVersion: "0.1.0-alpha.3",
         pid: 42,
       }),
     ).toEqual(descriptor());
@@ -49,19 +67,19 @@ describe("standalone supervision proof", () => {
     expect(() =>
       validateStandaloneDescriptor(
         { ...descriptor(), token: "secret" },
-        { runtimeVersion: "0.1.0-alpha.2" },
+        { runtimeVersion: "0.1.0-alpha.3" },
       ),
-    ).toThrow("V1 allowlist");
+    ).toThrow("V2 allowlist");
     expect(() =>
       validateStandaloneDescriptor(
         { ...descriptor(), baseUrl: "http://localhost:41721" },
-        { runtimeVersion: "0.1.0-alpha.2" },
+        { runtimeVersion: "0.1.0-alpha.3" },
       ),
     ).toThrow("identity is invalid");
     expect(() =>
       validateStandaloneDescriptor(
         { ...descriptor(), capabilities: { targets: false } },
-        { runtimeVersion: "0.1.0-alpha.2" },
+        { runtimeVersion: "0.1.0-alpha.3" },
       ),
     ).toThrow("identity is invalid");
   });

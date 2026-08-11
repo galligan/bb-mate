@@ -5,7 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./supervision": "./src/supervision/protocol.ts"
+    "./supervision": "./src/supervision/index.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

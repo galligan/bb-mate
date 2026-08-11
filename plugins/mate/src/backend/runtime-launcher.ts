@@ -17,6 +17,10 @@ import {
   type RuntimeCapabilityDocument,
 } from "@bb-mate/runtime/supervision";
 import {
+  createRuntimeTargetClient,
+  type RuntimeTargetClient,
+} from "./runtime-target-client.ts";
+import {
   attestPackagedRuntime,
   type RuntimeArtifactResolution,
 } from "./runtime-resolver.ts";
@@ -28,12 +32,13 @@ type AvailableRuntimeArtifact = Extract<
 
 export interface OwnedRuntimeIdentity {
   readonly runtimeVersion: string;
-  readonly apiVersion: 1;
+  readonly apiVersion: 2;
   readonly instanceId: string;
 }
 
 export interface OwnedRuntime {
   readonly identity: OwnedRuntimeIdentity;
+  readonly targets: RuntimeTargetClient;
   readonly closed: Promise<void>;
   stop(): Promise<void>;
 }
@@ -45,6 +50,7 @@ export interface RuntimeCapabilityRequest {
 }
 
 export interface RuntimeLauncherOptions {
+  readonly dataRoot: string;
   readonly parentPid?: number;
   readonly descriptorTimeoutMs?: number;
   readonly supervisorWriteTimeoutMs?: number;
@@ -56,6 +62,7 @@ export interface RuntimeLauncherOptions {
   readonly requestCapabilities?: (
     request: RuntimeCapabilityRequest,
   ) => Promise<RuntimeCapabilityDocument>;
+  readonly createTargetClient?: typeof createRuntimeTargetClient;
   readonly killGroup?: (pid: number, signal: NodeJS.Signals) => void;
   readonly groupExists?: (pid: number) => boolean;
   readonly attest?: (artifact: AvailableRuntimeArtifact) => Promise<boolean>;
@@ -223,7 +230,7 @@ async function requestCapabilities(
 ): Promise<RuntimeCapabilityDocument> {
   return new Promise((resolve, reject) => {
     const client = requestHttp(
-      `${request.baseUrl}/v1/capabilities`,
+      `${request.baseUrl}/v2/capabilities`,
       {
         agent: false,
         headers: { authorization: `Bearer ${request.token}` },
@@ -322,7 +329,7 @@ async function waitForGroupExit(
 
 export async function launchPackagedRuntime(
   artifact: AvailableRuntimeArtifact,
-  options: RuntimeLauncherOptions = {},
+  options: RuntimeLauncherOptions,
 ): Promise<OwnedRuntime> {
   if (artifact.apiVersion !== RUNTIME_API_VERSION) {
     throw new RuntimeLaunchError("runtime_incompatible");
@@ -337,8 +344,6 @@ export async function launchPackagedRuntime(
   const randomBytes = options.randomBytes ?? nodeRandomBytes;
   const tokenBytes = randomBytes(32);
   const token = tokenBytes.toString("base64url");
-  const principalId = randomBytes(24).toString("base64url");
-  const bbContextId = randomBytes(24).toString("base64url");
   const spawnOptions: SpawnOptions = {
     cwd: path.dirname(artifact.executablePath),
     detached: true,
@@ -430,12 +435,11 @@ export async function launchPackagedRuntime(
       writeSupervisorFrame(
         supervisor,
         `${JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 2,
           expectedRuntimeVersion: artifact.runtimeVersion,
           expectedApiVersion: artifact.apiVersion,
           token,
-          principalId,
-          bbContextId,
+          dataRoot: options.dataRoot,
         })}\n`,
         options.supervisorWriteTimeoutMs ?? 2_000,
       ),
@@ -488,14 +492,30 @@ export async function launchPackagedRuntime(
       () => channel?.dispose(),
       () => channel?.dispose(),
     );
+    const targets = (options.createTargetClient ?? createRuntimeTargetClient)({
+      baseUrl: descriptor.baseUrl,
+      token: Buffer.from(tokenBytes),
+    });
+    void closed.then(
+      () => targets.dispose(),
+      () => targets.dispose(),
+    );
+    const stopOwned = async () => {
+      try {
+        await stop!();
+      } finally {
+        targets.dispose();
+      }
+    };
     return {
       identity: {
         runtimeVersion: descriptor.runtimeVersion,
         apiVersion: descriptor.apiVersion,
         instanceId: descriptor.instanceId,
       },
+      targets,
       closed,
-      stop,
+      stop: stopOwned,
     };
   } catch (cause) {
     let cleanupCause: unknown;

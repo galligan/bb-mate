@@ -18,7 +18,7 @@ import { generateThirdPartyLicenses } from "./third-party-licenses.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expectedPackageName = "bb-plugin-mate";
-const expectedPackageVersion = "0.1.0-alpha.1";
+const expectedPackageVersion = "0.1.0-alpha.2";
 const expectedBbVersion = "0.36.0";
 const expectedSdkVersion = "0.4.1";
 const MAX_COMPRESSED_PACKAGE_BYTES = 128 * 1024 * 1024;
@@ -327,7 +327,7 @@ export async function inspectMatePackageDirectory(
   );
   assert(
     createHash("sha256").update(packagedReadme).digest("hex") ===
-      "02806c35c4df08bfa0ebd20cff47f7e4922fb1ff63a33f2bab86de0ff2ecd86f" &&
+      "c31484a21c8cb608f77df159e03fe6fa7a96b6d349226061c45a9eec3df7051e" &&
       Buffer.compare(packagedReadme, approvedReadme) === 0,
     "Mate packaged README differs from the approved usage document.",
   );
@@ -349,7 +349,7 @@ export async function inspectMatePackageDirectory(
   const skillText = packagedSkill.toString("utf8");
   assert(
     createHash("sha256").update(packagedSkill).digest("hex") ===
-      "390b07b4f84e01325d44a285002e8330a09ac06ce806ddbc598bb9817d223421" &&
+      "3955f26db8200a737350dacf2a559483790715dc8e75181dddca3828eae92670" &&
       Buffer.compare(packagedSkill, approvedSkill) === 0 &&
       skillText.startsWith("---\nname: plugin-workbench\ndescription:") &&
       skillText.includes("# Plugin Workbench"),

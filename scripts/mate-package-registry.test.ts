@@ -29,7 +29,7 @@ describe("Mate package clean-room registry", () => {
         integrity: "sha512-exact",
         shasum: "exact-sha1",
         tarball:
-          "http://127.0.0.1:1234/bb-plugin-mate/-/bb-plugin-mate-0.1.0-alpha.1.tgz",
+          "http://127.0.0.1:1234/bb-plugin-mate/-/bb-plugin-mate-0.1.0-alpha.2.tgz",
       },
     });
   });

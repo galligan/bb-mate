@@ -16,32 +16,31 @@ export type RuntimeUnavailableReason =
   | "runtime_incompatible"
   | "startup_failed";
 
-export interface PluginWorkbenchSnapshot {
-  readonly schemaVersion: 1;
+export interface RuntimeSupervisorSnapshot {
+  readonly schemaVersion: 2;
   readonly runtimeState:
     "idle" | "starting" | "ready" | "stopping" | "unavailable" | "failed";
   readonly reason: RuntimeUnavailableReason | null;
   readonly runtimeVersion: string | null;
-  readonly apiVersion: 1 | null;
+  readonly apiVersion: 2 | null;
   readonly canStart: boolean;
   readonly browserLaunch: "unavailable";
-  readonly targets: "unavailable_pending_runtime_admission";
 }
 
 interface RuntimeSupervisorDependencies {
   readonly resolve: () => Promise<RuntimeArtifactResolution>;
   readonly launch: (
     artifact: Extract<RuntimeArtifactResolution, { kind: "available" }>,
+    dataRoot: string,
   ) => Promise<OwnedRuntime>;
 }
 
 const BASE = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   browserLaunch: "unavailable",
-  targets: "unavailable_pending_runtime_admission",
 } as const;
 
-const idle = (): PluginWorkbenchSnapshot =>
+const idle = (): RuntimeSupervisorSnapshot =>
   Object.freeze({
     ...BASE,
     runtimeState: "idle",
@@ -53,7 +52,7 @@ const idle = (): PluginWorkbenchSnapshot =>
 
 function permanentFailure(
   reason: Exclude<RuntimeUnavailableReason, "startup_failed">,
-): PluginWorkbenchSnapshot {
+): RuntimeSupervisorSnapshot {
   return Object.freeze({
     ...BASE,
     runtimeState: "unavailable",
@@ -64,7 +63,7 @@ function permanentFailure(
   });
 }
 
-function startupFailure(): PluginWorkbenchSnapshot {
+function startupFailure(): RuntimeSupervisorSnapshot {
   return Object.freeze({
     ...BASE,
     runtimeState: "failed",
@@ -86,22 +85,26 @@ function resolverReason(
 export class RuntimeSupervisor {
   private snapshot = idle();
   private runtime: OwnedRuntime | undefined;
-  private starting: Promise<PluginWorkbenchSnapshot> | undefined;
+  private starting: Promise<RuntimeSupervisorSnapshot> | undefined;
   private stopping: Promise<void> | undefined;
   private demanded = false;
+  private demandedDataRoot: string | undefined;
   private listeners = new Set<() => void>();
 
   constructor(private readonly dependencies: RuntimeSupervisorDependencies) {}
 
-  status(): PluginWorkbenchSnapshot {
+  status(): RuntimeSupervisorSnapshot {
     return this.snapshot;
   }
 
-  async ensure(): Promise<PluginWorkbenchSnapshot> {
+  async ensure(dataRoot: string): Promise<RuntimeSupervisorSnapshot> {
+    if (this.demandedDataRoot && this.demandedDataRoot !== dataRoot)
+      throw new Error("Runtime configuration unavailable.");
+    this.demandedDataRoot = dataRoot;
     this.demanded = true;
     if (this.stopping) await this.stopping;
     if (this.runtime) return this.snapshot;
-    const starting = this.starting ?? this.start();
+    const starting = this.starting ?? this.start(dataRoot);
     this.starting = starting;
     try {
       await starting;
@@ -111,7 +114,7 @@ export class RuntimeSupervisor {
     }
   }
 
-  private async start(): Promise<PluginWorkbenchSnapshot> {
+  private async start(dataRoot: string): Promise<RuntimeSupervisorSnapshot> {
     this.snapshot = Object.freeze({
       ...BASE,
       runtimeState: "starting",
@@ -127,7 +130,7 @@ export class RuntimeSupervisor {
         this.notify();
         return this.snapshot;
       }
-      const runtime = await this.dependencies.launch(artifact);
+      const runtime = await this.dependencies.launch(artifact, dataRoot);
       this.runtime = runtime;
       this.snapshot = Object.freeze({
         ...BASE,
@@ -167,6 +170,20 @@ export class RuntimeSupervisor {
     return this.snapshot;
   }
 
+  async admitCurrentProject(sourcePath: string) {
+    const runtime = this.runtime;
+    if (!runtime || this.snapshot.runtimeState !== "ready")
+      throw new Error("Runtime target admission failed.");
+    try {
+      const admitted = await runtime.targets.admit(sourcePath);
+      if (this.runtime !== runtime || this.snapshot.runtimeState !== "ready")
+        throw new Error();
+      return admitted;
+    } catch {
+      throw new Error("Runtime target admission failed.");
+    }
+  }
+
   async runService(signal: AbortSignal): Promise<void> {
     if (signal.aborted) {
       await this.stop();
@@ -178,7 +195,7 @@ export class RuntimeSupervisor {
       !this.starting &&
       this.snapshot.runtimeState !== "unavailable"
     ) {
-      await this.ensure();
+      await this.ensure(this.demandedDataRoot!);
     }
     while (!signal.aborted) {
       if (this.snapshot.runtimeState === "unavailable") {
@@ -245,6 +262,7 @@ export function createRuntimeSupervisor(options: {
         stamp: options.stamp,
         moduleUrl: options.moduleUrl,
       }),
-    launch: launchPackagedRuntime,
+    launch: (artifact, dataRoot) =>
+      launchPackagedRuntime(artifact, { dataRoot }),
   });
 }

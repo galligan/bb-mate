@@ -1,7 +1,7 @@
 # Plugin Workbench host shell and supervised runtime
 
 Date: 2026-08-10
-Status: Slice 62A merged and reconciled; slice 62B active; slice 62C planned
+Status: Slices 62A and 62B merged and reconciled; slice 62C active
 Issue: #62
 Parent: #21
 Depends on: #54, #55, #56, and #57 (all merged)
@@ -26,10 +26,11 @@ Deliver #62 as three merge-first slices:
    package/stamp verification, installed-root resolution, lazy serialized
    supervision, released `navPanel`, skill, isolated bb 0.36 lifecycle proof,
    and an explicit target-admission-unavailable state.
-3. **62C — runtime-owned target admission.** Admit only the current project's
-   released-bb source through a private authenticated composition path, persist
-   canonical source-first targets in the runtime catalog, and return only
-   authorized opaque target projections to the plugin.
+3. **62C — runtime-owned target admission.** Let the user explicitly select an
+   eligible released-bb project, admit its primary-host local source through a
+   private authenticated composition path, persist canonical source-first
+   targets in the runtime catalog, and return only authorized opaque target
+   projections to the plugin.
 
 Issue #62 closes only after all three slices merge and reconcile. The third
 slice is required because 62A intentionally exposes `targets: false`, opens no
@@ -121,6 +122,27 @@ parallel inspection command or plugin-owned state.
   fixtures are emitted as canonical ustar bytes in JavaScript rather than
   depending on BSD/GNU tar option or padding behavior.
 
+## 62C target-admission contract
+
+- The released nav-panel route has no implicit current-project context. The
+  frontend lists bounded project options and the user explicitly selects one;
+  `status({})` is read-only and `admit({projectId})` is the only runtime-start
+  and source-admission edge.
+- The backend uses only released public SDK calls, re-resolves the project at
+  admission time, and requires exactly one local source on the released
+  primary host. The source path never enters the browser RPC projection.
+- Supervisor protocol, descriptor, capability, and HTTP API advance together
+  to version 2. FD 3 carries the private canonical runtime data root; the
+  runtime owns a stable principal/context identity beneath that root and the
+  per-child bearer remains ephemeral.
+- `POST /v2/targets/admit` and `GET /v2/targets` require the absent-Origin,
+  unbound supervisor subject and explicit target scopes. Admission performs
+  only bounded passive discovery and per-target catalog refresh. It executes no
+  target code, package scripts, native inventory, browser, or Connect action.
+- Public rows contain only opaque target ID, bounded label, plugin ID, and
+  positive revision. Browser launch remains unavailable under #70 and the
+  private package remains blocked from distribution by #77.
+
 ## TDD execution
 
 1. [x] Add strict supervisor-frame and launch-descriptor contracts with bounds,
@@ -144,7 +166,7 @@ parallel inspection command or plugin-owned state.
        idle-before-demand, one child, reload, disable, enable/redemand, crash,
        remove, graceful shutdown, forced parent loss, no orphan/listener, and
        no normal-profile mutation.
-9. [ ] Run full local/hosted gates and two 5/5 review lanes; merge and reconcile
+9. [x] Run full local/hosted gates and two 5/5 review lanes; merge and reconcile
        62B while keeping #62 open.
 10. [ ] Add, review, merge, and reconcile 62C runtime-owned current-project
         source admission and authorized opaque target listing; then close #62

@@ -6,40 +6,29 @@ Status: Active
 ## Summary
 
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
-released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
-The narrowed runtime domain/security foundation #55 is merged through PR #71
-and reconciled. Source-first development-target discovery #57 is merged,
-reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A is
-merged and reconciled through PR #76. Slice 62B's installed host/status shell,
-exact packaged-runtime adapter, and disposable released-bb lifecycle proof are
-locally complete and the pre-commit audit is clean. The final executable head's
-local verification matrix is green. The replacement exact head is governed by
-hosted and standing/targeted review gates before ready, merge, and
-reconciliation in draft PR #78.
+released-capability Gate 0 PR #68, standalone-runtime PR #69, runtime foundation
+#71, source-first development-target discovery #57, and Plugin Workbench host
+slices 62A/62B are merged and reconciled. Host-shell #62 is in its final 62C
+runtime-owned target-admission slice through draft PR #79. Its implementation,
+local matrix, and first hosted matrix are green; exact-head standing and
+targeted review findings are being remediated before ready, merge, and local
+reconciliation.
 
 ## Readiness
 
-Active. Prompt/doctor/formatting and packet reviews pass; #52, #53, and #68 are
-merged. Gate 0 admits all released host-plugin rows to downstream execution.
-Standalone #69 passed green local, hosted, and two-lane exact-head review
-evidence and is reconciled. The transport-neutral runtime foundation #55 has
-passed focused/aggregate verification, two independent exact-head reviews, and
-hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
-and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
-GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
-passed local, hosted, two-lane exact-head review, merge, and reconciliation
-gates. Slice 62B passes its focused, aggregate, build, visual, package,
-managed-lifecycle, and pre-commit audit gates. The final executable head's
-replacement local matrix is terminal green. Its exact head remains subject to
-standing/targeted review and hosted checks before draft PR #78 can leave draft.
-Browser bootstrap/topology remains isolated in #70.
+Active. All predecessor slices through 62B are merged and reconciled. Slice 62C
+passes its focused, aggregate, build, visual, standalone, extracted-package,
+managed-lifecycle, and first hosted gates. Its initial exact-head reviews found
+bounded fail-closed and current-state gaps that must be fixed and independently
+re-reviewed before draft PR #79 can leave draft. Browser bootstrap/topology
+remains isolated in #70, and external distribution remains blocked by #77.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/plugin-workbench/mate-host-package`; issue #62; draft PR
-  #78.
-- Current merge base: `09f27471ae3bb768272c9103278425bcb03e27b4`.
+- Active branch: `feat/plugin-workbench/runtime-target-admission`; issue #62;
+  draft PR #79.
+- Current merge base: `4b6253e4eabd34d437a0d8907c05a87018ddd35c`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -811,6 +800,73 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   standing/targeted review gates, ready, merge, and local reconciliation remain
   coordinator gates.
 
+### 62C runtime-owned target admission
+
+- PR #78 subsequently passed both exact-head 5/5 review lanes, merged as
+  `4b6253e4eabd34d437a0d8907c05a87018ddd35c`, and reconciled locally. Issue #62
+  stayed open for the final runtime target-admission slice.
+- Released bb 0.36 nav panels provide no implicit project context. The 62C
+  panel therefore lists bounded eligible projects and requires an explicit
+  selection. `status({})` is read-only; `admit({projectId})` is the only runtime
+  start and source-admission edge. The backend re-resolves exactly one local
+  source on the released primary host through public SDK calls and never sends
+  its path to the browser.
+- The supervisor frame, descriptor, capability document, and route namespace
+  advance together to API 2. FD 3 privately carries the canonical runtime data
+  root; the runtime persists its own stable principal/context identity and
+  opens one catalog beneath that root. The per-child bearer remains ephemeral.
+  Absent-Origin supervisor routes admit a source and list targets only with the
+  exact target scopes.
+- Admission performs bounded passive discovery, one-use inspection transition,
+  and per-target atomic catalog refresh. Public target rows contain only opaque
+  ID, bounded label, plugin ID, and positive revision. No source path, root key,
+  credential, runtime URL, process fact, host fact, native inventory, package
+  path, or browser topology enters the public snapshot.
+- The extracted private-package bb 0.36 proof admits one-target and multi-target
+  projects, preserves target revisions through runtime crash, reload, disable/
+  enable, and graceful reopen, then proves removal, reinstall, forced server-
+  child loss, listener/process cleanup, hostile-PATH nonexecution, log nonleak,
+  inert retained cache bytes, and normal-profile preservation. Its exact local
+  verification artifact contains 14 files with SHA-256
+  `9a77913f260bad66dac42f64a5aee6c5e4903b182afda6d1c1fda34554677013`;
+  the embedded arm64 runtime is 64,849,634 bytes with SHA-256
+  `99630242d4888a5142343ed3e200b81da411b7264531a6e4ee2c51007f537509`
+  and runtime version `0.1.0-alpha.3`.
+- The authoritative remediated-tree aggregate passes 651 tests: inspection 136,
+  runtime 190, CLI 83, Workbench 66, Linear plugin 21, Mate plugin 70, and
+  scripts 85. The first aggregate correctly found that the legacy CLI package
+  proof still pinned alpha.2; advancing that proof to alpha.3 closed the only
+  integration drift. The final 41-file CLI package has SHA-256
+  `9f35a4f4b6e81aace0e3e295b2e1ce597df7b1fd8f3d26a9933b95f70752cc24`.
+  Formatting, type and compatibility checks, all builds, 26 browser/axe/
+  screenshot cases, native declaration checks, the moved standalone proof, and
+  the final extracted Mate package proof are green.
+- Browser launch remains unavailable under #70; target execution, native
+  inventory mutation, Connect, publication, and external redistribution remain
+  outside 62C. The private-package and #77 licensing boundary is unchanged.
+- The first exact-head standing and targeted reviews both scored 3/5 and found
+  the same seven bounded correctness gaps. Their durable dispositions are:
+  ineligible projects are filtered before sorting and the 128-project bound;
+  the independent frontend decoder mirrors backend runtime/catalog state
+  coherence; public project and target labels reject POSIX and Windows path
+  shapes; catalog persistence and transport share one 128-target ceiling, with
+  the 129th creation rejected before mutation and a 200 response after reopen;
+  a vanished target selection remains cleared until an explicit user choice;
+  identity publication recovers only the exact principal-bound, same-inode,
+  two-link crash remnant while all ambiguous hardlinks remain corrupt; and the
+  Summary, Readiness, Baseline, and Final State sections now describe 62C and
+  PR #79. Both superseded round-one reports were scratch-archived after these
+  dispositions were recorded; replacement-head reviews independently verify
+  the fixes against the current code.
+- Replacement review then caught two adjacent empty-state gaps. After the
+  adapter became eligible-only, an empty project list no longer proved that bb
+  had no projects; the panel now says no eligible local projects and directs
+  the user to open a project with a local source on this machine. A legitimate
+  partial admission with no accepted targets also no longer renders the false
+  ready-empty “none found” state; it reports that no development targets could
+  be admitted and offers a bounded refresh. Component assertions and separate
+  deterministic browser snapshots cover both distinctions.
+
 ## Prompt / Goal Alignment
 
 The prompt carries the `merged` horizon, conditional Gate 0, authority,
@@ -828,11 +884,12 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
-source-catalog slices 57A, 57B1, and 57B2, and host-shell slice 62A are merged
-and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B's
-installed `bb-plugin-mate` host/status shell is locally complete. Its final
-replacement head is locally green and is governed by standing/targeted review
-and hosted proof before ready. Ready, merge, and local
-reconciliation remain. Slice 62C still owns runtime source admission and opaque
-target listing. All release/upstream/Connect/
-normal-profile stop boundaries remain intact.
+source-catalog slices 57A, 57B1, and 57B2, and host-shell slices 62A and 62B are
+merged and reconciled; #57 is closed. Host-shell #62 remains open for active
+slice 62C. Its runtime-owned target-admission implementation, extracted
+released-bb lifecycle proof, aggregate, and hosted proof are complete. The seven
+first-round review findings and two adjacent replacement-review UI gaps are
+remediated, and final standing plus targeted exact-head review governs
+readiness. Ready, merge, and local reconciliation remain. All release/upstream/
+Connect/normal-profile stop boundaries remain intact, and #77 remains the
+independent external-distribution blocker.

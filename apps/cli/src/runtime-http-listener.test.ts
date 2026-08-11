@@ -8,6 +8,11 @@ import {
 import { RUNTIME_CAPABILITIES } from "@bb-mate/runtime/supervision";
 import { listenRuntimeHttp } from "./runtime-http-listener.ts";
 
+const LISTENER_CAPABILITIES = Object.freeze({
+  ...RUNTIME_CAPABILITIES,
+  targets: false,
+});
+
 async function rawRequest(
   port: number,
   target: string,
@@ -102,7 +107,7 @@ describe("runtime HTTP listener", () => {
       ),
       openSlowRequest(
         listener.port,
-        `POST http://127.0.0.1:${listener.port}/v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+        `POST http://127.0.0.1:${listener.port}/v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
       ),
     ]);
     try {
@@ -131,7 +136,7 @@ describe("runtime HTTP listener", () => {
     const requestLines = [
       "GET /%2e%2e/healthz",
       "HEAD /healthz#fragment",
-      `POST http://127.0.0.1:${listener.port}/v1/capabilities`,
+      `POST http://127.0.0.1:${listener.port}/v2/capabilities`,
     ];
     const attacks = await Promise.all(
       Array.from({ length: 33 }, (_, index) =>
@@ -178,12 +183,12 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
     });
     const attack = await openSlowRequest(
       listener.port,
-      `POST /v1/capabilities HTTP/1.1\r\nHost: evil.example\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+      `POST /v2/capabilities HTTP/1.1\r\nHost: evil.example\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
     );
     try {
       const response = await attack.response;
@@ -211,17 +216,17 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
     });
     const attacks = await Promise.all([
       openSlowRequest(
         listener.port,
-        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://evil.example\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+        `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://evil.example\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
       ),
       openSlowRequest(
         listener.port,
-        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+        `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
       ),
     ]);
     try {
@@ -255,17 +260,17 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
     });
     const attacks = await Promise.all([
       openSlowRequest(
         listener.port,
-        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nContent-Encoding: gzip\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+        `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nContent-Encoding: gzip\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
       ),
       openSlowRequest(
         listener.port,
-        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nContent-Length: ${256 * 1024 + 1}\r\n\r\na`,
+        `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nContent-Length: ${256 * 1024 + 1}\r\n\r\na`,
       ),
     ]);
     try {
@@ -303,7 +308,7 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
     });
     const attackHeaders = [
@@ -315,7 +320,7 @@ describe("runtime HTTP listener", () => {
       Array.from({ length: 33 }, (_, index) =>
         openSlowRequest(
           listener.port,
-          `POST /v1/capabilities HTTP/1.1\r\n${attackHeaders[index % attackHeaders.length]}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+          `POST /v2/capabilities HTTP/1.1\r\n${attackHeaders[index % attackHeaders.length]}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
         ),
       ),
     );
@@ -360,10 +365,10 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
     });
-    const request = `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`;
+    const request = `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`;
     const accounted = await Promise.all(
       Array.from({ length: 32 }, () => openSlowRequest(listener.port, request)),
     );
@@ -408,7 +413,7 @@ describe("runtime HTTP listener", () => {
         socket.once("error", reject);
       });
       socket.write(
-        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nContent-Length: 3\r\n\r\nabc`,
+        `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nContent-Length: 3\r\n\r\nabc`,
       );
       const firstBytes = await firstResponse;
       expect(firstBytes).toStartWith("HTTP/1.1 200");
@@ -444,7 +449,7 @@ describe("runtime HTTP listener", () => {
     );
     const attack = await openSlowRequest(
       listener.port,
-      `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+      `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
     );
     try {
       const response = await attack.response;
@@ -603,7 +608,7 @@ describe("runtime HTTP listener", () => {
       const head = await rawRequest(listener.port, "/healthz", {
         method: "HEAD",
       });
-      const post = await rawRequest(listener.port, "/v1/capabilities", {
+      const post = await rawRequest(listener.port, "/v2/capabilities", {
         method: "POST",
         headers: { "Content-Length": "3" },
         body: "abc",
@@ -631,7 +636,7 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
       authenticate: async (request) =>
         request.headers.get("authorization") === `Bearer ${token}`
@@ -649,7 +654,7 @@ describe("runtime HTTP listener", () => {
       const health = await rawRequest(listener.port, "/%2e%2e/healthz");
       const capabilities = await rawRequest(
         listener.port,
-        "/v1/%2e%2e/v1/capabilities",
+        "/v2/%2e%2e/v2/capabilities",
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
@@ -709,7 +714,7 @@ describe("runtime HTTP listener", () => {
       identity: {
         runtimeVersion: "0.1.0-alpha.2",
         instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
-        capabilities: RUNTIME_CAPABILITIES,
+        capabilities: LISTENER_CAPABILITIES,
       },
       authenticate: async (request) =>
         request.headers.get("authorization") === `Bearer ${token}`
@@ -727,7 +732,7 @@ describe("runtime HTTP listener", () => {
       const health = await rawRequest(listener.port, "/healthz", {
         headers: { Origin: `http://127.0.0.1:${listener.port}` },
       });
-      const capabilities = await rawRequest(listener.port, "/v1/capabilities", {
+      const capabilities = await rawRequest(listener.port, "/v2/capabilities", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const hostileHost = await rawRequest(listener.port, "/healthz", {
@@ -736,7 +741,7 @@ describe("runtime HTTP listener", () => {
       const hostileOrigin = await rawRequest(listener.port, "/healthz", {
         headers: { Origin: "http://evil.example" },
       });
-      const oversized = await rawRequest(listener.port, "/v1/capabilities", {
+      const oversized = await rawRequest(listener.port, "/v2/capabilities", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

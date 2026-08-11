@@ -1,36 +1,108 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  parsePluginWorkbenchEnsureInput,
+  parsePluginWorkbenchAdmitInput,
   parsePluginWorkbenchSnapshot,
   parsePluginWorkbenchStatusInput,
   type PluginWorkbenchSnapshot,
 } from "./workbench-snapshot";
 
+const projectId = "project_01";
+const targetId = "abcdefghijklmnopqrstuvwxzy012345";
 const readySnapshot: PluginWorkbenchSnapshot = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   runtimeState: "ready",
   reason: null,
-  runtimeVersion: "0.6.0",
-  apiVersion: 1,
+  runtimeVersion: "0.7.0",
+  apiVersion: 2,
   canStart: false,
   browserLaunch: "unavailable",
-  targets: "unavailable_pending_runtime_admission",
+  projects: {
+    state: "ready",
+    items: [
+      { id: projectId, label: "BB Mate", admission: "available" },
+      { id: "project_02", label: "Remote", admission: "no_source" },
+    ],
+  },
+  targets: {
+    state: "ready",
+    items: [
+      {
+        id: targetId,
+        label: "Plugin Workbench",
+        pluginId: "mate",
+        revision: 3,
+      },
+    ],
+  },
 };
 
 describe("Plugin Workbench frontend snapshot", () => {
-  test("accepts the finite public ready projection", () => {
+  test("accepts the finite path-free v2 projection", () => {
     expect(parsePluginWorkbenchSnapshot(readySnapshot)).toEqual(readySnapshot);
   });
 
-  test("rejects secret, path, process, URL, command, and future fields", () => {
+  test("accepts finite unavailable catalog states", () => {
+    expect(
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        runtimeState: "idle",
+        runtimeVersion: null,
+        apiVersion: null,
+        canStart: true,
+        projects: { state: "unavailable", items: [] },
+        targets: {
+          state: "unavailable",
+          reason: "runtime_not_ready",
+          items: [],
+        },
+      }),
+    ).toBeDefined();
+  });
+
+  test("accepts explicit selection and generic partial catalog states", () => {
+    expect(
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        targets: { state: "project_not_selected", items: [] },
+      }).targets,
+    ).toEqual({ state: "project_not_selected", items: [] });
+    expect(
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        targets: { state: "partial", items: readySnapshot.targets.items },
+      }).targets,
+    ).toEqual({ state: "partial", items: readySnapshot.targets.items });
+  });
+
+  test("rejects secret, path, process, URL, command, and future fields recursively", () => {
     for (const value of [
       { ...readySnapshot, token: "secret" },
       { ...readySnapshot, pid: 42 },
       { ...readySnapshot, baseUrl: "http://127.0.0.1:1234" },
       { ...readySnapshot, path: "/private/plugin" },
       { ...readySnapshot, command: "open URL" },
-      { ...readySnapshot, targets: [] },
+      {
+        ...readySnapshot,
+        projects: {
+          ...readySnapshot.projects,
+          items: [
+            { ...readySnapshot.projects.items[0], path: "/private/plugin" },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          ...readySnapshot.targets,
+          items: [
+            {
+              ...readySnapshot.targets.items[0],
+              baseUrl: "http://127.0.0.1:1234",
+            },
+          ],
+        },
+      },
     ]) {
       expect(() => parsePluginWorkbenchSnapshot(value)).toThrow(
         "Plugin Workbench returned an invalid snapshot.",
@@ -38,19 +110,104 @@ describe("Plugin Workbench frontend snapshot", () => {
     }
   });
 
-  test("requires coherent finite runtime states", () => {
+  test("rejects malformed and oversized catalog values", () => {
     for (const value of [
-      { ...readySnapshot, runtimeState: "connecting" },
-      { ...readySnapshot, reason: "unknown" },
-      { ...readySnapshot, apiVersion: "1" },
-      { ...readySnapshot, browserLaunch: "available" },
-      { ...readySnapshot, runtimeVersion: "x".repeat(65) },
-      { ...readySnapshot, runtimeVersion: "/private/runtime" },
-      { ...readySnapshot, runtimeVersion: "http://127.0.0.1" },
-      { ...readySnapshot, runtimeVersion: "C:\\runtime\\bb-mate" },
-      { ...readySnapshot, runtimeState: "idle", canStart: false },
-      { ...readySnapshot, runtimeState: "ready", canStart: true },
-      { ...readySnapshot, runtimeState: "unavailable", reason: null },
+      { ...readySnapshot, schemaVersion: 1 },
+      {
+        ...readySnapshot,
+        projects: {
+          state: "ready",
+          items: [{ id: "", label: "BB Mate", admission: "available" }],
+        },
+      },
+      {
+        ...readySnapshot,
+        projects: {
+          state: "ready",
+          items: [
+            { id: projectId, label: "x".repeat(257), admission: "available" },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        projects: {
+          state: "ready",
+          items: [
+            {
+              id: projectId,
+              label: "/Users/private/project",
+              admission: "available",
+            },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        projects: {
+          state: "ready",
+          items: [
+            readySnapshot.projects.items[0],
+            readySnapshot.projects.items[0],
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "ready",
+          items: [{ ...readySnapshot.targets.items[0], id: "not-opaque" }],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "ready",
+          items: [
+            { ...readySnapshot.targets.items[0], label: "x".repeat(129) },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "ready",
+          items: [
+            {
+              ...readySnapshot.targets.items[0],
+              label: String.raw`C:\private\plugin`,
+            },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "ready",
+          items: [
+            { ...readySnapshot.targets.items[0], pluginId: "Upper_Case" },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "ready",
+          items: [{ ...readySnapshot.targets.items[0], revision: 0 }],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "unavailable",
+          reason: "catalog_unavailable",
+          items: [readySnapshot.targets.items[0]],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: { state: "ready", reason: "catalog_unavailable", items: [] },
+      },
     ]) {
       expect(() => parsePluginWorkbenchSnapshot(value)).toThrow(
         "Plugin Workbench returned an invalid snapshot.",
@@ -59,50 +216,15 @@ describe("Plugin Workbench frontend snapshot", () => {
   });
 
   test("requires runtime identity exactly for ready and stopping states", () => {
-    expect(
-      parsePluginWorkbenchSnapshot({
-        ...readySnapshot,
-        runtimeState: "stopping",
-      }),
-    ).toEqual({ ...readySnapshot, runtimeState: "stopping" });
-
     for (const value of [
       { ...readySnapshot, runtimeVersion: null, apiVersion: null },
-      { ...readySnapshot, runtimeVersion: null },
-      { ...readySnapshot, apiVersion: null },
-      {
-        ...readySnapshot,
-        runtimeState: "stopping",
-        runtimeVersion: null,
-        apiVersion: null,
-      },
-      {
-        ...readySnapshot,
-        runtimeState: "idle",
-        runtimeVersion: "0.6.0",
-        apiVersion: 1,
-        canStart: true,
-      },
-      {
-        ...readySnapshot,
-        runtimeState: "starting",
-        runtimeVersion: "0.6.0",
-        apiVersion: 1,
-      },
+      { ...readySnapshot, runtimeState: "idle", canStart: true },
       {
         ...readySnapshot,
         runtimeState: "unavailable",
-        reason: "artifact_missing",
-        runtimeVersion: "0.6.0",
-        apiVersion: 1,
-      },
-      {
-        ...readySnapshot,
-        runtimeState: "failed",
-        reason: "startup_failed",
-        runtimeVersion: "0.6.0",
-        apiVersion: 1,
-        canStart: true,
+        reason: null,
+        runtimeVersion: null,
+        apiVersion: null,
       },
     ]) {
       expect(() => parsePluginWorkbenchSnapshot(value)).toThrow(
@@ -111,21 +233,158 @@ describe("Plugin Workbench frontend snapshot", () => {
     }
   });
 
-  test("accepts only strict empty RPC inputs", () => {
-    expect(parsePluginWorkbenchStatusInput({})).toEqual({});
-    expect(parsePluginWorkbenchEnsureInput({})).toEqual({});
-    for (const value of [
-      { projectId: "project-123" },
-      { projectId: null },
-      { sourcePath: "/private/plugin" },
-      { token: "secret" },
+  test("rejects path-shaped project and target labels", () => {
+    for (const label of [
+      "/Users/test/plugin",
+      "folder/plugin",
+      String.raw`C:\Users\test\plugin`,
+      String.raw`folder\plugin`,
+      "C:plugin",
+      ".",
+      "..",
+      "~",
     ]) {
-      expect(() => parsePluginWorkbenchStatusInput(value)).toThrow(
-        "Plugin Workbench returned an invalid request.",
-      );
-      expect(() => parsePluginWorkbenchEnsureInput(value)).toThrow(
+      expect(() =>
+        parsePluginWorkbenchSnapshot({
+          ...readySnapshot,
+          projects: {
+            state: "ready",
+            items: [{ id: projectId, label, admission: "available" }],
+          },
+        }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+      expect(() =>
+        parsePluginWorkbenchSnapshot({
+          ...readySnapshot,
+          targets: {
+            state: "ready",
+            items: [{ ...readySnapshot.targets.items[0], label }],
+          },
+        }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+    }
+  });
+
+  test("rejects every half-present or state-incoherent runtime identity", () => {
+    const states = [
+      ["idle", null, true],
+      ["starting", null, false],
+      ["ready", null, false],
+      ["stopping", null, false],
+      ["unavailable", "artifact_missing", false],
+      ["failed", "startup_failed", true],
+    ] as const;
+    for (const [runtimeState, reason, canStart] of states) {
+      const base = { ...readySnapshot, runtimeState, reason, canStart };
+      for (const identity of [
+        { runtimeVersion: "0.7.0", apiVersion: null },
+        { runtimeVersion: null, apiVersion: 2 },
+      ] as const) {
+        expect(() =>
+          parsePluginWorkbenchSnapshot({ ...base, ...identity }),
+        ).toThrow("Plugin Workbench returned an invalid snapshot.");
+      }
+      const requiresIdentity =
+        runtimeState === "ready" || runtimeState === "stopping";
+      const wrongIdentity = requiresIdentity
+        ? { runtimeVersion: null, apiVersion: null }
+        : { runtimeVersion: "0.7.0", apiVersion: 2 };
+      expect(() =>
+        parsePluginWorkbenchSnapshot({ ...base, ...wrongIdentity }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+    }
+  });
+
+  test("requires target catalog state to match runtime readiness", () => {
+    const nonReadyStates = [
+      ["idle", null, true, null],
+      ["starting", null, false, null],
+      ["stopping", null, false, "0.7.0"],
+      ["unavailable", "artifact_missing", false, null],
+      ["failed", "startup_failed", true, null],
+    ] as const;
+    for (const [
+      runtimeState,
+      reason,
+      canStart,
+      runtimeVersion,
+    ] of nonReadyStates) {
+      const base = {
+        ...readySnapshot,
+        runtimeState,
+        reason,
+        canStart,
+        runtimeVersion,
+        apiVersion: runtimeVersion === null ? null : 2,
+      };
+      for (const targets of [
+        readySnapshot.targets,
+        { state: "partial", items: readySnapshot.targets.items },
+        { state: "project_not_selected", items: [] },
+        { state: "unavailable", reason: "catalog_unavailable", items: [] },
+      ] as const) {
+        expect(() =>
+          parsePluginWorkbenchSnapshot({ ...base, targets }),
+        ).toThrow("Plugin Workbench returned an invalid snapshot.");
+      }
+      for (const targetReason of [
+        "runtime_not_ready",
+        "runtime_incompatible",
+      ] as const) {
+        expect(
+          parsePluginWorkbenchSnapshot({
+            ...base,
+            targets: { state: "unavailable", reason: targetReason, items: [] },
+          }).targets,
+        ).toEqual({ state: "unavailable", reason: targetReason, items: [] });
+      }
+    }
+
+    for (const targetReason of [
+      "runtime_not_ready",
+      "runtime_incompatible",
+    ] as const) {
+      expect(() =>
+        parsePluginWorkbenchSnapshot({
+          ...readySnapshot,
+          targets: { state: "unavailable", reason: targetReason, items: [] },
+        }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+    }
+    expect(
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        targets: {
+          state: "unavailable",
+          reason: "catalog_unavailable",
+          items: [],
+        },
+      }).targets,
+    ).toEqual({
+      state: "unavailable",
+      reason: "catalog_unavailable",
+      items: [],
+    });
+  });
+
+  test("accepts only strict status and admit inputs", () => {
+    expect(parsePluginWorkbenchStatusInput({})).toEqual({});
+    expect(parsePluginWorkbenchAdmitInput({ projectId })).toEqual({
+      projectId,
+    });
+    for (const value of [
+      {},
+      { projectId: null },
+      { projectId: "" },
+      { projectId, sourcePath: "/private/plugin" },
+      { projectId, token: "secret" },
+    ]) {
+      expect(() => parsePluginWorkbenchAdmitInput(value)).toThrow(
         "Plugin Workbench returned an invalid request.",
       );
     }
+    expect(() => parsePluginWorkbenchStatusInput({ projectId })).toThrow(
+      "Plugin Workbench returned an invalid request.",
+    );
   });
 });

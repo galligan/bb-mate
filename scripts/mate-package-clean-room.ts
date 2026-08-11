@@ -11,6 +11,7 @@ import { inspectMatePackageArchive } from "./inspect-mate-package.ts";
 import { inspectStandalone } from "./inspect-standalone.ts";
 import { createMateRuntimeStamp } from "./mate-package-artifact.ts";
 import { verifyManagedMatePackage } from "./mate-package-managed-clean-room.ts";
+import { fingerprintProfileRoots } from "./profile-fingerprint.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const pluginRoot = path.join(repositoryRoot, "plugins", "mate");
@@ -73,7 +74,78 @@ async function writeHostileTool(
   );
 }
 
+async function writePassiveTarget(
+  root: string,
+  id: string,
+  marker: string,
+): Promise<void> {
+  await fs.mkdir(root, { recursive: true });
+  await Promise.all([
+    fs.writeFile(
+      path.join(root, "package.json"),
+      `${JSON.stringify({
+        name: `bb-plugin-${id}`,
+        version: "1.2.3",
+        scripts: {
+          build: `touch ${marker}`,
+          postinstall: `touch ${marker}`,
+        },
+        bb: {
+          name: id[0]!.toUpperCase() + id.slice(1),
+          description: `${id} clean-room target`,
+          branding: { icon: "Puzzle" },
+          server: "./server.ts",
+          app: "./app.tsx",
+        },
+      })}\n`,
+    ),
+    fs.writeFile(
+      path.join(root, "server.ts"),
+      `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "server"); export default () => {};\n`,
+    ),
+    fs.writeFile(
+      path.join(root, "app.tsx"),
+      `import { writeFileSync } from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "app"); export default {};\n`,
+    ),
+  ]);
+}
+
 export async function runMatePackageCleanRoom(): Promise<void> {
+  const normalHome = os.homedir();
+  const normalProfileRoots = [
+    path.join(
+      normalHome,
+      "Library",
+      "Application Support",
+      "bb",
+      "plugins",
+      "mate",
+    ),
+    path.join(normalHome, ".bb", "plugins", "mate"),
+    path.join(normalHome, ".bb", "plugins", "cache", "npm", "bb-plugin-mate"),
+    ...(process.env.BB_DATA_DIR && path.isAbsolute(process.env.BB_DATA_DIR)
+      ? [
+          path.join(process.env.BB_DATA_DIR, "plugins", "mate"),
+          path.join(
+            process.env.BB_DATA_DIR,
+            "plugins",
+            "cache",
+            "npm",
+            "bb-plugin-mate",
+          ),
+        ]
+      : []),
+    ...(process.env.XDG_DATA_HOME
+      ? [path.join(process.env.XDG_DATA_HOME, "bb", "plugins", "mate")]
+      : []),
+    ...(process.env.XDG_CONFIG_HOME
+      ? [path.join(process.env.XDG_CONFIG_HOME, "bb", "plugins", "mate")]
+      : []),
+    ...(process.env.XDG_STATE_HOME
+      ? [path.join(process.env.XDG_STATE_HOME, "bb", "plugins", "mate")]
+      : []),
+  ];
+  const normalProfileBefore = await fingerprintProfileRoots(normalProfileRoots);
   const [npmExecutable, nodeExecutable, tarExecutable, originalStamp] =
     await Promise.all([
       exactTool("npm"),
@@ -103,6 +175,8 @@ export async function runMatePackageCleanRoom(): Promise<void> {
     const dataRoot = path.join(temporaryRoot, "bb-data");
     const marker = path.join(temporaryRoot, "ambient-tool-used");
     const targetMarker = path.join(temporaryRoot, "target-code-executed");
+    const singleSourceRoot = path.join(hostileCwd, "single-source");
+    const multipleSourceRoot = path.join(hostileCwd, "multiple-source");
     await Promise.all(
       [hostileCwd, toolRoot, homeRoot, dataRoot].map((directory) =>
         fs.mkdir(directory, { recursive: true }),
@@ -121,6 +195,21 @@ export async function runMatePackageCleanRoom(): Promise<void> {
           },
           bb: { server: "./server.ts", app: "./app.tsx" },
         })}\n`,
+      ),
+      writePassiveTarget(
+        path.join(singleSourceRoot, "alpha"),
+        "alpha",
+        targetMarker,
+      ),
+      writePassiveTarget(
+        path.join(multipleSourceRoot, "bravo"),
+        "bravo",
+        targetMarker,
+      ),
+      writePassiveTarget(
+        path.join(multipleSourceRoot, "charlie"),
+        "charlie",
+        targetMarker,
       ),
       fs.writeFile(
         path.join(hostileCwd, "server.ts"),
@@ -223,6 +312,10 @@ export async function runMatePackageCleanRoom(): Promise<void> {
       bbExecutable,
       bbAppExecutable,
       canonicalStandaloneRoot: standaloneRoot,
+      singleSourceRoot,
+      multipleSourceRoot,
+      targetMarker,
+      ambientMarker: marker,
     });
 
     const extractionRoot = path.join(temporaryRoot, "runtime-proof");
@@ -260,6 +353,11 @@ export async function runMatePackageCleanRoom(): Promise<void> {
         .then(() => true)
         .catch(() => false)),
       "Mate lifecycle inspected or executed disposable target plugin code.",
+    );
+    assert(
+      (await fingerprintProfileRoots(normalProfileRoots)) ===
+        normalProfileBefore,
+      "Mate package proof mutated the normal bb profile.",
     );
     assert(
       Buffer.compare(originalStamp, await fs.readFile(generatedStampPath)) ===
