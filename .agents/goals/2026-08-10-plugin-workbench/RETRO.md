@@ -706,8 +706,9 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   unavailable; 62C later adds private authenticated current-project source
   admission and authorized opaque target listing in the canonical runtime.
 - Slice 62B implements `bb-plugin-mate` as a released 0.36 native nav-panel and
-  server package. Status is read-only; only an explicit project-bound `ensure`
-  demand starts the runtime. The strict public snapshot exposes finite lifecycle
+  server package. Status is read-only; only an explicit project-independent
+  `ensure({})` demand starts the runtime. Project/source binding remains deferred
+  to 62C, where runtime admission will actually consume it. The strict public snapshot exposes finite lifecycle
   states and version identity while keeping paths, process IDs, credentials,
   commands, listener URLs, host facts, browser launch, and target discovery out
   of the frontend contract. The installed-root resolver admits only the exact
@@ -724,9 +725,9 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   metadata, README, skill, MIT license, generated notices, embedded stamp,
   executable mode, runtime manifest, runtime bytes, and the exact pinned Bun
   1.3.14 license are independently checked. The artifact SHA-256 is
-  `3de936d2aeac6034b3a94b449abb627ecd5dd5027252fe372058c44bf993b210`;
+  `9606efc5184ce37e451e9065600113eacdec0ee56bdec869b7d9a0d1898c40dc`;
   its runtime remains 64,783,586 bytes at
-  `df2218e931e2c048ed0c2896a4448313169af324eca9595cc72717364a1ca16f`,
+  `0c0325562996ce2bffe8d4db5d2f82e234aa86158117db2d73048f231e0545ff`,
   runtime `0.1.0-alpha.2`, API 1.
 - Bun's pinned license records statically linked JavaScriptCore/WebKit and other
   separately licensed components, but available release materials do not prove
@@ -744,13 +745,21 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   target-code sentinels remain unused. Released bb intentionally retains an
   immutable managed artifact cache after removal; the proof verifies it is inert
   and hash-identical before deleting only the disposable profile.
+- Package verification owns its standalone input end to end. Two fresh child
+  Bun processes build into bounded temporary roots, and the managed installed-
+  cache inspections receive that same canonical root rather than consulting a
+  shared artifact. Portable pure-JavaScript ustar fixtures replace BSD/GNU tar
+  assumptions. Normalizing Bun's virtual entry key and imports relative to the
+  repository root removes the checkout-path compiler leak; independent builds
+  in the workspace and a frozen fresh checkout now produce byte-identical
+  executable and manifest bytes.
 - The actual plugin panel is browser-tested inside a host `main` without nesting
   its own main landmark. Five deterministic Chromium screenshot and axe cases
   cover idle, ready, unavailable, hostile text, and dark appearance. Panel
   status is explicitly an on-mount/post-action snapshot for 62B, not realtime
   monitoring.
-- Local 62B gates pass with 590 tests: inspection 136, runtime 175, CLI 75,
-  Workbench 66, Linear plugin 21, Mate plugin 43, and scripts 74. Formatting,
+- Local 62B gates pass with 593 tests: inspection 136, runtime 175, CLI 75,
+  Workbench 66, Linear plugin 21, Mate plugin 43, and scripts 77. Formatting,
   checks, released compatibility, builds, 19 visual/accessibility tests, the
   legacy 41-file package clean room, native declaration regeneration check,
   exact package inspection, and `git diff --check` also pass.
@@ -761,7 +770,13 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   tar end, real browser gate, route hardening, CI artifact upload, and explicit
   snapshot semantics resolved every finding. The final exact-tree audit reports
   zero P0-P3 and a clean pre-commit verdict.
-- Implementation head `f4968e7c29e56216567175b395b643df721d85f6` is
+- Subsequent exact-head review cycles found and closed hosted GNU/BSD archive
+  portability and temporary-artifact handoff gaps, an immediately-closed
+  supervisor snapshot race, an unusable project-gated nav demand edge, and an
+  incomplete runtime-manifest stamp. The final tests cover strict empty RPC
+  inputs, current-state supervisor returns, exact manifest-byte size/SHA-256,
+  valid-shape manifest mutations, and the real released nav-panel Start action.
+- Implementation head `e4b249cc0ccbe3d7bb213741f61b733a574c6979` is
   pushed in draft PR #78 with an exact verification and distribution-boundary
   body. Issue #62 carries the slice handoff, remains open for 62C, and issue #77
   remains the independent public-distribution blocker. Hosted checks and the two

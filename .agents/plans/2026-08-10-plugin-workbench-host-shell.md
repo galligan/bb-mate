@@ -72,7 +72,9 @@ parallel inspection command or plugin-owned state.
   `background.service`/`onDispose`, and a project-scoped skill. Harness remains
   unavailable while the public SDK package is E404.
 - Build stages only `runtime/darwin-arm64/{bb-mate,manifest.json}` from the
-  exact deterministic standalone output. The npm allowlist is exact and package
+  exact deterministic standalone output. Independent fresh-process builds in
+  the workspace and a frozen checkout must be byte-identical; the compiler
+  graph uses only a repository-relative virtual entry key and imports. The npm allowlist is exact and package
   inspection proves stamped frontend/backend artifacts, skill/docs, executable
   mode 0755, Mach-O arm64, size, version, API, SHA-256, and absence of source,
   node_modules, symlinks, traversal, or extra entries.
@@ -82,7 +84,8 @@ parallel inspection command or plugin-owned state.
   not approved for upload, registry publication, release, or external
   redistribution until issue #77's LGPL relink-material and complete
   third-party-license gate passes.
-- The backend embeds the expected runtime SHA/size/arch/version/API. It resolves
+- The backend embeds the expected runtime SHA/size/arch/version/API plus the
+  exact bounded runtime-manifest byte size and SHA-256. It resolves
   only the literal runtime path relative to built `import.meta.url`, verifies
   containment and identity immediately before spawn, and never consults cwd,
   PATH, HOME, inventory, Bun, bunx, or a global `bb-mate`.
@@ -95,8 +98,10 @@ parallel inspection command or plugin-owned state.
   limits, then perform the authenticated capability handshake. Abort,
   `onDispose`, reload, disable, remove, server shutdown, crash, and orphan paths
   terminate the owned group and listener within a bounded grace/force window.
-- Frontend/RPC projections contain only finite status enums, versions, and
-  non-secret opaque context facts. Target discovery is explicitly unavailable
+- Frontend/RPC status and ensure inputs are strict empty objects. Runtime startup
+  is project-independent in 62B because this slice admits no project source;
+  project/source binding begins only when 62C can consume it. Projections contain
+  only finite status enums, versions, and non-secret opaque context facts. Target discovery is explicitly unavailable
   pending 62C. Projections contain no
   paths, PID, hostname, command, environment, secret, bearer, base URL, browser
   URL, Connect fact, or topology conclusion. Browser launch stays visibly
@@ -105,6 +110,11 @@ parallel inspection command or plugin-owned state.
   realtime monitor; a later crash is observed on remount or the next explicit
   action until a released host subscription or bounded refresh is deliberately
   added.
+- Package clean rooms build their own bounded temporary standalone through fresh
+  child processes and thread that exact root through build, archive inspection,
+  installed-cache inspection, and managed lifecycle proof. Hostile archive
+  fixtures are emitted as canonical ustar bytes in JavaScript rather than
+  depending on BSD/GNU tar option or padding behavior.
 
 ## TDD execution
 
