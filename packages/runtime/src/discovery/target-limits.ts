@@ -1,0 +1,1 @@
+export const TARGET_LIST_MAX_TARGETS = 128;

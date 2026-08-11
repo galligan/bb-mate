@@ -12,6 +12,7 @@ import {
 import { RuntimeError } from "../errors.ts";
 import { openDevelopmentTargetCatalog } from "./catalog.ts";
 import { inspectDevelopmentSourceIdentity } from "./source-identity.ts";
+import { TARGET_LIST_MAX_TARGETS } from "./target-limits.ts";
 import {
   createInspectionDevelopmentTargetCandidateBridge,
   type InspectionSourceCandidateFacts,
@@ -158,6 +159,96 @@ describe("DevelopmentTargetCatalog capability boundary", () => {
       expect(JSON.stringify(persisted)).not.toContain("Spoofed target");
     } finally {
       catalog.close();
+    }
+  });
+
+  test("rejects a new target beyond the transport limit without poisoning the persistent catalog", async () => {
+    const temporaryRoot = await fs.realpath(os.tmpdir());
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-mate-catalog-target-limit-"),
+    );
+    temporaryRoots.push(parent);
+    const dataRoot = path.join(parent, "data");
+    const harness = createInspectionHarness();
+    let nextId = 0;
+    let firstCanonicalRoot: string | undefined;
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot,
+      id: () => ObjectIdSchema.parse((nextId++).toString(36).padStart(32, "0")),
+      clock: () => 1_000,
+    });
+
+    try {
+      for (let index = 0; index < TARGET_LIST_MAX_TARGETS; index += 1) {
+        const pluginRoot = path.join(parent, `plugin-${index}`);
+        await fs.mkdir(pluginRoot);
+        await fs.writeFile(
+          path.join(pluginRoot, "package.json"),
+          JSON.stringify({ name: `bb-plugin-${index}`, version: "1.2.3" }),
+        );
+        const canonicalRoot = await fs.realpath(pluginRoot);
+        firstCanonicalRoot ??= canonicalRoot;
+        await catalog.refresh({
+          principalId,
+          bbContextId,
+          candidate: await harness.bridge.issue(
+            harness.issueSourceCandidate({
+              ...facts(canonicalRoot),
+              packageName: `bb-plugin-${index}`,
+              pluginId: `plugin-${index}`,
+            }),
+          ),
+        });
+      }
+
+      const refreshedExisting = await catalog.refresh({
+        principalId,
+        bbContextId,
+        candidate: await harness.bridge.issue(
+          harness.issueSourceCandidate({
+            ...facts(firstCanonicalRoot!),
+            packageName: "bb-plugin-0",
+            pluginId: "plugin-0",
+          }),
+        ),
+      });
+      expect(refreshedExisting.revision).toBe(2);
+
+      const overflowRoot = path.join(parent, "plugin-overflow");
+      await fs.mkdir(overflowRoot);
+      await fs.writeFile(
+        path.join(overflowRoot, "package.json"),
+        JSON.stringify({ name: "bb-plugin-overflow", version: "1.2.3" }),
+      );
+      const overflowCandidate = await harness.bridge.issue(
+        harness.issueSourceCandidate({
+          ...facts(await fs.realpath(overflowRoot)),
+          packageName: "bb-plugin-overflow",
+          pluginId: "plugin-overflow",
+        }),
+      );
+
+      await expect(
+        catalog.refresh({
+          principalId,
+          bbContextId,
+          candidate: overflowCandidate,
+        }),
+      ).rejects.toMatchObject({ code: "conflict" });
+      expect(catalog.list({ principalId, bbContextId })).toHaveLength(
+        TARGET_LIST_MAX_TARGETS,
+      );
+    } finally {
+      catalog.close();
+    }
+
+    const reopened = await openDevelopmentTargetCatalog({ dataRoot });
+    try {
+      expect(reopened.list({ principalId, bbContextId })).toHaveLength(
+        TARGET_LIST_MAX_TARGETS,
+      );
+    } finally {
+      reopened.close();
     }
   });
 });

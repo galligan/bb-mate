@@ -3,10 +3,11 @@ import path from "node:path";
 import { z } from "zod";
 
 import { DevelopmentTargetProjectionSchema } from "../discovery/development-target.ts";
+import { TARGET_LIST_MAX_TARGETS } from "../discovery/target-limits.ts";
+
+export { TARGET_LIST_MAX_TARGETS } from "../discovery/target-limits.ts";
 
 export const TARGET_SOURCE_PATH_MAX_BYTES = 1024;
-export const TARGET_LIST_MAX_TARGETS = 128;
-
 const SourcePathSchema = z
   .string()
   .min(1)

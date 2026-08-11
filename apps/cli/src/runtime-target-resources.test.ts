@@ -2,7 +2,15 @@ import { afterEach, describe, expect, test } from "bun:test";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { createRequestContext } from "@bb-mate/runtime";
+import {
+  createOpaqueId,
+  createRequestContext,
+  createRuntimeHttpHandler,
+} from "@bb-mate/runtime";
+import {
+  RUNTIME_CAPABILITIES,
+  TARGET_LIST_MAX_TARGETS,
+} from "@bb-mate/runtime/supervision";
 import { openRuntimeTargetResources } from "./runtime-target-resources.ts";
 
 const temporaryRoots: string[] = [];
@@ -64,6 +72,112 @@ describe("runtime target resources", () => {
     expect((await reopened.controller.list(reopenedContext)).targets).toEqual(
       admitted.targets,
     );
+    reopened.close();
+  });
+
+  test("keeps the target endpoint transport-valid after rejecting target 129 and reopening", async () => {
+    const parent = await fs.mkdtemp(
+      path.join(await fs.realpath(os.tmpdir()), "bb-mate-target-limit-"),
+    );
+    temporaryRoots.push(parent);
+    const dataRoot = path.join(parent, "data");
+    const sourceRoot = path.join(parent, "source");
+    await fs.mkdir(sourceRoot);
+    for (let index = 0; index < TARGET_LIST_MAX_TARGETS; index += 1) {
+      const pluginRoot = path.join(sourceRoot, `plugin-${index}`);
+      await fs.mkdir(pluginRoot);
+      await fs.writeFile(path.join(pluginRoot, "server.ts"), "export {};\n");
+      await fs.writeFile(
+        path.join(pluginRoot, "package.json"),
+        JSON.stringify({
+          name: `bb-plugin-${index}`,
+          version: "1.0.0",
+          bb: {
+            name: `plugin-${index}`,
+            description: `Plugin ${index}`,
+            branding: { icon: "Puzzle" },
+            server: "./server.ts",
+          },
+        }),
+      );
+    }
+
+    const first = await openRuntimeTargetResources(dataRoot);
+    const firstContext = createRequestContext({
+      id: first.identity.principalId,
+      kind: "supervisor",
+      scopes: ["runtime:read", "targets:read", "targets:write"],
+      revoked: false,
+      bbContextId: first.identity.bbContextId,
+    });
+    const admitted = await first.controller.admit(firstContext, {
+      schemaVersion: 1,
+      sourcePath: sourceRoot,
+    });
+    expect(admitted.targets).toHaveLength(TARGET_LIST_MAX_TARGETS);
+
+    const overflowRoot = path.join(parent, "overflow");
+    await fs.mkdir(overflowRoot);
+    await fs.writeFile(path.join(overflowRoot, "server.ts"), "export {};\n");
+    await fs.writeFile(
+      path.join(overflowRoot, "package.json"),
+      JSON.stringify({
+        name: "bb-plugin-overflow",
+        version: "1.0.0",
+        bb: {
+          name: "overflow",
+          description: "Overflow plugin",
+          branding: { icon: "Puzzle" },
+          server: "./server.ts",
+        },
+      }),
+    );
+    const overflow = await first.controller.admit(firstContext, {
+      schemaVersion: 1,
+      sourcePath: overflowRoot,
+    });
+    expect(overflow).toEqual({
+      schemaVersion: 1,
+      state: "partial",
+      targets: [],
+    });
+    first.close();
+
+    const reopened = await openRuntimeTargetResources(dataRoot);
+    const reopenedContext = createRequestContext({
+      id: reopened.identity.principalId,
+      kind: "supervisor",
+      scopes: ["runtime:read", "targets:read", "targets:write"],
+      revoked: false,
+      bbContextId: reopened.identity.bbContextId,
+    });
+    const handler = createRuntimeHttpHandler({
+      port: 41_721,
+      identity: {
+        runtimeVersion: "0.1.0-alpha.3",
+        instanceId: createOpaqueId(),
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+      authenticate: async () => reopenedContext,
+      targets: reopened.controller,
+    });
+    const response = await handler(
+      new Request("http://127.0.0.1:41721/v2/targets", {
+        headers: { host: "127.0.0.1:41721" },
+      }),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      readonly state: string;
+      readonly targets: readonly {
+        readonly manifest: { readonly pluginId: string };
+      }[];
+    };
+    expect(body.state).toBe("ready");
+    expect(body.targets).toHaveLength(TARGET_LIST_MAX_TARGETS);
+    expect(
+      body.targets.some((target) => target.manifest.pluginId === "overflow"),
+    ).toBe(false);
     reopened.close();
   });
 });

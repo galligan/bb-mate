@@ -51,6 +51,93 @@ describe("runtime-owned supervision identity", () => {
     expect((await fs.stat(dataRoot)).mode & 0o777).toBe(0o700);
   });
 
+  test("recovers the exact post-link publication remnant after a crash", async () => {
+    const { dataRoot } = await fixture();
+    const identityPath = path.join(dataRoot, "runtime-identity.json");
+    const open = fs.open.bind(fs);
+    const unlink = fs.unlink.bind(fs);
+    let crashSimulated = false;
+    let failNextIdentityOpen = false;
+    const unlinkReplacement = (async (
+      input: Parameters<typeof fs.unlink>[0],
+    ) => {
+      if (
+        !crashSimulated &&
+        path.dirname(String(input)) === dataRoot &&
+        path.basename(String(input)).startsWith(".runtime-identity-") &&
+        path.basename(String(input)).endsWith(".publish")
+      ) {
+        crashSimulated = true;
+        failNextIdentityOpen = true;
+        throw Object.assign(new Error("simulated process interruption"), {
+          code: "EIO",
+        });
+      }
+      return unlink(input);
+    }) as typeof fs.unlink;
+    const openReplacement = (async (...args: Parameters<typeof fs.open>) => {
+      if (failNextIdentityOpen && String(args[0]) === identityPath) {
+        failNextIdentityOpen = false;
+        throw Object.assign(new Error("simulated process interruption"), {
+          code: "EIO",
+        });
+      }
+      return open(...args);
+    }) as typeof fs.open;
+    const unlinkSpy = spyOn(fs, "unlink").mockImplementation(unlinkReplacement);
+    const openSpy = spyOn(fs, "open").mockImplementation(openReplacement);
+    try {
+      await expect(
+        loadOrCreateRuntimeIdentity({
+          dataRoot,
+          randomSource: (size) => Buffer.alloc(size, 1),
+        }),
+      ).rejects.toMatchObject({ code: "corrupt_data" });
+    } finally {
+      openSpy.mockRestore();
+      unlinkSpy.mockRestore();
+    }
+
+    expect(crashSimulated).toBe(true);
+    expect((await fs.stat(identityPath)).nlink).toBe(2);
+    const publicationName = (await fs.readdir(dataRoot)).find(
+      (name) =>
+        name.startsWith(".runtime-identity-") && name.endsWith(".publish"),
+    );
+    expect(publicationName).toBeDefined();
+    const publicationPath = path.join(dataRoot, publicationName!);
+
+    const recovered = await loadOrCreateRuntimeIdentity({ dataRoot });
+    expect(String(recovered.principalId)).toBe(publicationName!.slice(18, -8));
+    await expect(fs.lstat(publicationPath)).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect((await fs.stat(identityPath)).nlink).toBe(1);
+  });
+
+  test("preserves atomic no-overwrite publication across concurrent creators", async () => {
+    const { dataRoot } = await fixture();
+    await fs.mkdir(dataRoot, { mode: 0o700 });
+    const [first, second] = await Promise.all([
+      loadOrCreateRuntimeIdentity({
+        dataRoot,
+        randomSource: (size) => Buffer.alloc(size, 1),
+      }),
+      loadOrCreateRuntimeIdentity({
+        dataRoot,
+        randomSource: (size) => Buffer.alloc(size, 2),
+      }),
+    ]);
+
+    expect(second).toEqual(first);
+    expect(
+      (await fs.readdir(dataRoot)).filter((name) => name.endsWith(".publish")),
+    ).toEqual([]);
+    expect(
+      (await fs.stat(path.join(dataRoot, "runtime-identity.json"))).nlink,
+    ).toBe(1);
+  });
+
   test("fails closed on symlink, mode, link-count, owner-shape, and schema corruption", async () => {
     const { parent, dataRoot } = await fixture();
     await loadOrCreateRuntimeIdentity({ dataRoot });
@@ -124,5 +211,40 @@ describe("runtime-owned supervision identity", () => {
     } finally {
       observed.mockRestore();
     }
+  });
+
+  test("does not recover ambiguous or hostile hardlinks", async () => {
+    const { parent, dataRoot } = await fixture();
+    const identity = await loadOrCreateRuntimeIdentity({ dataRoot });
+    const identityPath = path.join(dataRoot, "runtime-identity.json");
+    const publicationPath = path.join(
+      dataRoot,
+      `.runtime-identity-${identity.principalId}.publish`,
+    );
+    const hostilePath = path.join(parent, "hostile-identity-link");
+
+    await fs.link(identityPath, publicationPath);
+    await fs.link(identityPath, hostilePath);
+    await expect(
+      loadOrCreateRuntimeIdentity({ dataRoot }),
+    ).rejects.toMatchObject({ code: "corrupt_data" });
+    expect((await fs.stat(identityPath)).nlink).toBe(3);
+    expect((await fs.stat(publicationPath)).ino).toBe(
+      (await fs.stat(identityPath)).ino,
+    );
+
+    await fs.unlink(publicationPath);
+    await fs.unlink(hostilePath);
+    const unrelatedPublicationPath = path.join(
+      dataRoot,
+      `.runtime-identity-${"x".repeat(32)}.publish`,
+    );
+    await fs.link(identityPath, unrelatedPublicationPath);
+    await fs.writeFile(publicationPath, "hostile", { mode: 0o600 });
+    await expect(
+      loadOrCreateRuntimeIdentity({ dataRoot }),
+    ).rejects.toMatchObject({ code: "corrupt_data" });
+    expect((await fs.stat(identityPath)).nlink).toBe(2);
+    expect(await fs.readFile(publicationPath, "utf8")).toBe("hostile");
   });
 });

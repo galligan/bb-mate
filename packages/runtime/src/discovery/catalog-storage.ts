@@ -14,6 +14,7 @@ import {
   type PrivateDevelopmentTargetSource,
 } from "./private-source.ts";
 import type { TrustedDevelopmentTargetCandidate } from "./trusted-candidate.ts";
+import { TARGET_LIST_MAX_TARGETS } from "./target-limits.ts";
 import {
   parsePrivateHostObservation,
   type PrivateHostObservation,
@@ -161,6 +162,15 @@ export function createDevelopmentTargetCatalogStorage(
     WHERE s.principal_id = ? AND s.bb_context_id = ?
     ORDER BY o.created_at, o.id
   `);
+  const selectCount = database.query<
+    { readonly count: number },
+    SQLQueryBindings[]
+  >(`
+    SELECT COUNT(*) AS count
+    FROM runtime_objects o
+    INNER JOIN development_target_sources s ON s.object_id = o.id
+    WHERE s.principal_id = ? AND s.bb_context_id = ?
+  `);
   const selectById = database.query<ObjectRow, SQLQueryBindings[]>(`
     SELECT o.*
     FROM runtime_objects o
@@ -218,6 +228,13 @@ export function createDevelopmentTargetCatalogStorage(
       envelope: DevelopmentTargetEnvelope,
       candidate: TrustedDevelopmentTargetCandidate,
     ) => {
+      const existingCount = selectCount.get(
+        envelope.bindings.principalId,
+        envelope.bindings.bbContextId,
+      );
+      if (!existingCount || existingCount.count >= TARGET_LIST_MAX_TARGETS) {
+        throw new RuntimeError("conflict");
+      }
       insertObject.run(
         envelope.id,
         envelope.kind,
