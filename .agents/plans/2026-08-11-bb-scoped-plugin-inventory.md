@@ -1,7 +1,8 @@
 # bb-scoped Plugin Workbench inventory
 
 Date: 2026-08-11
-Status: In progress
+Status: Complete; final executable head local/package/Live/hosted/review proof
+is green, with only the docs-head administrative ready transition remaining.
 Issue: [#82](https://github.com/galligan/bb-mate/issues/82)
 Goal: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/`
 
@@ -53,8 +54,7 @@ Visible, non-deleted task activity determines only ordering:
 
 1. active work first;
 2. newest visible task update next;
-3. bb's native list order;
-4. label and opaque project ID for deterministic ties.
+3. bb's native list order for ties.
 
 Personal projects are not included in this slice because released bb omits them
 by default and their source policy is distinct.
@@ -201,16 +201,28 @@ process/environment facts, unknown keys, and impossible runtime/project states.
 1. [x] Isolate native registry/project-first foundation in draft PR #83.
 2. [x] Create #82, goal packet, batch/root/workspace decisions, and delegated
        implementation/review topology.
-3. [ ] Implement workspace-aware inspection with global fairness and hostile
+3. [x] Implement workspace-aware inspection with global fairness and hostile
        manifest/pattern/symlink tests.
-4. [ ] Implement strict grouped runtime transport and CLI controller behavior.
-5. [ ] Implement project activity/source revalidation and snapshot-v3 backend.
-6. [ ] Implement always-expanded grouped frontend and deterministic visual/axe
+4. [x] Implement strict grouped runtime transport and CLI controller behavior.
+5. [x] Implement project activity/source revalidation and snapshot-v3 backend.
+6. [x] Implement always-expanded grouped frontend and deterministic visual/axe
        states.
-7. [ ] Reconcile generated runtime/package identity and run isolated lifecycle.
-8. [ ] Rebuild/reload the path plugin and verify released bb live behavior.
-9. [ ] Clear standing/targeted review findings, hosted CI, tracker/PR truth, and
-       mark both stacked PRs ready without merging.
+7. [x] Reconcile generated runtime/package identity and run isolated lifecycle.
+8. [x] Rebuild/reload the path plugin and verify released bb live behavior.
+9. [x] Resolve final standing/targeted review findings and reconcile tracker/PR
+       truth on the replacement executable head. The docs-only readiness head
+       must pass exact-head review and hosted checks before PR #84 moves from
+       draft to ready; no merge is authorized.
+
+PR #84 replacement implementation
+`d6196e864ef506eaeb5a63e71fdfdaba0f8fa9de` is stacked on PR #83 head
+`06ee8ae4943bcbc61fb2302196ef370d12f18726`. Its 709-test aggregate,
+standalone, managed-package, build/check/format, and 14+20 visual/axe gates are
+green. Exact executable/evidence head
+`a69fe031c43f5eb20f5c0ca43fe394f15f2a4b4a` has passed its Live, hosted, and
+review gates: both reviews are clean 5/5 and hosted verify/visual/standalone are
+terminal success. The final docs-only head is governed by the same exact-head
+checks before the administrative ready transition.
 
 ## Verification and stop lines
 
