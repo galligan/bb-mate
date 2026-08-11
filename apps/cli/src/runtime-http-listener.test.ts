@@ -166,6 +166,299 @@ describe("runtime HTTP listener", () => {
     }
   });
 
+  test("force-closes a slow valid-target POST after an early Host rejection", async () => {
+    let handler: ((request: Request) => Promise<Response>) | undefined;
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp((request) => {
+      handlerCalls += 1;
+      return handler!(request);
+    });
+    handler = createRuntimeHttpHandler({
+      port: listener.port,
+      identity: {
+        runtimeVersion: "0.1.0-alpha.2",
+        instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+    });
+    const attack = await openSlowRequest(
+      listener.port,
+      `POST /v1/capabilities HTTP/1.1\r\nHost: evil.example\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+    );
+    try {
+      const response = await attack.response;
+      expect(response).toStartWith("HTTP/1.1 400");
+      expect(response.toLowerCase()).toContain("cache-control: no-store");
+      expect(handlerCalls).toBe(1);
+      expect(
+        await Promise.race([attack.closed, Bun.sleep(250).then(() => false)]),
+      ).toBe(true);
+    } finally {
+      attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("force-closes slow POSTs after early Origin and auth rejection", async () => {
+    let handler: ((request: Request) => Promise<Response>) | undefined;
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp((request) => {
+      handlerCalls += 1;
+      return handler!(request);
+    });
+    handler = createRuntimeHttpHandler({
+      port: listener.port,
+      identity: {
+        runtimeVersion: "0.1.0-alpha.2",
+        instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+    });
+    const attacks = await Promise.all([
+      openSlowRequest(
+        listener.port,
+        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://evil.example\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+      ),
+      openSlowRequest(
+        listener.port,
+        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+      ),
+    ]);
+    try {
+      const responses = await Promise.all(
+        attacks.map((attack) => attack.response),
+      );
+      expect(responses[0]).toStartWith("HTTP/1.1 403");
+      expect(responses[1]).toStartWith("HTTP/1.1 401");
+      for (const response of responses) {
+        expect(response.toLowerCase()).toContain("connection: close");
+        expect(response.toLowerCase()).toContain("cache-control: no-store");
+      }
+      expect(
+        await Promise.race([
+          Promise.all(attacks.map((attack) => attack.closed)).then(() => true),
+          Bun.sleep(250).then(() => false),
+        ]),
+      ).toBe(true);
+      expect(handlerCalls).toBe(2);
+    } finally {
+      for (const attack of attacks) attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("force-closes slow POSTs after encoding and declared-size rejection", async () => {
+    let handler: ((request: Request) => Promise<Response>) | undefined;
+    const listener = await listenRuntimeHttp((request) => handler!(request));
+    handler = createRuntimeHttpHandler({
+      port: listener.port,
+      identity: {
+        runtimeVersion: "0.1.0-alpha.2",
+        instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+    });
+    const attacks = await Promise.all([
+      openSlowRequest(
+        listener.port,
+        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nContent-Encoding: gzip\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+      ),
+      openSlowRequest(
+        listener.port,
+        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nContent-Length: ${256 * 1024 + 1}\r\n\r\na`,
+      ),
+    ]);
+    try {
+      const responses = await Promise.all(
+        attacks.map((attack) => attack.response),
+      );
+      expect(responses[0]).toStartWith("HTTP/1.1 415");
+      expect(responses[1]).toStartWith("HTTP/1.1 413");
+      expect(
+        responses.every((response) =>
+          response.toLowerCase().includes("connection: close"),
+        ),
+      ).toBe(true);
+      expect(
+        await Promise.race([
+          Promise.all(attacks.map((attack) => attack.closed)).then(() => true),
+          Bun.sleep(250).then(() => false),
+        ]),
+      ).toBe(true);
+    } finally {
+      for (const attack of attacks) attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("releases 33 concurrent slow valid-target policy rejections", async () => {
+    let handler: ((request: Request) => Promise<Response>) | undefined;
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp((request) => {
+      handlerCalls += 1;
+      return handler!(request);
+    });
+    handler = createRuntimeHttpHandler({
+      port: listener.port,
+      identity: {
+        runtimeVersion: "0.1.0-alpha.2",
+        instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+    });
+    const attackHeaders = [
+      "Host: evil.example",
+      `Host: 127.0.0.1:${listener.port}\r\nOrigin: http://evil.example`,
+      `Host: 127.0.0.1:${listener.port}`,
+    ];
+    const attacks = await Promise.all(
+      Array.from({ length: 33 }, (_, index) =>
+        openSlowRequest(
+          listener.port,
+          `POST /v1/capabilities HTTP/1.1\r\n${attackHeaders[index % attackHeaders.length]}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+        ),
+      ),
+    );
+    try {
+      const responses = await Promise.all(
+        attacks.map((attack) => attack.response),
+      );
+      expect(
+        responses.every((response) =>
+          ["HTTP/1.1 400", "HTTP/1.1 403", "HTTP/1.1 401"].some((status) =>
+            response.startsWith(status),
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        responses.every((response) =>
+          response.toLowerCase().includes("connection: close"),
+        ),
+      ).toBe(true);
+      expect(
+        await Promise.race([
+          Promise.all(attacks.map((attack) => attack.closed)).then(() => true),
+          Bun.sleep(1_000).then(() => false),
+        ]),
+      ).toBe(true);
+      expect(handlerCalls).toBe(33);
+    } finally {
+      for (const attack of attacks) attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("force-closes the overloaded request while 32 bodies remain accounted", async () => {
+    let handler: ((request: Request) => Promise<Response>) | undefined;
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp((request) => {
+      handlerCalls += 1;
+      return handler!(request);
+    });
+    handler = createRuntimeHttpHandler({
+      port: listener.port,
+      identity: {
+        runtimeVersion: "0.1.0-alpha.2",
+        instanceId: createOpaqueId(() => Buffer.alloc(24, 13)),
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+    });
+    const request = `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nOrigin: http://127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`;
+    const accounted = await Promise.all(
+      Array.from({ length: 32 }, () => openSlowRequest(listener.port, request)),
+    );
+    let overloaded: Awaited<ReturnType<typeof openSlowRequest>> | undefined;
+    try {
+      const deadline = Date.now() + 1_000;
+      while (handlerCalls < 32 && Date.now() < deadline) await Bun.sleep(1);
+      expect(handlerCalls).toBe(32);
+
+      overloaded = await openSlowRequest(listener.port, request);
+      const response = await overloaded.response;
+      expect(response).toStartWith("HTTP/1.1 503");
+      expect(response.toLowerCase()).toContain("connection: close");
+      expect(
+        await Promise.race([
+          overloaded.closed,
+          Bun.sleep(250).then(() => false),
+        ]),
+      ).toBe(true);
+      expect(handlerCalls).toBe(33);
+    } finally {
+      overloaded?.socket.destroy();
+      for (const attack of accounted) attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("preserves keep-alive after a completed mutation body", async () => {
+    const bodies: string[] = [];
+    const listener = await listenRuntimeHttp(async (request) => {
+      bodies.push(request.body ? await request.text() : "");
+      return Response.json({ accepted: true });
+    });
+    const socket = connect({ host: "127.0.0.1", port: listener.port });
+    const closed = new Promise<boolean>((resolve) =>
+      socket.once("close", () => resolve(true)),
+    );
+    try {
+      await new Promise<void>((resolve) => socket.once("connect", resolve));
+      const firstResponse = new Promise<string>((resolve, reject) => {
+        socket.once("data", (chunk) => resolve(chunk.toString("utf8")));
+        socket.once("error", reject);
+      });
+      socket.write(
+        `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nContent-Length: 3\r\n\r\nabc`,
+      );
+      const firstBytes = await firstResponse;
+      expect(firstBytes).toStartWith("HTTP/1.1 200");
+      expect(firstBytes.toLowerCase()).not.toContain("connection: close");
+      expect(
+        await Promise.race([closed, Bun.sleep(50).then(() => false)]),
+      ).toBe(false);
+
+      const secondResponse = new Promise<string>((resolve, reject) => {
+        socket.once("data", (chunk) => resolve(chunk.toString("utf8")));
+        socket.once("error", reject);
+      });
+      socket.write(
+        `GET /healthz HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nConnection: close\r\n\r\n`,
+      );
+      expect(await secondResponse).toStartWith("HTTP/1.1 200");
+      expect(
+        await Promise.race([closed, Bun.sleep(250).then(() => false)]),
+      ).toBe(true);
+      expect(bodies).toEqual(["abc", ""]);
+    } finally {
+      socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("keeps unread-body closure authoritative over handler headers", async () => {
+    const listener = await listenRuntimeHttp(async () =>
+      Response.json(
+        { rejected: true },
+        { status: 401, headers: { Connection: "keep-alive" } },
+      ),
+    );
+    const attack = await openSlowRequest(
+      listener.port,
+      `POST /v1/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n`,
+    );
+    try {
+      const response = await attack.response;
+      expect(response).toStartWith("HTTP/1.1 401");
+      expect(response.toLowerCase()).toContain("connection: close");
+      expect(
+        await Promise.race([attack.closed, Bun.sleep(250).then(() => false)]),
+      ).toBe(true);
+    } finally {
+      attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
   test("rejects a slow chunked GET before handler dispatch", async () => {
     let handlerCalls = 0;
     const listener = await listenRuntimeHttp(async () => {

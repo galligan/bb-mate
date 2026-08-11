@@ -91,15 +91,27 @@ function toRequest(request: IncomingMessage, url: URL): Request {
 }
 
 async function sendResponse(
+  request: IncomingMessage,
   nodeResponse: ServerResponse,
   response: Response,
 ): Promise<void> {
+  const hasUnreadBody = !request.complete;
   nodeResponse.statusCode = response.status;
   for (const [name, value] of response.headers) {
     nodeResponse.setHeader(name, value);
   }
+  if (hasUnreadBody) closeUnreadRequest(request, nodeResponse);
   const body = Buffer.from(await response.arrayBuffer());
   nodeResponse.end(body);
+}
+
+function closeUnreadRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+): void {
+  response.shouldKeepAlive = false;
+  response.setHeader("Connection", "close");
+  response.once("finish", () => request.destroy());
 }
 
 function rejectBeforeDispatch(
@@ -107,10 +119,8 @@ function rejectBeforeDispatch(
   response: ServerResponse,
 ): void {
   response.statusCode = 400;
-  response.shouldKeepAlive = false;
-  response.setHeader("Connection", "close");
+  closeUnreadRequest(request, response);
   setSecurityHeaders(response);
-  response.once("finish", () => request.destroy());
   response.end(INVALID_REQUEST_BODY);
 }
 
@@ -133,12 +143,13 @@ export async function listenRuntimeHttp(
         return;
       }
       void handle(toRequest(request, url))
-        .then((handled) => sendResponse(response, handled))
+        .then((handled) => sendResponse(request, response, handled))
         .catch(() => {
           if (response.headersSent) {
             response.destroy();
             return;
           }
+          if (!request.complete) closeUnreadRequest(request, response);
           response.statusCode = 500;
           setSecurityHeaders(response);
           response.end(

@@ -498,15 +498,15 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
 check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
 run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
 run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
-  passed 518 tests: inspection 136, runtime 175, CLI 68, Workbench 66, Linear
+  passed 525 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
   plugin 21, and scripts 52. One initial aggregate run hit the existing
   five-second standalone symlink-ancestor test timeout; the focused 6/6 retry
   and complete aggregate rerun passed. The legacy package clean room contained
   41 files and 13 stories with SHA-256
-  `7376eb25f413e2d2cec1c4f1b208549a0839b319aef31c2ac8b12c2b609ca718`.
+  `c2480bdd519e1d5bfe22691d8ccb9da64b5516162a8d9c9210e57ecc11711a9f`.
   The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
   64,783,586 bytes, 35 assets, 13 stories, and SHA-256
-  `cadf0105d4a9e71142cfc053e9cb0ef6ae25b6cbaf9856e8d5329e93613013f8`.
+  `df2218e931e2c048ed0c2896a4448313169af324eca9595cc72717364a1ca16f`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -638,8 +638,17 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   keep-alive, flushes the secured generic 400, and then destroys the unread
   request. Slow encoded-dot GET, fragment HEAD, absolute-form POST, and 33-way
   concurrent incomplete-request regressions all close within the bounded window
-  with zero runtime-handler calls. The replacement aggregate passed 518 tests;
+  with zero runtime-handler calls. The replacement aggregate passed 525 tests;
   package and moved-standalone proofs produced the hashes recorded above.
+- The next targeted pass found the same unread-body lifetime gap after canonical
+  requests reached early Host, Origin, authentication, encoding, declared-size,
+  or capacity responses. The Node listener now treats request completion as the
+  systemic ownership boundary: before sending any handler response for an
+  incomplete message it overrides connection headers to close, preserves the
+  handler status/body/security policy, flushes the response, and destroys the
+  unread request. Focused slow-body tests cover 400/401/403/413/415/503, 33-way
+  concurrent rejection, the 32-request capacity boundary, handler header
+  override, and successful keep-alive reuse after a completely consumed body.
 
 ## Prompt / Goal Alignment
 
