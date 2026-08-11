@@ -104,7 +104,7 @@ export async function waitForRuntimeHealth(
   const sleep = options.sleep ?? ((milliseconds) => Bun.sleep(milliseconds));
   const now = options.now ?? Date.now;
   const retryDelayMs = options.retryDelayMs ?? 25;
-  const timeoutMs = options.timeoutMs ?? 2_000;
+  const timeoutMs = options.timeoutMs ?? 10_000;
   const deadline = now() + timeoutMs;
   const deadlineMessage = "Supervised runtime did not become healthy.";
 

@@ -114,6 +114,26 @@ describe("standalone supervision proof", () => {
     expect(sleeps).toBe(1);
   });
 
+  test("allows bounded hosted startup beyond two seconds", async () => {
+    let now = 0;
+    await waitForRuntimeHealth("http://127.0.0.1:41721", {
+      fetch: async () => {
+        if (now < 2_500) {
+          throw Object.assign(new Error("not listening yet"), {
+            code: "ConnectionRefused",
+          });
+        }
+        return new Response(null, { status: 200 });
+      },
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
+      now: () => now,
+    });
+
+    expect(now).toBe(2_500);
+  });
+
   test("fails immediately on HTTP failure and bounds repeated refusal", async () => {
     let sleeps = 0;
     await expect(

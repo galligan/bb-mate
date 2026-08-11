@@ -500,8 +500,8 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
 check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
 run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
 run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
-  passed 527 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
-  plugin 21, and scripts 54. Repeated aggregate runs exposed a test-teardown
+  passed 528 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
+  plugin 21, and scripts 55. Repeated aggregate runs exposed a test-teardown
   race that recursively removed a symlink holder and its external temporary
   target concurrently. Teardown now removes temporary roots sequentially in
   reverse creation order; 100 focused reruns (600 tests), the full scripts
@@ -665,12 +665,15 @@ test && bun run build && bun run compatibility:latest` passed; package clean
 - The first hosted standalone job at both the implementation and docs heads
   emitted a valid orphan-lane descriptor and then hit an immediate loopback
   connection refusal; same-head reruns and every local moved-binary proof passed.
-  The clean-room readiness probe now retries only connection-refused failures
-  for a bounded two-second window after descriptor validation, still requires
-  exact HTTP 200, and fails immediately on HTTP or unrelated network errors.
-  Focused tests cover retry-to-ready, non-200, unrelated failure, and deadline
-  exhaustion. The harness-only change raises the aggregate to 527 tests while
-  leaving the exact package and standalone hashes recorded above unchanged.
+  The clean-room readiness probe initially retried only connection-refused
+  failures for two seconds after descriptor validation. One of two duplicate
+  hosted runs still exceeded that arbitrary allowance while the other passed.
+  The final bounded window is ten seconds, matching the existing descriptor
+  deadline; it still requires exact HTTP 200 and fails immediately on HTTP or
+  unrelated network errors. Focused tests cover readiness after 2.5 seconds,
+  non-200, unrelated failure, and deadline exhaustion. The harness-only change
+  raises the aggregate to 528 tests while leaving the exact package and
+  standalone hashes recorded above unchanged.
 
 ## Prompt / Goal Alignment
 
