@@ -3,6 +3,7 @@ import {
   spawnSupervisedRuntime,
   type SupervisedRuntime,
   validateStandaloneDescriptor,
+  waitForRuntimeHealth,
   within,
 } from "./supervised-standalone.ts";
 
@@ -43,8 +44,7 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    const health = await fetch(`${descriptor.baseUrl}/healthz`);
-    assert(health.ok, "Supervised runtime health check failed.");
+    await waitForRuntimeHealth(descriptor.baseUrl);
     const unauthorized = await fetch(`${descriptor.baseUrl}/v1/capabilities`);
     assert(
       unauthorized.status === 401,
@@ -105,8 +105,7 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    const orphanHealth = await fetch(`${orphanDescriptor.baseUrl}/healthz`);
-    assert(orphanHealth.ok, "Orphan-cleanup runtime did not become healthy.");
+    await waitForRuntimeHealth(orphanDescriptor.baseUrl);
     monitoredParent.kill("SIGKILL");
     await monitoredParent.exited;
     monitoredParent = null;
@@ -133,8 +132,7 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    const signalHealth = await fetch(`${signalDescriptor.baseUrl}/healthz`);
-    assert(signalHealth.ok, "Signal-cleanup runtime did not become healthy.");
+    await waitForRuntimeHealth(signalDescriptor.baseUrl);
     runtime.child.kill("SIGTERM");
     await within(
       runtime.closed,

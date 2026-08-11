@@ -28,11 +28,9 @@ async function temporaryHomeRoot(): Promise<string> {
 }
 
 afterEach(async () => {
-  await Promise.all(
-    roots
-      .splice(0)
-      .map((root) => fs.rm(root, { recursive: true, force: true })),
-  );
+  for (const root of roots.splice(0).reverse()) {
+    await fs.rm(root, { recursive: true, force: true });
+  }
 });
 
 describe("standalone output ownership", () => {

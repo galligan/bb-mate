@@ -24,7 +24,7 @@ hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
 and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
 GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
 has passed local, hosted, and implementation-head review gates; its final
-docs-only exact-head review, ready transition, merge, and reconciliation remain.
+exact-head review, ready transition, merge, and reconciliation remain.
 Browser bootstrap/topology remains isolated in #70.
 
 ## Baseline
@@ -500,10 +500,12 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
 check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
 run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
 run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
-  passed 525 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
-  plugin 21, and scripts 52. One initial aggregate run hit the existing
-  five-second standalone symlink-ancestor test timeout; the focused 6/6 retry
-  and complete aggregate rerun passed. The legacy package clean room contained
+  passed 527 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
+  plugin 21, and scripts 54. Repeated aggregate runs exposed a test-teardown
+  race that recursively removed a symlink holder and its external temporary
+  target concurrently. Teardown now removes temporary roots sequentially in
+  reverse creation order; 100 focused reruns (600 tests), the full scripts
+  suite, and the complete aggregate passed. The legacy package clean room contained
   41 files and 13 stories with SHA-256
   `c2480bdd519e1d5bfe22691d8ccb9da64b5516162a8d9c9210e57ecc11711a9f`.
   The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
@@ -658,8 +660,17 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   found only THS-005: this ledger's current-state header still described merged
   57B2 as active and hosted readiness as pending. Those current-state fields are
   now corrected; executable and build-input bytes are unchanged. Slice 62A is
-  implementation-and-review complete, while final docs-only review, ready,
+  implementation-and-review complete, while final exact-head review, ready,
   merge, and reconciliation remain.
+- The first hosted standalone job at both the implementation and docs heads
+  emitted a valid orphan-lane descriptor and then hit an immediate loopback
+  connection refusal; same-head reruns and every local moved-binary proof passed.
+  The clean-room readiness probe now retries only connection-refused failures
+  for a bounded two-second window after descriptor validation, still requires
+  exact HTTP 200, and fails immediately on HTTP or unrelated network errors.
+  Focused tests cover retry-to-ready, non-200, unrelated failure, and deadline
+  exhaustion. The harness-only change raises the aggregate to 527 tests while
+  leaving the exact package and standalone hashes recorded above unchanged.
 
 ## Prompt / Goal Alignment
 
@@ -680,7 +691,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
 source-catalog slices 57A, 57B1, and 57B2 are merged and reconciled; #57 is
 closed. Host-shell #62 is active with an explicit merge-first split: 62A's
-implementation and review are complete in draft PR #76, with final docs-only
+implementation and review are complete in draft PR #76, with final exact-head
 review, ready transition, merge, and reconciliation pending; 62B then packages
 and supervises that exact runtime from `bb-plugin-mate`. All
 release/upstream/Connect/normal-profile stop boundaries remain intact.

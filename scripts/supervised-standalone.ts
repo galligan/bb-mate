@@ -83,6 +83,55 @@ export async function within<T>(
   }
 }
 
+function isConnectionRefused(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const code = "code" in error ? error.code : undefined;
+  if (code === "ConnectionRefused" || code === "ECONNREFUSED") return true;
+  return "cause" in error && isConnectionRefused(error.cause);
+}
+
+export async function waitForRuntimeHealth(
+  baseUrl: string,
+  options: {
+    fetch?: (url: string) => Promise<Response>;
+    sleep?: (milliseconds: number) => Promise<void>;
+    now?: () => number;
+    retryDelayMs?: number;
+    timeoutMs?: number;
+  } = {},
+): Promise<void> {
+  const fetchHealth = options.fetch ?? ((url) => globalThis.fetch(url));
+  const sleep = options.sleep ?? ((milliseconds) => Bun.sleep(milliseconds));
+  const now = options.now ?? Date.now;
+  const retryDelayMs = options.retryDelayMs ?? 25;
+  const timeoutMs = options.timeoutMs ?? 2_000;
+  const deadline = now() + timeoutMs;
+  const deadlineMessage = "Supervised runtime did not become healthy.";
+
+  while (true) {
+    try {
+      const remaining = deadline - now();
+      if (remaining <= 0) throw new Error(deadlineMessage);
+      const response = await within(
+        fetchHealth(`${baseUrl}/healthz`),
+        remaining,
+        deadlineMessage,
+      );
+      if (response.status !== 200) {
+        throw new Error(
+          `Supervised runtime health returned HTTP ${response.status}.`,
+        );
+      }
+      return;
+    } catch (error) {
+      if (!isConnectionRefused(error)) throw error;
+      const remaining = deadline - now();
+      if (remaining <= 0) throw new Error(deadlineMessage, { cause: error });
+      await sleep(Math.min(retryDelayMs, remaining));
+    }
+  }
+}
+
 function requireReadable(value: Readable | null, name: string): Readable {
   assert(value, `Supervised runtime ${name} was not piped.`);
   return value;
