@@ -93,7 +93,7 @@ function verifyResidueDetector(packageName: string) {
     { packages: { "": { bin: { [packageName]: "dist/cli.js" } } } },
     {
       packages: {
-        "": { resolved: `file:../${packageName}-0.1.0-alpha.2.tgz` },
+        "": { resolved: `file:../${packageName}-0.1.0-alpha.3.tgz` },
       },
     },
   ]) {
@@ -328,8 +328,8 @@ try {
     "Public artifact must declare the approved MIT license.",
   );
   assert(
-    stagedManifest.version === "0.1.0-alpha.2",
-    "Artifact must use the approved alpha.2 version.",
+    stagedManifest.version === "0.1.0-alpha.3",
+    "Artifact must use the approved alpha.3 version.",
   );
   assert(
     stagedManifest.homepage === "https://github.com/galligan/bb-mate#readme" &&
