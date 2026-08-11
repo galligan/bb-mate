@@ -61,6 +61,70 @@ async function openSlowRequest(port: number, request: string) {
 }
 
 describe("runtime HTTP listener", () => {
+  test("aborts the dispatched request when the client disconnects", async () => {
+    let startedResolve!: () => void;
+    const started = new Promise<void>((resolve) => {
+      startedResolve = resolve;
+    });
+    let abortedResolve!: () => void;
+    const aborted = new Promise<void>((resolve) => {
+      abortedResolve = resolve;
+    });
+    const listener = await listenRuntimeHttp(async (request) => {
+      startedResolve();
+      if (request.signal.aborted) abortedResolve();
+      request.signal.addEventListener("abort", abortedResolve, { once: true });
+      await aborted;
+      return Response.json({ reached: true });
+    });
+    const socket = connect({ host: "127.0.0.1", port: listener.port });
+    try {
+      await new Promise<void>((resolve) => socket.once("connect", resolve));
+      socket.write(
+        `GET /healthz HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\n\r\n`,
+      );
+      await started;
+      socket.destroy();
+
+      expect(
+        await Promise.race([
+          aborted.then(() => true),
+          Bun.sleep(250).then(() => false),
+        ]),
+      ).toBe(true);
+    } finally {
+      socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("aborts a dispatched request at the runtime deadline", async () => {
+    let observedAbort = false;
+    const listener = await listenRuntimeHttp(
+      async (request) => {
+        await new Promise<void>((resolve) =>
+          request.signal.addEventListener(
+            "abort",
+            () => {
+              observedAbort = true;
+              resolve();
+            },
+            { once: true },
+          ),
+        );
+        return Response.json({ cancelled: true });
+      },
+      { requestTimeoutMs: 10 },
+    );
+    try {
+      const response = await rawRequest(listener.port, "/healthz");
+      expect(response).toStartWith("HTTP/1.1 200");
+      expect(observedAbort).toBe(true);
+    } finally {
+      await listener.stop();
+    }
+  });
+
   test("force-closes a slow framed invalid target without dispatch", async () => {
     let handlerCalls = 0;
     const listener = await listenRuntimeHttp(async () => {

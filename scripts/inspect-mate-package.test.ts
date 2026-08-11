@@ -47,6 +47,40 @@ function packageManifest() {
 }
 
 describe("Mate package inspection", () => {
+  test("ships schema-v3 all-project guidance without stale admission controls", async () => {
+    const [readme, skill] = await Promise.all([
+      Bun.file(new URL("../plugins/mate/README.md", import.meta.url)).text(),
+      Bun.file(
+        new URL(
+          "../plugins/mate/skills/plugin-workbench/SKILL.md",
+          import.meta.url,
+        ),
+      ).text(),
+    ]);
+    for (const document of [readme, skill]) {
+      const prose = document.replace(/\s+/gu, " ");
+      expect(prose).toContain("schema-v3");
+      expect(prose).toContain("read-only status");
+      expect(prose).toContain("may report the current runtime state");
+      expect(prose).toContain(
+        "idle, starting, ready, stopping, unavailable, or failed",
+      );
+      expect(prose).toContain("all eligible bb-registered local projects");
+      expect(prose).toContain("refresh icon");
+      expect(prose).toContain("npm or Bun workspace configuration");
+      expect(prose).toContain("bounded `pnpm-workspace.yaml`");
+      expect(prose).toContain("expanded");
+      expect(prose).toContain("plugin row");
+      expect(prose).toContain("Preview remains unavailable under #70");
+      expect(prose).toContain("does not execute target code");
+      expect(prose).toMatch(/[Ss]ource paths/u);
+      expect(prose).not.toContain("explicit admission");
+      expect(prose).not.toContain("Select one eligible");
+      expect(prose).not.toContain("status is idle");
+      expect(prose).not.toContain("request stays idle");
+    }
+  });
+
   test("accepts only the pinned package and plugin build identities", () => {
     expect(() =>
       assertMatePackageMetadata(

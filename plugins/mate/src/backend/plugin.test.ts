@@ -27,46 +27,53 @@ const ready: RuntimeSupervisorSnapshot = {
   canStart: false,
 };
 
-const project = {
-  id: "project-1",
-  name: "Example",
-  sources: [
-    {
-      id: "source-1",
-      projectId: "project-1",
-      updatedAt: 1,
-      type: "local_path" as const,
-      hostId: "host-1",
-      path: "/Users/test/project",
-    },
-  ],
-};
+const source = (projectId: string, suffix = projectId) => ({
+  id: `source-${suffix}`,
+  projectId,
+  updatedAt: 1,
+  type: "local_path" as const,
+  hostId: "host-1",
+  path: `/Users/test/${suffix}`,
+});
+
+const project = (id: string, name: string, overrides = {}) => ({
+  id,
+  name,
+  sources: [source(id)],
+  threads: [],
+  ...overrides,
+});
+
 const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), "mate-plugin-test-"));
 
 function hostFixture(
   supervisor: Parameters<typeof createMatePlugin>[0],
   options: {
-    getProject?: () => Promise<typeof project>;
+    projects?: ReturnType<typeof project>[];
+    listProjects?: () => Promise<ReturnType<typeof project>[]>;
+    systemConfig?: () => Promise<{
+      primaryHostId: string | null;
+      dataDir: string;
+    }>;
     allocateStorage?: () => unknown;
   } = {},
 ) {
   let handlers: Record<string, (input: never) => unknown> | undefined;
   let service: { start(signal: AbortSignal): void | Promise<void> } | undefined;
   let dispose: (() => void | Promise<void>) | undefined;
+  const projects = options.projects ?? [project("project-1", "Example")];
   const bb = {
-    storage: {
-      database: options.allocateStorage ?? (() => ({})),
-    },
+    storage: { database: options.allocateStorage ?? (() => ({})) },
     sdk: {
       system: {
-        config: async () => ({
-          primaryHostId: "host-1",
-          dataDir,
-        }),
+        config:
+          options.systemConfig ??
+          (async () => ({ primaryHostId: "host-1", dataDir })),
       },
       projects: {
-        list: async () => [project],
-        get: options.getProject ?? (async () => project),
+        list: options.listProjects ?? (async () => projects),
+        get: async ({ projectId }: { projectId: string }) =>
+          projects.find(({ id }) => id === projectId)!,
       },
     },
     rpc: {
@@ -78,7 +85,12 @@ function hostFixture(
     },
     onDispose: (value: typeof dispose) => (dispose = value),
   } as unknown as BbPluginApi;
-  createMatePlugin(supervisor)(bb);
+  createMatePlugin(supervisor, {
+    createProjectKey: (() => {
+      let index = 0;
+      return () => String(++index).padStart(32, "0");
+    })(),
+  })(bb);
   return {
     handlers: () => handlers!,
     service: () => service!,
@@ -86,53 +98,243 @@ function hostFixture(
   };
 }
 
-describe("Plugin Workbench backend v2", () => {
-  test("exports exact status and admit contracts without ensure", () => {
-    expect(rpcContract.status.input.safeParse({}).success).toBe(true);
-    expect(
-      rpcContract.admit.input.safeParse({ projectId: "project-1" }).success,
-    ).toBe(true);
-    expect(
-      rpcContract.admit.input.safeParse({ projectId: "../private" }).success,
-    ).toBe(false);
-    expect("ensure" in rpcContract).toBe(false);
-  });
-
-  test("keeps status read-only and admits only after a stable source re-fetch", async () => {
+describe("Plugin Workbench backend v3", () => {
+  test("keeps status read-only and refreshes every stable project in one batch", async () => {
     let ensures = 0;
-    let admissions = 0;
     let allocations = 0;
+    const admissions: unknown[] = [];
+    const projects = [
+      project("project-1", "One"),
+      project("project-2", "Two", {
+        sources: [source("project-2", "two")],
+      }),
+    ];
     const host = hostFixture(
       {
         status: () => idle,
         async ensure(dataRoot) {
           ensures += 1;
-          expect(allocations).toBe(1);
           expect(dataRoot).toBe(
             `${await fs.realpath(dataDir)}/plugins/mate/runtime`,
           );
           return ready;
         },
-        async admitCurrentProject(sourcePath) {
-          admissions += 1;
-          expect(sourcePath).toBe("/Users/test/project");
+        async admitProjects(input) {
+          admissions.push(input);
           return {
+            schemaVersion: 2,
             state: "ready",
-            targets: [
-              {
-                id: "t".repeat(32),
-                revision: 1,
-                displayName: "Example plugin",
-                manifest: { pluginId: "example" },
-              },
-            ],
+            projects: input.projects.map(({ projectKey }, index) => ({
+              projectKey,
+              state: "ready" as const,
+              targets: [
+                {
+                  id: String(index + 1).repeat(32),
+                  revision: 1,
+                  displayName: `Plugin ${index + 1}`,
+                  manifest: { pluginId: `plugin-${index + 1}` },
+                },
+              ],
+            })),
           };
         },
-        async runService(signal) {
-          await new Promise<void>((resolve) =>
-            signal.addEventListener("abort", () => resolve(), { once: true }),
-          );
+        async runService() {},
+        async stop() {},
+      },
+      {
+        projects,
+        allocateStorage() {
+          allocations += 1;
+          return {};
         },
+      },
+    );
+
+    expect(await host.handlers().status({} as never)).toMatchObject({
+      schemaVersion: 3,
+      runtimeState: "idle",
+      projects: {
+        state: "ready",
+        items: [
+          { id: "project-1", scan: { state: "not_scanned" } },
+          { id: "project-2", scan: { state: "not_scanned" } },
+        ],
+      },
+    });
+    expect(ensures).toBe(0);
+    expect(allocations).toBe(0);
+
+    expect(await host.handlers().refresh({} as never)).toMatchObject({
+      schemaVersion: 3,
+      runtimeState: "ready",
+      projects: {
+        state: "ready",
+        items: [
+          {
+            id: "project-1",
+            scan: { state: "ready", items: [{ pluginId: "plugin-1" }] },
+          },
+          {
+            id: "project-2",
+            scan: { state: "ready", items: [{ pluginId: "plugin-2" }] },
+          },
+        ],
+      },
+    });
+    expect(ensures).toBe(1);
+    expect(allocations).toBe(1);
+    expect(admissions).toEqual([
+      {
+        inventoryState: "complete",
+        projects: [
+          {
+            projectKey: "00000000000000000000000000000001",
+            sourcePath: "/Users/test/project-1",
+          },
+          {
+            projectKey: "00000000000000000000000000000002",
+            sourcePath: "/Users/test/two",
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("attests a complete empty inventory while list failures make no runtime demand", async () => {
+    const admissions: unknown[] = [];
+    let ensures = 0;
+    const supervisor: Parameters<typeof createMatePlugin>[0] = {
+      status: () => idle,
+      async ensure() {
+        ensures += 1;
+        return ready;
+      },
+      async admitProjects(input) {
+        admissions.push(input);
+        return { schemaVersion: 2, state: "ready" as const, projects: [] };
+      },
+      async runService() {},
+      async stop() {},
+    };
+    const empty = hostFixture(supervisor, { projects: [] });
+    expect(await empty.handlers().refresh({} as never)).toMatchObject({
+      runtimeState: "ready",
+      projects: { state: "ready", items: [] },
+    });
+    expect(ensures).toBe(1);
+    expect(admissions).toEqual([{ inventoryState: "complete", projects: [] }]);
+
+    const failed = hostFixture(supervisor, {
+      listProjects: async () => {
+        throw new Error("/private/list/failure");
+      },
+    });
+    const result = await failed.handlers().refresh({} as never);
+    expect(result).toMatchObject({
+      runtimeState: "idle",
+      projects: { state: "unavailable", items: [] },
+    });
+    expect(ensures).toBe(1);
+    expect(admissions).toHaveLength(1);
+    expect(JSON.stringify(result)).not.toContain("/private/list/failure");
+  });
+
+  test("exports only strict empty status and refresh inputs", () => {
+    expect(rpcContract.status.input.safeParse({}).success).toBe(true);
+    expect(rpcContract.refresh.input.safeParse({}).success).toBe(true);
+    expect(
+      rpcContract.refresh.input.safeParse({ projectId: "private" }).success,
+    ).toBe(false);
+    expect("admit" in rpcContract).toBe(false);
+  });
+
+  test("does not attest or scan when any source changes during revalidation", async () => {
+    const before = [project("project-1", "One"), project("project-2", "Two")];
+    const after = [
+      project("project-1", "One"),
+      project("project-2", "Two", {
+        sources: [
+          {
+            ...source("project-2"),
+            updatedAt: 2,
+            path: "/private/changed",
+          },
+        ],
+      }),
+    ];
+    let lists = 0;
+    let admitted: unknown;
+    const host = hostFixture(
+      {
+        status: () => idle,
+        async ensure() {
+          return ready;
+        },
+        async admitProjects(input) {
+          admitted = input;
+          return {
+            schemaVersion: 2,
+            state: "ready",
+            projects: input.projects.map(({ projectKey }) => ({
+              projectKey,
+              state: "ready" as const,
+              targets: [],
+            })),
+          };
+        },
+        async runService() {},
+        async stop() {},
+      },
+      {
+        listProjects: async () => (++lists === 1 ? before : after),
+      },
+    );
+
+    const result = await host.handlers().refresh({} as never);
+    expect(result).toMatchObject({
+      projects: {
+        state: "partial",
+        items: [
+          {
+            id: "project-1",
+            scan: {
+              state: "unavailable",
+              reason: "source_changed",
+              items: [],
+            },
+          },
+          {
+            id: "project-2",
+            scan: {
+              state: "unavailable",
+              reason: "source_changed",
+              items: [],
+            },
+          },
+        ],
+      },
+    });
+    expect(admitted).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain("/private/changed");
+  });
+
+  test("shares concurrent refresh demand and redacts a batch failure", async () => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let admissions = 0;
+    let allocations = 0;
+    const host = hostFixture(
+      {
+        status: () => idle,
+        async ensure() {
+          return ready;
+        },
+        async admitProjects() {
+          admissions += 1;
+          await held;
+          throw new Error("/private/runtime/failure");
+        },
+        async runService() {},
         async stop() {},
       },
       {
@@ -143,121 +345,129 @@ describe("Plugin Workbench backend v2", () => {
       },
     );
 
-    expect(await host.handlers().status({} as never)).toMatchObject({
-      schemaVersion: 2,
-      projects: { state: "ready" },
-      targets: { state: "unavailable", reason: "runtime_not_ready" },
-    });
-    expect(ensures).toBe(0);
-    expect(allocations).toBe(0);
-    expect(
-      await host.handlers().admit({ projectId: "project-1" } as never),
-    ).toMatchObject({
-      runtimeState: "ready",
-      targets: {
-        state: "ready",
-        items: [{ pluginId: "example", revision: 1 }],
+    const first = host.handlers().refresh({} as never);
+    const second = host.handlers().refresh({} as never);
+    while (admissions === 0)
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(admissions).toBe(1);
+    release();
+    const [left, right] = await Promise.all([first, second]);
+    expect(left).toEqual(right);
+    expect(left).toMatchObject({
+      projects: {
+        state: "partial",
+        items: [
+          {
+            scan: {
+              state: "unavailable",
+              reason: "scan_failed",
+              items: [],
+            },
+          },
+        ],
       },
     });
-    expect(ensures).toBe(1);
-    expect(admissions).toBe(1);
+    expect(JSON.stringify(left)).not.toContain("/private/runtime/failure");
     expect(allocations).toBe(1);
   });
 
-  test("shares lifecycle registration and never echoes a private admission failure", async () => {
-    let stops = 0;
-    let current = idle;
-    const host = hostFixture({
-      status: () => current,
-      async ensure() {
-        current = ready;
-        return ready;
-      },
-      async admitCurrentProject() {
-        throw new Error("/private/leak");
-      },
-      async runService(signal) {
-        await new Promise<void>((resolve) =>
-          signal.addEventListener("abort", () => resolve(), { once: true }),
-        );
-      },
-      async stop() {
-        stops += 1;
-      },
-    });
-    expect(
-      await host.handlers().admit({ projectId: "project-1" } as never),
-    ).toMatchObject({
-      targets: { state: "unavailable", reason: "catalog_unavailable" },
-    });
-    const controller = new AbortController();
-    const serving = Promise.resolve(host.service().start(controller.signal));
-    controller.abort();
-    await serving;
-    await host.dispose()();
-    expect(stops).toBe(1);
-  });
-
-  test("rejects generically when the released project source changes during startup", async () => {
-    let reads = 0;
-    let admissions = 0;
-    const host = hostFixture(
-      {
-        status: () => ready,
-        async ensure() {
-          return ready;
-        },
-        async admitCurrentProject() {
-          admissions += 1;
-          return { state: "ready", targets: [] };
-        },
-        async runService() {},
-        async stop() {},
-      },
-      {
-        async getProject() {
-          reads += 1;
-          return {
-            ...project,
-            sources: project.sources.map((source) => ({
-              ...source,
-              updatedAt: reads,
-            })),
-          };
-        },
-      },
-    );
-    await expect(
-      host.handlers().admit({ projectId: "project-1" } as never),
-    ).rejects.toThrow("Project source unavailable.");
-    expect(reads).toBe(2);
-    expect(admissions).toBe(0);
-  });
-
-  test("contains host-native storage allocation failure before runtime demand", async () => {
-    let ensures = 0;
+  test("keeps a partial project beside a ready sibling", async () => {
     const host = hostFixture(
       {
         status: () => idle,
         async ensure() {
-          ensures += 1;
           return ready;
         },
-        async admitCurrentProject() {
-          throw new Error("must not admit");
+        async admitProjects(input) {
+          return {
+            schemaVersion: 2,
+            state: "partial",
+            projects: input.projects.map(({ projectKey }, index) => ({
+              projectKey,
+              state: index === 0 ? ("partial" as const) : ("ready" as const),
+              targets: [],
+            })),
+          };
         },
         async runService() {},
         async stop() {},
       },
       {
-        allocateStorage() {
-          throw new Error("/private/plugin/data.db");
-        },
+        projects: [project("project-1", "One"), project("project-2", "Two")],
       },
     );
-    await expect(
-      host.handlers().admit({ projectId: "project-1" } as never),
-    ).rejects.toThrow("Project source unavailable.");
-    expect(ensures).toBe(0);
+
+    expect(await host.handlers().refresh({} as never)).toMatchObject({
+      projects: {
+        state: "partial",
+        items: [
+          { id: "project-1", scan: { state: "partial", items: [] } },
+          { id: "project-2", scan: { state: "ready", items: [] } },
+        ],
+      },
+    });
+  });
+
+  test("normalizes browser-unsafe runtime labels without losing sibling project scans", async () => {
+    const host = hostFixture(
+      {
+        status: () => idle,
+        async ensure() {
+          return ready;
+        },
+        async admitProjects(input) {
+          return {
+            schemaVersion: 2,
+            state: "ready",
+            projects: input.projects.map(({ projectKey }, index) => ({
+              projectKey,
+              state: "ready" as const,
+              targets: [
+                {
+                  id: String(index + 1).repeat(32),
+                  revision: 1,
+                  displayName:
+                    index === 0 ? "Tools/Experimental" : "A".repeat(129),
+                  manifest: { pluginId: `plugin-${index + 1}` },
+                },
+              ],
+            })),
+          };
+        },
+        async runService() {},
+        async stop() {},
+      },
+      {
+        projects: [
+          project("project-unsafe-name", "Client / API"),
+          project("project-long-target", "Long target"),
+          project("project-safe", "Safe sibling"),
+        ],
+      },
+    );
+
+    const result = await host.handlers().refresh({} as never);
+    expect(result).toMatchObject({
+      projects: {
+        state: "ready",
+        items: [
+          {
+            id: "project-unsafe-name",
+            label: "Project project-unsafe-name",
+            scan: { state: "ready", items: [{ label: "plugin-1" }] },
+          },
+          {
+            id: "project-long-target",
+            scan: { state: "ready", items: [{ label: "plugin-2" }] },
+          },
+          {
+            id: "project-safe",
+            scan: { state: "ready", items: [{ label: "plugin-3" }] },
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("Tools/Experimental");
+    expect(JSON.stringify(result)).not.toContain("A".repeat(129));
   });
 });

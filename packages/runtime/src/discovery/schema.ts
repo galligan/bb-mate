@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
+import type { Database } from "bun:sqlite";
 
+import {
+  RUNTIME_EVENTS_NO_DELETE_TRIGGER,
+  verifyRuntimeEventSchema,
+} from "../events/schema.ts";
 import type { RuntimeMigration } from "../persistence/migrations.ts";
 import {
   verifyOwnedSchema,
@@ -74,13 +79,26 @@ const HOST_OBSERVATIONS_TABLE = `CREATE TABLE development_target_host_observatio
 const HOST_OBSERVATIONS_INDEX = `CREATE INDEX development_target_host_observations_context
     ON development_target_host_observations (principal_id, bb_context_id, object_id)`;
 
-const HOST_OBSERVATIONS_NO_DELETE = `CREATE TRIGGER development_target_host_observations_no_delete
+const LEGACY_HOSTS_NO_DELETE_TRIGGER = `CREATE TRIGGER development_target_host_observations_no_delete
     BEFORE DELETE ON development_target_host_observations
     BEGIN
       SELECT RAISE(ABORT, 'development target host observations are append-only');
     END`;
 
-const HOST_OBSERVATION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+export const DEVELOPMENT_TARGET_HOSTS_NO_DELETE_TRIGGER = `CREATE TRIGGER development_target_host_observations_no_delete
+    BEFORE DELETE ON development_target_host_observations
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM development_target_retirements r
+      WHERE r.object_id = OLD.object_id
+        AND r.principal_id = OLD.principal_id
+        AND r.bb_context_id = OLD.bb_context_id
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'retained development target host observations are append-only');
+    END`;
+
+const HOST_OBSERVATION_BASE_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
   {
     type: "table",
     name: "development_target_host_observations",
@@ -91,13 +109,142 @@ const HOST_OBSERVATION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
     name: "development_target_host_observations_context",
     sql: HOST_OBSERVATIONS_INDEX,
   },
+];
+const HOST_OBSERVATION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  ...HOST_OBSERVATION_BASE_SCHEMA_ENTRIES,
   {
     type: "trigger",
     name: "development_target_host_observations_no_delete",
-    sql: HOST_OBSERVATIONS_NO_DELETE,
+    sql: DEVELOPMENT_TARGET_HOSTS_NO_DELETE_TRIGGER,
   },
 ];
-const HOST_OBSERVATION_SCHEMA = `${HOST_OBSERVATIONS_TABLE};\n${HOST_OBSERVATIONS_INDEX};\n${HOST_OBSERVATIONS_NO_DELETE};`;
+const LEGACY_HOST_OBSERVATION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  ...HOST_OBSERVATION_BASE_SCHEMA_ENTRIES,
+  {
+    type: "trigger",
+    name: "development_target_host_observations_no_delete",
+    sql: LEGACY_HOSTS_NO_DELETE_TRIGGER,
+  },
+];
+const HOST_OBSERVATION_SCHEMA = `${HOST_OBSERVATIONS_TABLE};\n${HOST_OBSERVATIONS_INDEX};\n${LEGACY_HOSTS_NO_DELETE_TRIGGER};`;
+
+function verifyDevelopmentTargetHostBaseSchema(database: Database): void {
+  try {
+    verifyOwnedSchema(
+      database,
+      "development_target_host_observations",
+      LEGACY_HOST_OBSERVATION_SCHEMA_ENTRIES,
+    );
+  } catch {
+    verifyDevelopmentTargetHostSchema(database);
+  }
+}
+
+export function verifyDevelopmentTargetHostSchema(database: Database): void {
+  verifyOwnedSchema(
+    database,
+    "development_target_host_observations",
+    HOST_OBSERVATION_SCHEMA_ENTRIES,
+  );
+}
+
+const RETIREMENTS_TABLE = `CREATE TABLE development_target_retirements (
+    object_id TEXT PRIMARY KEY,
+    principal_id TEXT NOT NULL,
+    bb_context_id TEXT NOT NULL,
+    retired_at INTEGER NOT NULL CHECK (retired_at >= 0),
+    revision INTEGER NOT NULL CHECK (revision > 0),
+    FOREIGN KEY (object_id) REFERENCES runtime_objects(id) ON DELETE RESTRICT
+  ) STRICT`;
+
+const RETIREMENTS_INDEX = `CREATE INDEX development_target_retirements_context
+    ON development_target_retirements (principal_id, bb_context_id, object_id)`;
+
+const RETIREMENT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  {
+    type: "table",
+    name: "development_target_retirements",
+    sql: RETIREMENTS_TABLE,
+  },
+  {
+    type: "index",
+    name: "development_target_retirements_context",
+    sql: RETIREMENTS_INDEX,
+  },
+];
+const RETIREMENT_SCHEMA = `${RETIREMENTS_TABLE};\n${RETIREMENTS_INDEX};`;
+
+const RETENTION_GUARD_MIGRATION = `DROP TRIGGER runtime_events_no_delete;
+DROP TRIGGER development_target_host_observations_no_delete;
+${RUNTIME_EVENTS_NO_DELETE_TRIGGER};
+${DEVELOPMENT_TARGET_HOSTS_NO_DELETE_TRIGGER};`;
+
+const PROJECT_SCOPES_TABLE = `CREATE TABLE development_target_project_scopes (
+    principal_id TEXT NOT NULL,
+    bb_context_id TEXT NOT NULL,
+    canonical_root TEXT NOT NULL,
+    PRIMARY KEY (principal_id, bb_context_id, canonical_root)
+  ) STRICT`;
+
+const PROJECT_SCOPE_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  {
+    type: "table",
+    name: "development_target_project_scopes",
+    sql: PROJECT_SCOPES_TABLE,
+  },
+];
+
+const EVENT_RETENTION_TABLE = `CREATE TABLE development_target_event_retention (
+    object_id TEXT PRIMARY KEY,
+    principal_id TEXT NOT NULL,
+    bb_context_id TEXT NOT NULL,
+    expired_through_sequence INTEGER NOT NULL CHECK (expired_through_sequence > 0),
+    FOREIGN KEY (object_id) REFERENCES runtime_objects(id) ON DELETE RESTRICT
+  ) STRICT`;
+
+const EVENT_RETENTION_NO_DELETE_TRIGGER = `CREATE TRIGGER development_target_event_retention_no_delete
+    BEFORE DELETE ON development_target_event_retention
+    WHEN EXISTS (
+      SELECT 1 FROM development_target_sources s
+      WHERE s.object_id = OLD.object_id
+        AND s.principal_id = OLD.principal_id
+        AND s.bb_context_id = OLD.bb_context_id
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'retained development target event checkpoints are append-only');
+    END`;
+
+const EVENT_RETENTION_MONOTONIC_TRIGGER = `CREATE TRIGGER development_target_event_retention_monotonic
+    BEFORE UPDATE ON development_target_event_retention
+    WHEN NEW.object_id != OLD.object_id
+      OR NEW.principal_id != OLD.principal_id
+      OR NEW.bb_context_id != OLD.bb_context_id
+      OR NEW.expired_through_sequence < OLD.expired_through_sequence
+    BEGIN
+      SELECT RAISE(ABORT, 'development target event checkpoints are monotonic');
+    END`;
+
+const EVENT_RETENTION_SCHEMA = `${EVENT_RETENTION_TABLE};
+${EVENT_RETENTION_NO_DELETE_TRIGGER};
+${EVENT_RETENTION_MONOTONIC_TRIGGER};`;
+
+const EVENT_RETENTION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  {
+    type: "table",
+    name: "development_target_event_retention",
+    sql: EVENT_RETENTION_TABLE,
+  },
+  {
+    type: "trigger",
+    name: "development_target_event_retention_no_delete",
+    sql: EVENT_RETENTION_NO_DELETE_TRIGGER,
+  },
+  {
+    type: "trigger",
+    name: "development_target_event_retention_monotonic",
+    sql: EVENT_RETENTION_MONOTONIC_TRIGGER,
+  },
+];
 
 export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   {
@@ -123,10 +270,61 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
       database.exec(HOST_OBSERVATION_SCHEMA);
     },
     verify(database) {
+      verifyDevelopmentTargetHostBaseSchema(database);
+    },
+  },
+  {
+    version: 5,
+    checksum: createHash("sha256").update(RETIREMENT_SCHEMA).digest("hex"),
+    apply(database) {
+      database.exec(RETIREMENT_SCHEMA);
+    },
+    verify(database) {
       verifyOwnedSchema(
         database,
-        "development_target_host_observations",
-        HOST_OBSERVATION_SCHEMA_ENTRIES,
+        "development_target_retirements",
+        RETIREMENT_SCHEMA_ENTRIES,
+      );
+    },
+  },
+  {
+    version: 6,
+    checksum: createHash("sha256")
+      .update(RETENTION_GUARD_MIGRATION)
+      .digest("hex"),
+    apply(database) {
+      database.exec(RETENTION_GUARD_MIGRATION);
+    },
+    verify(database) {
+      verifyRuntimeEventSchema(database);
+      verifyDevelopmentTargetHostSchema(database);
+    },
+  },
+  {
+    version: 7,
+    checksum: createHash("sha256").update(PROJECT_SCOPES_TABLE).digest("hex"),
+    apply(database) {
+      database.exec(PROJECT_SCOPES_TABLE);
+    },
+    verify(database) {
+      verifyOwnedSchema(
+        database,
+        "development_target_project_scopes",
+        PROJECT_SCOPE_SCHEMA_ENTRIES,
+      );
+    },
+  },
+  {
+    version: 8,
+    checksum: createHash("sha256").update(EVENT_RETENTION_SCHEMA).digest("hex"),
+    apply(database) {
+      database.exec(EVENT_RETENTION_SCHEMA);
+    },
+    verify(database) {
+      verifyOwnedSchema(
+        database,
+        "development_target_event_retention",
+        EVENT_RETENTION_SCHEMA_ENTRIES,
       );
     },
   },

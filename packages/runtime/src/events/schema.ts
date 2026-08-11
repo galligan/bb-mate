@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Database } from "bun:sqlite";
 
 import type { RuntimeMigration } from "../persistence/migrations.ts";
 import {
@@ -34,24 +35,76 @@ const EVENTS_NO_UPDATE = `CREATE TRIGGER runtime_events_no_update
       SELECT RAISE(ABORT, 'runtime events are append-only');
     END`;
 
-const EVENTS_NO_DELETE = `CREATE TRIGGER runtime_events_no_delete
+const LEGACY_EVENTS_NO_DELETE_TRIGGER = `CREATE TRIGGER runtime_events_no_delete
     BEFORE DELETE ON runtime_events
     BEGIN
       SELECT RAISE(ABORT, 'runtime events are append-only');
     END`;
 
-const EVENT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+export const RUNTIME_EVENTS_NO_DELETE_TRIGGER = `CREATE TRIGGER runtime_events_no_delete
+    BEFORE DELETE ON runtime_events
+    WHEN EXISTS (
+      SELECT 1 FROM runtime_objects o WHERE o.id = OLD.object_id
+    )
+    AND (
+      NOT EXISTS (
+        SELECT 1
+        FROM development_target_event_retention r
+        WHERE r.object_id = OLD.object_id
+          AND r.principal_id = OLD.principal_id
+          AND r.bb_context_id = OLD.bb_context_id
+          AND r.expired_through_sequence >= OLD.sequence
+      )
+      OR OLD.sequence = (
+        SELECT MAX(latest.sequence)
+        FROM runtime_events latest
+        WHERE latest.object_id = OLD.object_id
+          AND latest.event_type = OLD.event_type
+      )
+    )
+    BEGIN
+      SELECT RAISE(ABORT, 'retained runtime events are append-only');
+    END`;
+
+const EVENT_BASE_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
   { type: "table", name: "runtime_events", sql: EVENTS_TABLE },
   { type: "index", name: "runtime_events_pull", sql: EVENTS_INDEX },
   { type: "trigger", name: "runtime_events_no_update", sql: EVENTS_NO_UPDATE },
-  { type: "trigger", name: "runtime_events_no_delete", sql: EVENTS_NO_DELETE },
+];
+const EVENT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  ...EVENT_BASE_SCHEMA_ENTRIES,
+  {
+    type: "trigger",
+    name: "runtime_events_no_delete",
+    sql: RUNTIME_EVENTS_NO_DELETE_TRIGGER,
+  },
+];
+const LEGACY_EVENT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
+  ...EVENT_BASE_SCHEMA_ENTRIES,
+  {
+    type: "trigger",
+    name: "runtime_events_no_delete",
+    sql: LEGACY_EVENTS_NO_DELETE_TRIGGER,
+  },
 ];
 const EVENTS_SCHEMA = [
   EVENTS_TABLE,
   EVENTS_INDEX,
   EVENTS_NO_UPDATE,
-  EVENTS_NO_DELETE,
+  LEGACY_EVENTS_NO_DELETE_TRIGGER,
 ].join(";\n");
+
+function verifyRuntimeEventBaseSchema(database: Database): void {
+  try {
+    verifyOwnedSchema(database, "runtime_events", LEGACY_EVENT_SCHEMA_ENTRIES);
+  } catch {
+    verifyRuntimeEventSchema(database);
+  }
+}
+
+export function verifyRuntimeEventSchema(database: Database): void {
+  verifyOwnedSchema(database, "runtime_events", EVENT_SCHEMA_ENTRIES);
+}
 
 export const EVENT_MIGRATIONS: readonly RuntimeMigration[] = [
   {
@@ -61,7 +114,7 @@ export const EVENT_MIGRATIONS: readonly RuntimeMigration[] = [
       database.exec(EVENTS_SCHEMA);
     },
     verify(database) {
-      verifyOwnedSchema(database, "runtime_events", EVENT_SCHEMA_ENTRIES);
+      verifyRuntimeEventBaseSchema(database);
     },
   },
 ];

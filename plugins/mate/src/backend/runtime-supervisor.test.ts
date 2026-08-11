@@ -28,8 +28,16 @@ function controlledRuntime() {
       async list() {
         return { schemaVersion: 1, state: "ready", targets: [] };
       },
-      async admit() {
-        return { schemaVersion: 1, state: "ready", targets: [] };
+      async admitProjects(input) {
+        return {
+          schemaVersion: 2,
+          state: "ready",
+          projects: input.projects.map(({ projectKey }) => ({
+            projectKey,
+            state: "ready" as const,
+            targets: [],
+          })),
+        };
       },
       dispose() {},
     },
@@ -232,8 +240,16 @@ describe("runtime supervisor", () => {
             async list() {
               return { schemaVersion: 1, state: "ready", targets: [] };
             },
-            async admit() {
-              return { schemaVersion: 1, state: "ready", targets: [] };
+            async admitProjects(input) {
+              return {
+                schemaVersion: 2,
+                state: "ready",
+                projects: input.projects.map(({ projectKey }) => ({
+                  projectKey,
+                  state: "ready" as const,
+                  targets: [],
+                })),
+              };
             },
             dispose() {},
           },

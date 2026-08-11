@@ -4,6 +4,11 @@ import { RuntimeError } from "../errors.ts";
 import { DevelopmentTargetPayloadSchema } from "./development-target.ts";
 import { parsePrivateDevelopmentTargetSource } from "./private-source.ts";
 import { parsePrivateHostObservation } from "./private-host-observation.ts";
+import { isCanonicalSourcePathFormat } from "./source-path-policy.ts";
+import {
+  TARGET_EVENT_MAX_EVENTS_PER_TARGET,
+  TARGET_HISTORY_MAX_TARGETS,
+} from "./target-limits.ts";
 
 interface IntegrityRow {
   readonly invalid: number;
@@ -13,6 +18,10 @@ interface PrivateSourceRow {
   readonly canonical_root: string;
   readonly root_key: string;
   readonly root_kind: string;
+}
+
+interface PrivateScopeRow {
+  readonly canonical_root: string;
 }
 
 interface PrivateHostRow {
@@ -106,6 +115,112 @@ export function createDevelopmentTargetIntegrityCheck(
         OR e.occurred_at > o.updated_at
         OR h.object_id IS NULL
       )
+    UNION ALL
+    SELECT 1 AS invalid
+    FROM development_target_retirements r
+    LEFT JOIN runtime_objects o ON o.id = r.object_id
+    LEFT JOIN development_target_sources s ON s.object_id = r.object_id
+    WHERE o.id IS NULL
+      OR s.object_id IS NULL
+      OR o.kind != 'development-target'
+      OR o.principal_id != r.principal_id
+      OR o.bb_context_id != r.bb_context_id
+      OR s.principal_id != r.principal_id
+      OR s.bb_context_id != r.bb_context_id
+      OR o.target_id != o.id
+      OR o.session_id IS NOT NULL
+      OR r.revision != o.revision
+      OR r.retired_at != o.updated_at
+      OR NOT EXISTS (
+        SELECT 1
+        FROM runtime_events e
+        WHERE e.event_type = 'target.retired'
+          AND e.object_id = r.object_id
+          AND e.principal_id = r.principal_id
+          AND e.bb_context_id = r.bb_context_id
+          AND e.target_id = r.object_id
+          AND e.session_id IS NULL
+          AND e.revision = r.revision
+          AND e.occurred_at = r.retired_at
+      )
+    UNION ALL
+    SELECT 1 AS invalid
+    FROM runtime_events e
+    LEFT JOIN runtime_objects o ON o.id = e.object_id
+    WHERE e.event_type IN ('target.retired', 'target.reopened')
+      AND (
+        o.id IS NULL
+        OR o.kind != 'development-target'
+        OR e.object_kind != 'development-target'
+        OR o.principal_id != e.principal_id
+        OR o.bb_context_id != e.bb_context_id
+        OR o.target_id != e.target_id
+        OR o.session_id IS NOT e.session_id
+        OR e.revision > o.revision
+        OR e.occurred_at > o.updated_at
+      )
+    UNION ALL
+    SELECT 1 AS invalid
+    FROM runtime_events e
+    WHERE e.event_type IN ('target.retired', 'target.reopened')
+      AND e.sequence = (
+        SELECT MAX(latest.sequence)
+        FROM runtime_events latest
+        WHERE latest.object_id = e.object_id
+          AND latest.principal_id = e.principal_id
+          AND latest.bb_context_id = e.bb_context_id
+          AND latest.event_type IN ('target.retired', 'target.reopened')
+      )
+      AND (
+        (
+          e.event_type = 'target.retired'
+          AND NOT EXISTS (
+            SELECT 1 FROM development_target_retirements r
+            WHERE r.object_id = e.object_id
+              AND r.principal_id = e.principal_id
+              AND r.bb_context_id = e.bb_context_id
+          )
+        )
+        OR (
+          e.event_type = 'target.reopened'
+          AND EXISTS (
+            SELECT 1 FROM development_target_retirements r
+            WHERE r.object_id = e.object_id
+              AND r.principal_id = e.principal_id
+              AND r.bb_context_id = e.bb_context_id
+          )
+        )
+      )
+    UNION ALL
+    SELECT 1 AS invalid
+    FROM development_target_sources s
+    GROUP BY s.principal_id, s.bb_context_id
+    HAVING COUNT(*) > ${TARGET_HISTORY_MAX_TARGETS}
+    UNION ALL
+    SELECT 1 AS invalid
+    FROM development_target_event_retention r
+    LEFT JOIN runtime_objects o ON o.id = r.object_id
+    LEFT JOIN development_target_sources s ON s.object_id = r.object_id
+    WHERE o.id IS NULL
+      OR s.object_id IS NULL
+      OR o.kind != 'development-target'
+      OR o.principal_id != r.principal_id
+      OR o.bb_context_id != r.bb_context_id
+      OR s.principal_id != r.principal_id
+      OR s.bb_context_id != r.bb_context_id
+      OR NOT EXISTS (
+        SELECT 1 FROM runtime_events e
+        WHERE e.object_id = r.object_id
+          AND e.principal_id = r.principal_id
+          AND e.bb_context_id = r.bb_context_id
+          AND e.sequence > r.expired_through_sequence
+      )
+    UNION ALL
+    SELECT 1 AS invalid
+    FROM runtime_events e
+    INNER JOIN development_target_sources s ON s.object_id = e.object_id
+    GROUP BY e.object_id, s.principal_id, s.bb_context_id
+    HAVING COUNT(*) > ${TARGET_EVENT_MAX_EVENTS_PER_TARGET}
     LIMIT 1
   `);
   const selectPrivateSources = database.query<PrivateSourceRow, []>(`
@@ -142,6 +257,9 @@ export function createDevelopmentTargetIntegrityCheck(
       ) AS reconciliation_occurred_at
     FROM development_target_host_observations h
     INNER JOIN runtime_objects o ON o.id = h.object_id
+  `);
+  const selectPrivateScopes = database.query<PrivateScopeRow, []>(`
+    SELECT canonical_root FROM development_target_project_scopes
   `);
 
   return () => {
@@ -188,6 +306,11 @@ export function createDevelopmentTargetIntegrityCheck(
           row.reconciliation_revision > row.object_revision ||
           row.reconciliation_occurred_at < observation.observedAt
         ) {
+          throw new RuntimeError("corrupt_data");
+        }
+      }
+      for (const row of selectPrivateScopes.all()) {
+        if (!isCanonicalSourcePathFormat(row.canonical_root)) {
           throw new RuntimeError("corrupt_data");
         }
       }

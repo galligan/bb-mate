@@ -1,6 +1,5 @@
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
 import { Icon } from "../components/ui/icon";
 import {
   Tooltip,
@@ -13,13 +12,10 @@ import { NativeSettingsSection } from "./native-settings";
 import type {
   PluginWorkbenchSnapshot,
   PluginWorkbenchUnavailableReason,
-  TargetCatalog,
+  ProjectOption,
+  ProjectScan,
+  TargetSummary,
 } from "./workbench-snapshot";
-
-type DevelopmentTarget = Extract<
-  TargetCatalog,
-  { state: "ready" | "partial" }
->["items"][number];
 
 export interface WorkbenchProjectThread {
   id: string;
@@ -27,12 +23,14 @@ export interface WorkbenchProjectThread {
   updatedAt: number;
 }
 
+export type WorkbenchProjectThreads =
+  | { state: "loading" | "unavailable"; items: [] }
+  | { state: "ready"; items: readonly WorkbenchProjectThread[] };
+
 export interface PluginWorkbenchViewProps {
   snapshot: PluginWorkbenchSnapshot;
-  openedProjectId: string | null;
-  admittingProjectId: string | null;
-  selectionMessage: string | null;
-  onOpenProject(projectId: string): void;
+  refreshing: boolean;
+  catalogMessage: string | null;
   onOpenTarget(projectId: string, targetId: string): void;
   onRefresh(): void;
 }
@@ -43,7 +41,7 @@ const stateCopy: Record<
 > = {
   idle: {
     title: "Runtime idle",
-    detail: "It starts when you open a project.",
+    detail: "Reload Workbench data to start plugin discovery.",
   },
   starting: {
     title: "Starting runtime",
@@ -63,7 +61,7 @@ const stateCopy: Record<
   },
   failed: {
     title: "Runtime stopped",
-    detail: "Open a project to retry.",
+    detail: "Reload Workbench data to retry.",
   },
 };
 
@@ -92,6 +90,7 @@ function RefreshButton({
   busy: boolean;
   onRefresh(): void;
 }) {
+  const label = busy ? "Reloading Workbench data" : "Reload Workbench data";
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
@@ -103,9 +102,7 @@ function RefreshButton({
             className="size-7 text-muted-foreground hover:text-foreground"
             disabled={busy}
             onClick={onRefresh}
-            aria-label={
-              busy ? "Reloading Workbench data" : "Reload Workbench data"
-            }
+            aria-label={label}
           >
             <Icon
               name="RotateCcw"
@@ -113,7 +110,7 @@ function RefreshButton({
             />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom">Reload Workbench data</TooltipContent>
+        <TooltipContent side="bottom">{label}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
@@ -134,11 +131,8 @@ function RuntimeSummary({
       ? `${snapshot.runtimeVersion} · API ${snapshot.apiVersion}`
       : null;
   return (
-    <div
-      className="flex min-h-7 items-center justify-between gap-3"
-      aria-live="polite"
-    >
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-h-7 items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2" aria-live="polite">
         <span
           aria-hidden="true"
           className={cn(
@@ -172,72 +166,58 @@ function EmptyInset({ detail, title }: { detail: string; title: string }) {
   );
 }
 
-function ProjectTargets({
-  catalog,
+function WorkbenchMessage({ message }: { message: string | null }) {
+  return message ? (
+    <p
+      className="text-xs leading-snug text-subtle-foreground"
+      role="status"
+      aria-live="polite"
+    >
+      {message}
+    </p>
+  ) : null;
+}
+
+function ProjectStateRow({
+  children,
+  warning = false,
+}: {
+  children: string;
+  warning?: boolean;
+}) {
+  return (
+    <p
+      className={cn(
+        "border-t border-border px-4 py-3 pl-11 text-xs leading-snug text-subtle-foreground",
+        warning && "text-foreground",
+      )}
+      role={warning ? "status" : undefined}
+    >
+      {children}
+    </p>
+  );
+}
+
+function PluginRows({
+  items,
   projectId,
   projectLabel,
   onOpenTarget,
 }: {
-  catalog: TargetCatalog;
+  items: readonly TargetSummary[];
   projectId: string;
   projectLabel: string;
   onOpenTarget(projectId: string, targetId: string): void;
 }) {
-  if (catalog.state === "project_not_selected") return null;
-  if (catalog.state === "unavailable") {
-    const detail =
-      catalog.reason === "runtime_incompatible"
-        ? "Update or replace the packaged runtime before opening plugins."
-        : catalog.reason === "runtime_not_ready"
-          ? "Wait for the runtime to become ready, then reload Workbench data."
-          : "Reload this project to retry plugin discovery.";
-    return <EmptyInset title="Plugins unavailable" detail={detail} />;
-  }
-  if (catalog.state === "partial" && catalog.items.length === 0) {
-    return (
-      <EmptyInset
-        title="No plugins could be opened"
-        detail="Reload this project to retry the bounded source scan."
-      />
-    );
-  }
-  if (catalog.items.length === 0) {
-    return (
-      <EmptyInset
-        title="No development plugins found"
-        detail="Installed plugins are not included in this source-project view."
-      />
-    );
-  }
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-foreground">
-          Plugins in {projectLabel}
-        </p>
-        {catalog.state === "partial" ? (
-          <Badge variant="outline" className="text-2xs font-normal">
-            Incomplete scan
-          </Badge>
-        ) : null}
-      </div>
-      {catalog.state === "partial" ? (
-        <p
-          className="rounded-md border border-warning/35 bg-warning/5 px-3 py-2 text-xs leading-snug text-foreground"
-          role="status"
-        >
-          The project scan was not exhaustive. Plugins found within the safety
-          limits are shown below.
-        </p>
-      ) : null}
-      <div className="divide-y divide-border overflow-hidden rounded-md border border-border">
-        {catalog.items.map((target) => (
+    <ul className="list-none divide-y divide-border border-t border-border bg-muted/10 p-0">
+      {items.map((target) => (
+        <li key={target.id}>
           <button
-            key={target.id}
             type="button"
-            className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+            className="flex w-full cursor-pointer items-center gap-3 py-2.5 pl-11 pr-4 text-left transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
             onClick={() => onOpenTarget(projectId, target.id)}
-            aria-label={`Open ${target.label}`}
+            aria-label={`Open ${target.label} in ${projectLabel}`}
           >
             <Icon
               name="Puzzle"
@@ -256,49 +236,139 @@ function ProjectTargets({
               className="size-3.5 shrink-0 text-muted-foreground"
             />
           </button>
-        ))}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function unavailableCopy(scan: Extract<ProjectScan, { state: "unavailable" }>) {
+  if (scan.reason === "source_changed") {
+    return "The project changed during scanning. Reload Workbench data to try again.";
+  }
+  if (scan.reason === "capacity_reached") {
+    return "The shared scan limit was reached before this project could be inspected.";
+  }
+  return "Plugins unavailable. Reload Workbench data to try again.";
+}
+
+function ProjectPlugins({
+  project,
+  onOpenTarget,
+}: {
+  project: ProjectOption;
+  onOpenTarget(projectId: string, targetId: string): void;
+}) {
+  const { scan } = project;
+  if (scan.state === "not_scanned") {
+    return <ProjectStateRow>Finding development plugins…</ProjectStateRow>;
+  }
+  if (scan.state === "unavailable") {
+    return <ProjectStateRow warning>{unavailableCopy(scan)}</ProjectStateRow>;
+  }
+  if (scan.state === "partial" && scan.items.length === 0) {
+    return (
+      <ProjectStateRow warning>
+        Scan incomplete. No plugins were found within the safety limits.
+      </ProjectStateRow>
+    );
+  }
+  if (scan.state === "ready" && scan.items.length === 0) {
+    return <ProjectStateRow>No development plugins found.</ProjectStateRow>;
+  }
+  return (
+    <>
+      {scan.state === "partial" ? (
+        <ProjectStateRow warning>
+          Scan incomplete. Available plugins are shown.
+        </ProjectStateRow>
+      ) : null}
+      <PluginRows
+        items={scan.items}
+        projectId={project.id}
+        projectLabel={project.label}
+        onOpenTarget={onOpenTarget}
+      />
+    </>
+  );
+}
+
+function ProjectRow({
+  project,
+  onOpenTarget,
+}: {
+  project: ProjectOption;
+  onOpenTarget(projectId: string, targetId: string): void;
+}) {
+  const count = project.scan.items.length;
+  const countCopy =
+    project.scan.state === "not_scanned" || project.scan.state === "unavailable"
+      ? null
+      : `${count} ${count === 1 ? "plugin" : "plugins"}`;
+  const headingId = `pw-project-${project.id}`;
+  return (
+    <section aria-labelledby={headingId}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <Icon
+          name="FolderGit"
+          className="size-4 shrink-0 text-muted-foreground"
+        />
+        <div className="min-w-0 flex-1">
+          <h3 id={headingId} className="break-words text-sm text-foreground">
+            {project.label}
+          </h3>
+          {countCopy ? (
+            <p className="mt-0.5 text-xs text-subtle-foreground">{countCopy}</p>
+          ) : null}
+        </div>
+        {project.activity.active ? (
+          <Badge variant="outline" className="text-2xs font-normal">
+            Active
+          </Badge>
+        ) : null}
+        {project.scan.state === "partial" ? (
+          <Badge variant="outline" className="text-2xs font-normal">
+            Incomplete scan
+          </Badge>
+        ) : null}
       </div>
-    </div>
+      <ProjectPlugins project={project} onOpenTarget={onOpenTarget} />
+    </section>
   );
 }
 
 export function PluginWorkbenchView({
   snapshot,
-  openedProjectId,
-  admittingProjectId,
-  selectionMessage,
-  onOpenProject,
+  refreshing,
+  catalogMessage,
   onOpenTarget,
   onRefresh,
 }: PluginWorkbenchViewProps) {
-  const projects =
-    snapshot.projects.state === "ready" ? snapshot.projects.items : [];
+  const projects = [...snapshot.projects.items].sort((left, right) => {
+    if (left.activity.active !== right.activity.active) {
+      return left.activity.active ? -1 : 1;
+    }
+    const leftUpdated = left.activity.lastThreadUpdatedAt ?? -1;
+    const rightUpdated = right.activity.lastThreadUpdatedAt ?? -1;
+    return rightUpdated - leftUpdated;
+  });
   return (
     <div
       className="h-full overflow-y-auto bg-background text-foreground"
-      aria-busy={admittingProjectId !== null}
+      aria-busy={refreshing}
     >
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
         <RuntimeSummary
           snapshot={snapshot}
-          busy={admittingProjectId !== null}
+          busy={refreshing}
           onRefresh={onRefresh}
         />
 
-        {selectionMessage ? (
-          <p
-            className="text-xs leading-snug text-subtle-foreground"
-            role="status"
-            aria-live="polite"
-          >
-            {selectionMessage}
-          </p>
-        ) : null}
-
+        <WorkbenchMessage message={catalogMessage} />
         <NativeSettingsSection
           headingId="pw-projects-heading"
           title="Projects"
-          description="Projects with local sources on this machine. Open one to find its development plugins."
+          description="Development plugins in bb projects on this machine."
           cardClassName="divide-y divide-border p-0"
         >
           {snapshot.projects.state === "unavailable" ? (
@@ -316,55 +386,13 @@ export function PluginWorkbenchView({
               />
             </div>
           ) : (
-            projects.map((project) => {
-              const opened = project.id === openedProjectId;
-              const opening = project.id === admittingProjectId;
-              const available = project.admission === "available";
-              return (
-                <div key={project.id}>
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <Icon
-                      name="FolderGit"
-                      className="size-4 shrink-0 text-muted-foreground"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="break-words text-sm text-foreground">
-                        {project.label}
-                      </p>
-                      <p className="mt-0.5 text-xs leading-snug text-subtle-foreground">
-                        {available
-                          ? opened
-                            ? "Development plugins are listed below."
-                            : "Local source available on this machine."
-                          : "No eligible local source on this machine."}
-                      </p>
-                    </div>
-                    {available ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label={`${opened ? "Refresh" : "Open"} ${project.label}`}
-                        disabled={admittingProjectId !== null}
-                        onClick={() => onOpenProject(project.id)}
-                      >
-                        {opening ? "Opening…" : opened ? "Refresh" : "Open"}
-                      </Button>
-                    ) : null}
-                  </div>
-                  {opened ? (
-                    <div className="border-t border-border bg-muted/10 px-4 py-3.5">
-                      <ProjectTargets
-                        catalog={snapshot.targets}
-                        projectId={project.id}
-                        projectLabel={project.label}
-                        onOpenTarget={onOpenTarget}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })
+            projects.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                onOpenTarget={onOpenTarget}
+              />
+            ))
           )}
         </NativeSettingsSection>
       </div>
@@ -374,12 +402,11 @@ export function PluginWorkbenchView({
 
 export interface PluginWorkbenchTargetDetailProps {
   snapshot: PluginWorkbenchSnapshot;
-  busy: boolean;
-  message: string | null;
   projectLabel: string;
-  target: DevelopmentTarget;
-  threads: readonly WorkbenchProjectThread[];
-  threadsState: "loading" | "ready" | "unavailable";
+  target: TargetSummary;
+  threads: WorkbenchProjectThreads;
+  refreshing: boolean;
+  catalogMessage: string | null;
   onBack(): void;
   onOpenThread(threadId: string): void;
   onNewThread(): void;
@@ -388,12 +415,11 @@ export interface PluginWorkbenchTargetDetailProps {
 
 export function PluginWorkbenchTargetDetail({
   snapshot,
-  busy,
-  message,
   projectLabel,
   target,
   threads,
-  threadsState,
+  refreshing,
+  catalogMessage,
   onBack,
   onOpenThread,
   onNewThread,
@@ -402,16 +428,12 @@ export function PluginWorkbenchTargetDetail({
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
-        <RuntimeSummary snapshot={snapshot} busy={busy} onRefresh={onRefresh} />
-        {message ? (
-          <p
-            className="text-xs leading-snug text-subtle-foreground"
-            role="status"
-            aria-live="polite"
-          >
-            {message}
-          </p>
-        ) : null}
+        <RuntimeSummary
+          snapshot={snapshot}
+          busy={refreshing}
+          onRefresh={onRefresh}
+        />
+        <WorkbenchMessage message={catalogMessage} />
         <div>
           <Button
             type="button"
@@ -440,16 +462,24 @@ export function PluginWorkbenchTargetDetail({
         </div>
 
         <NativeSettingsSection headingId="pw-preview-heading" title="Preview">
-          <EmptyInset
-            title="Preview unavailable"
-            detail="Browser preview will appear here when Workbench browser handoff is available."
-          />
+          <div className="flex items-center gap-3">
+            <Icon
+              name="Browser"
+              className="size-4 shrink-0 text-muted-foreground"
+            />
+            <div className="min-w-0">
+              <p className="text-sm text-foreground">Preview unavailable</p>
+              <p className="mt-0.5 text-xs leading-snug text-subtle-foreground">
+                Browser handoff is not available in this build.
+              </p>
+            </div>
+          </div>
         </NativeSettingsSection>
 
         <NativeSettingsSection
           headingId="pw-threads-heading"
-          title="Project threads"
-          description={`Unarchived threads in ${projectLabel}.`}
+          title="Project tasks"
+          description={`Unarchived tasks in ${projectLabel}.`}
           action={
             <Button
               type="button"
@@ -457,54 +487,129 @@ export function PluginWorkbenchTargetDetail({
               size="sm"
               onClick={onNewThread}
             >
-              New thread
+              New task
             </Button>
           }
           cardClassName="divide-y divide-border p-0"
         >
-          {threadsState === "loading" ? (
-            <div className="p-4">
-              <EmptyInset
-                title="Loading project threads"
-                detail="Reading active threads from bb."
-              />
-            </div>
-          ) : threadsState === "unavailable" ? (
-            <div className="p-4">
-              <EmptyInset
-                title="Project threads unavailable"
-                detail="bb could not provide the project thread list right now."
-              />
-            </div>
-          ) : threads.length === 0 ? (
-            <div className="p-4">
-              <EmptyInset
-                title="No active project threads"
-                detail="Start a thread in this project to discuss or change this plugin."
-              />
-            </div>
-          ) : (
-            threads.map((thread) => (
-              <button
-                key={thread.id}
-                type="button"
-                className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
-                onClick={() => onOpenThread(thread.id)}
-              >
-                <Icon
-                  name="MessageSquare"
-                  className="size-4 shrink-0 text-muted-foreground"
+          <div aria-live="polite" aria-busy={threads.state === "loading"}>
+            {threads.state === "loading" ? (
+              <p className="px-4 py-3 text-xs text-subtle-foreground">
+                Loading project tasks…
+              </p>
+            ) : threads.state === "unavailable" ? (
+              <p className="px-4 py-3 text-xs text-subtle-foreground">
+                Project tasks unavailable.
+              </p>
+            ) : threads.items.length === 0 ? (
+              <div className="p-4">
+                <EmptyInset
+                  title="No active project tasks"
+                  detail="Start a task in this project to discuss or change this plugin."
                 />
-                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                  {thread.title}
-                </span>
-                <Icon
-                  name="ChevronRight"
-                  className="size-3.5 shrink-0 text-muted-foreground"
-                />
-              </button>
-            ))
-          )}
+              </div>
+            ) : (
+              <ul className="list-none divide-y divide-border p-0">
+                {threads.items.map((thread) => (
+                  <li key={thread.id}>
+                    <button
+                      type="button"
+                      className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+                      onClick={() => onOpenThread(thread.id)}
+                    >
+                      <Icon
+                        name="MessageSquare"
+                        className="size-4 shrink-0 text-muted-foreground"
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                        {thread.title}
+                      </span>
+                      <Icon
+                        name="ChevronRight"
+                        className="size-3.5 shrink-0 text-muted-foreground"
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </NativeSettingsSection>
+      </div>
+    </div>
+  );
+}
+
+export function PluginWorkbenchMissingTarget({
+  snapshot,
+  refreshing,
+  catalogMessage,
+  reason,
+  onBack,
+  onRefresh,
+}: {
+  snapshot: PluginWorkbenchSnapshot;
+  refreshing: boolean;
+  catalogMessage: string | null;
+  reason:
+    | "removed"
+    | "catalog_unavailable"
+    | "scan_incomplete"
+    | "not_scanned"
+    | "source_changed"
+    | "scan_failed"
+    | "capacity_reached";
+  onBack(): void;
+  onRefresh(): void;
+}) {
+  const removed = reason === "removed";
+  const detail =
+    reason === "catalog_unavailable"
+      ? "Project data is unavailable, so Workbench could not verify this plugin."
+      : reason === "scan_incomplete"
+        ? "The project scan was incomplete, so Workbench could not verify this plugin."
+        : reason === "not_scanned"
+          ? "The project has not been scanned, so Workbench could not verify this plugin."
+          : reason === "source_changed"
+            ? "The project changed during scanning, so Workbench could not verify this plugin."
+            : reason === "capacity_reached"
+              ? "The shared scan limit was reached before Workbench could verify this plugin."
+              : reason === "scan_failed"
+                ? "The project scan failed, so Workbench could not verify this plugin."
+                : "The project or plugin is not present in the latest complete Workbench scan.";
+  return (
+    <div className="h-full overflow-y-auto bg-background text-foreground">
+      <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
+        <RuntimeSummary
+          snapshot={snapshot}
+          busy={refreshing}
+          onRefresh={onRefresh}
+        />
+        <WorkbenchMessage message={catalogMessage} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 self-start h-7 px-2 text-xs text-muted-foreground"
+          onClick={onBack}
+        >
+          <Icon name="ChevronLeft" className="size-3.5" />
+          Back to projects
+        </Button>
+        <NativeSettingsSection
+          headingId="pw-missing-target-heading"
+          title={removed ? "Plugin no longer available" : "Plugin unavailable"}
+          description={detail}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={refreshing}
+            onClick={onRefresh}
+          >
+            Reload Workbench data
+          </Button>
         </NativeSettingsSection>
       </div>
     </div>

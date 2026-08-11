@@ -11,11 +11,12 @@ and compose them with the same semantic tokens.
 ## Product direction
 
 Plugin Workbench is a source-plugin control surface for bb plugin developers.
-Its single job is to show eligible local bb projects, open a project to
-discover its source plugins, and provide a stable place to move between those
-plugins, their project threads, and—when the public handoff exists—their live
-previews. Runtime health is supporting operational context, not the page's
-primary object.
+Its single job is to show every eligible local bb project and its passively
+discoverable source plugins, then provide a stable place to move between those
+plugins, their project tasks, and—when the public handoff exists—their live
+previews. Projects are expanded inventory, not controls: opening Workbench
+performs one bounded refresh across bb's registered project roots. Runtime
+health is supporting operational context, not the page's primary object.
 
 The intended visual character is bb itself: quiet, compact, semantic, and
 operational. Its one distinctive element is the machine-style runtime identity
@@ -134,22 +135,22 @@ Every state must be understandable without color.
 - `partial`: warning-toned compact notice before the usable results.
 - `unavailable` / failed: finite reason, redacted detail, and a safe retry when
   one exists.
-- empty: say what was searched or admitted and what the person can do next.
+- empty: say what was searched and what the person can do next.
 
 Badges classify; prose communicates. A badge must not be the only expression
 of readiness, failure, or progress.
 
 ## Controls and actions
 
-- Primary actions are rare. In Plugin Workbench, opening a project to discover
-  its plugins is the primary action.
+- Primary actions are rare. In Plugin Workbench, plugin rows are the only
+  per-item Open actions; project headings are noninteractive structure.
 - Use outline buttons for secondary explicit actions and ghost buttons for
   refresh/overflow affordances.
 - Keep compact settings controls around 28–32 px tall.
 - Prefer the Settings → Usage refresh pattern: an icon-only ghost button with
   an accessible label, a short tooltip, and a rotating icon while refreshing.
-- Use product language at the boundary. “Open” is appropriate for the project
-  and plugin rows; “admit” remains an internal runtime operation.
+- Use product language at the boundary. “Open” is appropriate for plugin rows;
+  “admit” remains an internal runtime operation.
 - A disabled future action should remain quiet and adjacent to an explanation.
 
 ## Loading, empty, partial, and error handling
@@ -192,21 +193,21 @@ the same abstraction.
 1. Runtime metadata: one machine-style dot, plain state text, inline version
    metadata, and the Settings → Usage icon refresh action. Do not give healthy
    runtime state its own dominant card.
-2. Projects section: a divided resource list of eligible local projects. Use
-   `Open` to run the private admission/discovery step; never surface the
-   protocol term “admit” in the UI.
-3. Open project: nest the discovered plugin rows beneath the project, keeping
-   project identity and plugin identity visually distinct. A plugin row opens
-   a stable panel subroute.
+2. Projects section: one always-expanded divided inventory of every eligible
+   local project, ordered by activity without filtering idle projects. Project
+   headings are not buttons, accordions, or disclosure controls.
+3. Plugin rows: nest discovered plugins beneath their project so project and
+   plugin identity remain visually distinct. A plugin row is the only `Open`
+   control and navigates to a stable panel subroute.
 4. Plugin detail: provide `Back to projects`, the plugin identity, an honest
-   preview-availability row, and unarchived project threads using the public bb
+   preview-availability row, and unarchived project tasks using the public bb
    navigation/actions SDK.
 
 The released plugin SDK does not expose bb's Add Project dialog. When there are
 no eligible projects, point to the host sidebar's Add Project affordance and
 offer reload; do not call private host routes or recreate the dialog. It also
-does not store a plugin-to-thread association, so label the list “Project
-threads” rather than implying a stronger relationship.
+does not store a plugin-to-task association, so label the list “Project tasks”
+rather than implying a stronger relationship.
 
 Remove the former two-column dashboard grid, status rail, decorative uppercase
 eyebrows, custom status hex colors, oversized headings, and separately boxed

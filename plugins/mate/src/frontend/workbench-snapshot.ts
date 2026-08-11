@@ -8,16 +8,6 @@ export type PluginWorkbenchUnavailableReason =
   | "runtime_incompatible"
   | "startup_failed";
 
-export interface ProjectOption {
-  id: string;
-  label: string;
-  admission: "available" | "no_source";
-}
-
-export type ProjectCatalog =
-  | { state: "ready"; items: ProjectOption[] }
-  | { state: "unavailable"; items: [] };
-
 export interface TargetSummary {
   id: string;
   label: string;
@@ -25,18 +15,36 @@ export interface TargetSummary {
   revision: number;
 }
 
-export type TargetCatalog =
+export interface ProjectActivity {
+  active: boolean;
+  lastThreadUpdatedAt: number | null;
+}
+
+export type ProjectScanUnavailableReason =
+  "source_changed" | "scan_failed" | "capacity_reached";
+
+export type ProjectScan =
+  | { state: "not_scanned"; items: [] }
   | { state: "ready" | "partial"; items: TargetSummary[] }
-  | { state: "project_not_selected"; items: [] }
   | {
       state: "unavailable";
-      reason:
-        "runtime_not_ready" | "runtime_incompatible" | "catalog_unavailable";
+      reason: ProjectScanUnavailableReason;
       items: [];
     };
 
+export interface ProjectOption {
+  id: string;
+  label: string;
+  activity: ProjectActivity;
+  scan: ProjectScan;
+}
+
+export type ProjectCatalog =
+  | { state: "ready" | "partial"; items: ProjectOption[] }
+  | { state: "unavailable"; items: [] };
+
 export interface PluginWorkbenchSnapshot {
-  schemaVersion: 2;
+  schemaVersion: 3;
   runtimeState: PluginWorkbenchRuntimeState;
   reason: PluginWorkbenchUnavailableReason | null;
   runtimeVersion: string | null;
@@ -44,13 +52,10 @@ export interface PluginWorkbenchSnapshot {
   canStart: boolean;
   browserLaunch: "unavailable";
   projects: ProjectCatalog;
-  targets: TargetCatalog;
 }
 
 export type PluginWorkbenchStatusInput = Record<string, never>;
-export interface PluginWorkbenchAdmitInput {
-  projectId: string;
-}
+export type PluginWorkbenchRefreshInput = Record<string, never>;
 
 const runtimeStates = new Set<PluginWorkbenchRuntimeState>([
   "idle",
@@ -67,10 +72,10 @@ const unavailableReasons = new Set<PluginWorkbenchUnavailableReason>([
   "runtime_incompatible",
   "startup_failed",
 ]);
-const targetUnavailableReasons = new Set([
-  "runtime_not_ready",
-  "runtime_incompatible",
-  "catalog_unavailable",
+const scanUnavailableReasons = new Set([
+  "source_changed",
+  "scan_failed",
+  "capacity_reached",
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -136,72 +141,10 @@ function hasUniqueIds(items: readonly { id: string }[]): boolean {
   return new Set(items.map(({ id }) => id)).size === items.length;
 }
 
-function parseProjects(value: unknown): ProjectCatalog | null {
-  if (!isRecord(value) || !Array.isArray(value.items)) return null;
-  if (value.state === "unavailable") {
-    return isExactRecord(value, ["state", "items"]) && value.items.length === 0
-      ? { state: "unavailable", items: [] }
-      : null;
-  }
-  if (
-    value.state !== "ready" ||
-    !isExactRecord(value, ["state", "items"]) ||
-    value.items.length > 128
-  ) {
-    return null;
-  }
-  const items: ProjectOption[] = [];
-  for (const item of value.items) {
-    if (
-      !isExactRecord(item, ["id", "label", "admission"]) ||
-      !isProjectId(item.id) ||
-      !isDisplayLabel(item.label, 256) ||
-      (item.admission !== "available" && item.admission !== "no_source")
-    ) {
-      return null;
-    }
-    items.push({
-      id: item.id,
-      label: item.label,
-      admission: item.admission,
-    });
-  }
-  return hasUniqueIds(items) ? { state: "ready", items } : null;
-}
-
-function parseTargets(value: unknown): TargetCatalog | null {
-  if (!isRecord(value) || !Array.isArray(value.items)) return null;
-  if (value.state === "unavailable") {
-    if (
-      !isExactRecord(value, ["state", "reason", "items"]) ||
-      typeof value.reason !== "string" ||
-      !targetUnavailableReasons.has(value.reason) ||
-      value.items.length !== 0
-    ) {
-      return null;
-    }
-    const reason = value.reason as
-      "runtime_not_ready" | "runtime_incompatible" | "catalog_unavailable";
-    return {
-      state: "unavailable",
-      reason,
-      items: [],
-    };
-  }
-  if (value.state === "project_not_selected") {
-    return isExactRecord(value, ["state", "items"]) && value.items.length === 0
-      ? { state: "project_not_selected", items: [] }
-      : null;
-  }
-  if (
-    (value.state !== "ready" && value.state !== "partial") ||
-    !isExactRecord(value, ["state", "items"]) ||
-    value.items.length > 128
-  ) {
-    return null;
-  }
+function parseTargets(value: unknown): TargetSummary[] | null {
+  if (!Array.isArray(value) || value.length > 128) return null;
   const items: TargetSummary[] = [];
-  for (const item of value.items) {
+  for (const item of value) {
     if (
       !isExactRecord(item, ["id", "label", "pluginId", "revision"]) ||
       !isTargetId(item.id) ||
@@ -219,10 +162,94 @@ function parseTargets(value: unknown): TargetCatalog | null {
       revision: item.revision as number,
     });
   }
-  return hasUniqueIds(items) ? { state: value.state, items } : null;
+  return hasUniqueIds(items) ? items : null;
 }
 
-function hasCoherentState(snapshot: PluginWorkbenchSnapshot): boolean {
+function parseScan(value: unknown): ProjectScan | null {
+  if (!isRecord(value) || !Array.isArray(value.items)) return null;
+  if (value.state === "not_scanned") {
+    return isExactRecord(value, ["state", "items"]) && value.items.length === 0
+      ? { state: "not_scanned", items: [] }
+      : null;
+  }
+  if (value.state === "unavailable") {
+    if (
+      !isExactRecord(value, ["state", "reason", "items"]) ||
+      typeof value.reason !== "string" ||
+      !scanUnavailableReasons.has(value.reason) ||
+      value.items.length !== 0
+    ) {
+      return null;
+    }
+    return {
+      state: "unavailable",
+      reason: value.reason as ProjectScanUnavailableReason,
+      items: [],
+    };
+  }
+  if (
+    (value.state !== "ready" && value.state !== "partial") ||
+    !isExactRecord(value, ["state", "items"])
+  ) {
+    return null;
+  }
+  const items = parseTargets(value.items);
+  return items ? { state: value.state, items } : null;
+}
+
+function parseProjects(value: unknown): ProjectCatalog | null {
+  if (!isRecord(value) || !Array.isArray(value.items)) return null;
+  if (value.state === "unavailable") {
+    return isExactRecord(value, ["state", "items"]) && value.items.length === 0
+      ? { state: "unavailable", items: [] }
+      : null;
+  }
+  if (
+    (value.state !== "ready" && value.state !== "partial") ||
+    !isExactRecord(value, ["state", "items"]) ||
+    value.items.length > 128
+  ) {
+    return null;
+  }
+  const items: ProjectOption[] = [];
+  let targetCount = 0;
+  for (const item of value.items) {
+    if (
+      !isExactRecord(item, ["id", "label", "activity", "scan"]) ||
+      !isProjectId(item.id) ||
+      !isDisplayLabel(item.label, 256) ||
+      !isExactRecord(item.activity, ["active", "lastThreadUpdatedAt"]) ||
+      typeof item.activity.active !== "boolean" ||
+      (item.activity.lastThreadUpdatedAt !== null &&
+        (!Number.isSafeInteger(item.activity.lastThreadUpdatedAt) ||
+          (item.activity.lastThreadUpdatedAt as number) < 0))
+    ) {
+      return null;
+    }
+    const scan = parseScan(item.scan);
+    if (!scan) return null;
+    targetCount += scan.items.length;
+    items.push({
+      id: item.id,
+      label: item.label,
+      activity: {
+        active: item.activity.active,
+        lastThreadUpdatedAt: item.activity.lastThreadUpdatedAt as number | null,
+      },
+      scan,
+    });
+  }
+  const incomplete = items.some(
+    ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
+  );
+  return hasUniqueIds(items) &&
+    targetCount <= 128 &&
+    (value.state === "partial" || !incomplete)
+    ? { state: value.state, items }
+    : null;
+}
+
+function hasCoherentRuntime(snapshot: PluginWorkbenchSnapshot): boolean {
   const hasRuntimeVersion = snapshot.runtimeVersion !== null;
   const hasApiVersion = snapshot.apiVersion === 2;
   if (hasRuntimeVersion !== hasApiVersion) return false;
@@ -230,19 +257,6 @@ function hasCoherentState(snapshot: PluginWorkbenchSnapshot): boolean {
   if (
     (snapshot.runtimeState === "ready" ||
       snapshot.runtimeState === "stopping") !== hasRuntimeIdentity
-  ) {
-    return false;
-  }
-  if (snapshot.runtimeState === "ready") {
-    if (
-      snapshot.targets.state === "unavailable" &&
-      snapshot.targets.reason !== "catalog_unavailable"
-    ) {
-      return false;
-    }
-  } else if (
-    snapshot.targets.state !== "unavailable" ||
-    snapshot.targets.reason === "catalog_unavailable"
   ) {
     return false;
   }
@@ -271,9 +285,8 @@ export function parsePluginWorkbenchSnapshot(
       "canStart",
       "browserLaunch",
       "projects",
-      "targets",
     ]) ||
-    value.schemaVersion !== 2 ||
+    value.schemaVersion !== 3 ||
     typeof value.runtimeState !== "string" ||
     !runtimeStates.has(value.runtimeState as PluginWorkbenchRuntimeState) ||
     (value.reason !== null &&
@@ -287,15 +300,14 @@ export function parsePluginWorkbenchSnapshot(
     typeof value.canStart !== "boolean" ||
     value.browserLaunch !== "unavailable"
   ) {
-    throw new Error("Plugin Workbench returned an invalid snapshot.");
+    throw new Error("Plugin Studio returned an invalid snapshot.");
   }
   const projects = parseProjects(value.projects);
-  const targets = parseTargets(value.targets);
-  if (!projects || !targets) {
-    throw new Error("Plugin Workbench returned an invalid snapshot.");
+  if (!projects) {
+    throw new Error("Plugin Studio returned an invalid snapshot.");
   }
   const snapshot: PluginWorkbenchSnapshot = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     runtimeState: value.runtimeState as PluginWorkbenchRuntimeState,
     reason: value.reason as PluginWorkbenchUnavailableReason | null,
     runtimeVersion: value.runtimeVersion as string | null,
@@ -303,28 +315,28 @@ export function parsePluginWorkbenchSnapshot(
     canStart: value.canStart,
     browserLaunch: "unavailable",
     projects,
-    targets,
   };
-  if (!hasCoherentState(snapshot)) {
-    throw new Error("Plugin Workbench returned an invalid snapshot.");
+  if (!hasCoherentRuntime(snapshot)) {
+    throw new Error("Plugin Studio returned an invalid snapshot.");
   }
   return snapshot;
+}
+
+function parseEmptyInput(value: unknown) {
+  if (!isExactRecord(value, [])) {
+    throw new Error("Plugin Studio returned an invalid request.");
+  }
+  return value as Record<string, never>;
 }
 
 export function parsePluginWorkbenchStatusInput(
   value: unknown,
 ): PluginWorkbenchStatusInput {
-  if (!isExactRecord(value, [])) {
-    throw new Error("Plugin Workbench returned an invalid request.");
-  }
-  return value as PluginWorkbenchStatusInput;
+  return parseEmptyInput(value);
 }
 
-export function parsePluginWorkbenchAdmitInput(
+export function parsePluginWorkbenchRefreshInput(
   value: unknown,
-): PluginWorkbenchAdmitInput {
-  if (!isExactRecord(value, ["projectId"]) || !isProjectId(value.projectId)) {
-    throw new Error("Plugin Workbench returned an invalid request.");
-  }
-  return { projectId: value.projectId };
+): PluginWorkbenchRefreshInput {
+  return parseEmptyInput(value);
 }

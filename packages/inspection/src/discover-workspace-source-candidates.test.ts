@@ -1,0 +1,269 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+
+import { discoverWorkspaceSourceCandidates } from "./discover-workspace-source-candidates.ts";
+import {
+  createDiscoveryTestHarness,
+  WORKSPACE_ROOT_KEY,
+} from "./discovery-test-helpers.ts";
+import { installDiscoveryTestHookForTest } from "./discovery-test-hook.ts";
+import { admitTrustedRoots } from "./trusted-roots.ts";
+
+const harness = createDiscoveryTestHarness();
+
+afterEach(() => harness.cleanup());
+
+describe("workspace-aware source discovery", () => {
+  test("discovers only the root and npm or Bun workspace packages", async () => {
+    const root = await harness.createRoot();
+    const plugin = path.join(root, "plugins", "mate");
+    const unrelated = path.join(root, "src", "nested");
+    await fs.mkdir(plugin, { recursive: true });
+    await fs.mkdir(unrelated, { recursive: true });
+    await harness.writePlugin(plugin, "mate");
+    await harness.writePlugin(unrelated, "unrelated");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["plugins/*"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual(["mate"]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("supports pnpm workspace includes and exclusions", async () => {
+    const root = await harness.createRoot();
+    const included = path.join(root, "plugins", "included");
+    const excluded = path.join(root, "plugins", "excluded");
+    await fs.mkdir(included, { recursive: true });
+    await fs.mkdir(excluded, { recursive: true });
+    await harness.writePlugin(included, "included");
+    await harness.writePlugin(excluded, "excluded");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - 'plugins/*'\n  - '!plugins/excluded'\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "included",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("supports Bun object-form workspace packages", async () => {
+    const root = await harness.createRoot();
+    const plugin = path.join(root, "extensions", "mate");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "mate");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "bun-root",
+        private: true,
+        workspaces: { packages: ["extensions/*"] },
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual(["mate"]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("falls back to the root with a path-free diagnostic for invalid configuration", async () => {
+    const root = await harness.createRoot("private-workspace-name");
+    const nested = path.join(root, "plugins", "nested");
+    await fs.mkdir(nested, { recursive: true });
+    await harness.writePlugin(nested, "nested");
+    await fs.writeFile(path.join(root, "server.ts"), "export {};\n");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "bb-plugin-root",
+        version: "1.0.0",
+        workspaces: ["../outside"],
+        bb: {
+          name: "root",
+          description: "root plugin",
+          branding: { icon: "Puzzle" },
+          server: "./server.ts",
+        },
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual(["root"]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-workspace-name",
+      }),
+    ]);
+    expect(JSON.stringify(result.diagnostics)).not.toContain(
+      path.dirname(root),
+    );
+  });
+
+  test("does not follow a symlinked workspace directory", async () => {
+    const root = await harness.createRoot();
+    const outside = path.join(path.dirname(root), "outside-plugin");
+    await fs.mkdir(outside);
+    await harness.writePlugin(outside, "outside");
+    await fs.symlink(outside, path.join(root, "linked-plugin"), "dir");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["*"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "path-symlink",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "workspace/linked-plugin",
+      }),
+    ]);
+  });
+
+  test("keeps candidates correlated across one globally budgeted multi-root scan", async () => {
+    const first = await harness.createRoot("first-project");
+    const second = await harness.createRoot("second-project");
+    const firstPlugin = path.join(first, "plugins", "first");
+    const secondPlugin = path.join(second, "plugins", "second");
+    await fs.mkdir(firstPlugin, { recursive: true });
+    await fs.mkdir(secondPlugin, { recursive: true });
+    await harness.writePlugin(firstPlugin, "first");
+    await harness.writePlugin(secondPlugin, "second");
+    for (const root of [first, second]) {
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          name: path.basename(root),
+          private: true,
+          workspaces: ["plugins/*"],
+        }),
+      );
+    }
+    const secondKey = "s".repeat(32);
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: first },
+      { rootKey: secondKey, kind: "current-project", path: second },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(
+      result.candidates
+        .map(({ pluginId, rootKey }) => `${pluginId}:${rootKey}`)
+        .sort(),
+    ).toEqual([`first:${WORKSPACE_ROOT_KEY}`, `second:${secondKey}`].sort());
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("prunes fully excluded subtrees before they consume the global entry budget", async () => {
+    const root = await harness.createRoot();
+    const excluded = path.join(root, "00-generated");
+    const included = path.join(root, "zz-plugins", "valid");
+    await fs.mkdir(excluded);
+    await fs.mkdir(included, { recursive: true });
+    await Promise.all(
+      Array.from({ length: 2_050 }, (_, index) =>
+        fs.mkdir(
+          path.join(excluded, `entry-${String(index).padStart(4, "0")}`),
+        ),
+      ),
+    );
+    await harness.writePlugin(included, "valid");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["**", "!00-generated/**"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "valid",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("stops discovery when its request is aborted during a directory read", async () => {
+    const root = await harness.createRoot();
+    const plugin = path.join(root, "plugins", "valid");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "valid");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["plugins/*"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+    const canonicalRoot = await fs.realpath(root);
+    const controller = new AbortController();
+    const restore = installDiscoveryTestHookForTest(async (event) => {
+      if (
+        event.point === "after-directory-read" &&
+        event.path === canonicalRoot
+      )
+        controller.abort();
+    });
+
+    try {
+      await expect(
+        discoverWorkspaceSourceCandidates(admission.roots, {
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ name: "AbortError" });
+    } finally {
+      restore();
+    }
+  });
+});

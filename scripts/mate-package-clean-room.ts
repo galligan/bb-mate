@@ -77,6 +77,7 @@ async function writeHostileTool(
 async function writePassiveTarget(
   root: string,
   id: string,
+  label: string,
   marker: string,
 ): Promise<void> {
   await fs.mkdir(root, { recursive: true });
@@ -91,7 +92,7 @@ async function writePassiveTarget(
           postinstall: `touch ${marker}`,
         },
         bb: {
-          name: id[0]!.toUpperCase() + id.slice(1),
+          name: label,
           description: `${id} clean-room target`,
           branding: { icon: "Puzzle" },
           server: "./server.ts",
@@ -175,12 +176,17 @@ export async function runMatePackageCleanRoom(): Promise<void> {
     const dataRoot = path.join(temporaryRoot, "bb-data");
     const marker = path.join(temporaryRoot, "ambient-tool-used");
     const targetMarker = path.join(temporaryRoot, "target-code-executed");
-    const singleSourceRoot = path.join(hostileCwd, "single-source");
-    const multipleSourceRoot = path.join(hostileCwd, "multiple-source");
+    const bbMateSourceRoot = path.join(hostileCwd, "bb-mate-source");
+    const gridSourceRoot = path.join(hostileCwd, "grid-source");
     await Promise.all(
-      [hostileCwd, toolRoot, homeRoot, dataRoot].map((directory) =>
-        fs.mkdir(directory, { recursive: true }),
-      ),
+      [
+        hostileCwd,
+        toolRoot,
+        homeRoot,
+        dataRoot,
+        bbMateSourceRoot,
+        gridSourceRoot,
+      ].map((directory) => fs.mkdir(directory, { recursive: true })),
     );
     await Promise.all([
       fs.writeFile(
@@ -196,19 +202,30 @@ export async function runMatePackageCleanRoom(): Promise<void> {
           bb: { server: "./server.ts", app: "./app.tsx" },
         })}\n`,
       ),
+      ...[bbMateSourceRoot, gridSourceRoot].map((root) =>
+        fs.writeFile(
+          path.join(root, "package.json"),
+          `${JSON.stringify({
+            name: path.basename(root),
+            private: true,
+            workspaces: ["plugins/*"],
+            scripts: {
+              build: `touch ${targetMarker}`,
+              postinstall: `touch ${targetMarker}`,
+            },
+          })}\n`,
+        ),
+      ),
       writePassiveTarget(
-        path.join(singleSourceRoot, "alpha"),
-        "alpha",
+        path.join(bbMateSourceRoot, "plugins", "linear"),
+        "linear",
+        "Linear",
         targetMarker,
       ),
       writePassiveTarget(
-        path.join(multipleSourceRoot, "bravo"),
-        "bravo",
-        targetMarker,
-      ),
-      writePassiveTarget(
-        path.join(multipleSourceRoot, "charlie"),
-        "charlie",
+        path.join(bbMateSourceRoot, "plugins", "plugin-workbench"),
+        "plugin-workbench",
+        "Plugin Workbench",
         targetMarker,
       ),
       fs.writeFile(
@@ -312,8 +329,8 @@ export async function runMatePackageCleanRoom(): Promise<void> {
       bbExecutable,
       bbAppExecutable,
       canonicalStandaloneRoot: standaloneRoot,
-      singleSourceRoot,
-      multipleSourceRoot,
+      bbMateSourceRoot,
+      gridSourceRoot,
       targetMarker,
       ambientMarker: marker,
     });

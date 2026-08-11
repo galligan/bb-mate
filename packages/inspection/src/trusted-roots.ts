@@ -3,8 +3,10 @@ import os from "node:os";
 import path from "node:path";
 import type {
   DiscoveryDiagnostic,
+  DiscoveryOperationOptions,
   TrustedRoot,
   TrustedRootAdmission,
+  TrustedRootAlias,
   TrustedRootInput,
 } from "./discovery-types.ts";
 import { TRUSTED_ROOT_KINDS } from "./discovery-types.ts";
@@ -15,18 +17,22 @@ interface TrustedRootDetails {
 }
 
 const admittedRoots = new WeakMap<object, TrustedRootDetails>();
-const MAX_TRUSTED_ROOTS = 16;
+const MAX_TRUSTED_ROOTS = 128;
 const MAX_DISPLAY_NAME_CHARACTERS = 255;
 
 export async function admitTrustedRoots(
   inputs: readonly TrustedRootInput[],
+  options: DiscoveryOperationOptions = {},
 ): Promise<TrustedRootAdmission> {
+  options.signal?.throwIfAborted();
   const roots: TrustedRoot[] = [];
+  const aliases: TrustedRootAlias[] = [];
   const diagnostics: DiscoveryDiagnostic[] = [];
-  const canonicalRoots = new Set<string>();
+  const canonicalRoots = new Map<string, string>();
   const rootKeys = new Set<string>();
 
   for (const input of inputs) {
+    options.signal?.throwIfAborted();
     const displayPath = redactedBasename(input.path);
     if (!/^[A-Za-z0-9_-]{32}$/u.test(input.rootKey)) {
       diagnostics.push({
@@ -57,6 +63,7 @@ export async function admitTrustedRoots(
       continue;
     }
     const configuredStat = await fs.lstat(input.path).catch(() => null);
+    options.signal?.throwIfAborted();
     if (!configuredStat) {
       diagnostics.push({
         code: "root-missing",
@@ -85,9 +92,13 @@ export async function admitTrustedRoots(
       continue;
     }
     await runDiscoveryTestHook({ point: "after-root-lstat", path: input.path });
+    options.signal?.throwIfAborted();
     const canonicalRoot = await fs.realpath(input.path).catch(() => null);
+    options.signal?.throwIfAborted();
     const resolvedStat = await fs.lstat(input.path).catch(() => null);
+    options.signal?.throwIfAborted();
     const canonicalRootAfter = await fs.realpath(input.path).catch(() => null);
+    options.signal?.throwIfAborted();
     if (
       canonicalRoot === null ||
       canonicalRootAfter !== canonicalRoot ||
@@ -104,6 +115,7 @@ export async function admitTrustedRoots(
       continue;
     }
     const canonicalHome = await fs.realpath(os.homedir()).catch(() => null);
+    options.signal?.throwIfAborted();
     if (isForbiddenCanonicalRoot(canonicalRoot, canonicalHome)) {
       diagnostics.push({
         code: "root-forbidden",
@@ -122,13 +134,10 @@ export async function admitTrustedRoots(
       });
       continue;
     }
-    if (canonicalRoots.has(canonicalRoot)) {
-      diagnostics.push({
-        code: "root-duplicate",
-        rootKey: input.rootKey,
-        displayPath,
-        detail: `Configured root ${displayPath} duplicates an admitted root.`,
-      });
+    const admittedRootKey = canonicalRoots.get(canonicalRoot);
+    if (admittedRootKey) {
+      rootKeys.add(input.rootKey);
+      aliases.push(Object.freeze({ rootKey: input.rootKey, admittedRootKey }));
       continue;
     }
     if (roots.length >= MAX_TRUSTED_ROOTS) {
@@ -140,7 +149,7 @@ export async function admitTrustedRoots(
       });
       continue;
     }
-    canonicalRoots.add(canonicalRoot);
+    canonicalRoots.set(canonicalRoot, input.rootKey);
     rootKeys.add(input.rootKey);
     const root = {
       rootKey: input.rootKey,
@@ -160,6 +169,7 @@ export async function admitTrustedRoots(
 
   return {
     roots: Object.freeze(roots),
+    aliases: Object.freeze(aliases),
     diagnostics: Object.freeze(diagnostics),
   };
 }

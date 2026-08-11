@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { DevelopmentTargetListResponseSchema } from "@bb-mate/runtime/supervision";
+import {
+  BatchProjectTargetAdmissionResponseSchema,
+  DevelopmentTargetListResponseSchema,
+} from "@bb-mate/runtime/supervision";
 import { createServer } from "node:http";
 
 import {
@@ -34,6 +37,18 @@ const response = DevelopmentTargetListResponseSchema.parse({
   ],
 });
 
+const batchResponse = BatchProjectTargetAdmissionResponseSchema.parse({
+  schemaVersion: 2,
+  state: "ready",
+  projects: [
+    {
+      projectKey: "p".repeat(32),
+      state: "ready",
+      targets: response.targets,
+    },
+  ],
+});
+
 describe("private runtime target client", () => {
   test("sends the exact runtime admission content type with no Origin", async () => {
     let captured:
@@ -50,13 +65,7 @@ describe("private runtime target client", () => {
         responseWriter.writeHead(200, {
           "content-type": "application/json;charset=utf-8",
         });
-        responseWriter.end(
-          JSON.stringify({
-            schemaVersion: 1,
-            state: "ready",
-            targets: [],
-          }),
-        );
+        responseWriter.end(JSON.stringify(batchResponse));
       });
     });
     await new Promise<void>((resolve) =>
@@ -69,16 +78,27 @@ describe("private runtime target client", () => {
         baseUrl: `http://127.0.0.1:${address.port}`,
         token: Buffer.alloc(32, 5),
       });
-      await client.admit("/Users/test/plugin");
+      await client.admitProjects({
+        inventoryState: "complete",
+        projects: [
+          { projectKey: "p".repeat(32), sourcePath: "/Users/test/plugin" },
+        ],
+      });
       expect(captured).toEqual({
         headers: expect.objectContaining({
           authorization: `Bearer ${Buffer.alloc(32, 5).toString("base64url")}`,
-          "content-length": "53",
+          "content-length": "144",
           "content-type": "application/json",
         }),
         body: JSON.stringify({
-          schemaVersion: 1,
-          sourcePath: "/Users/test/plugin",
+          schemaVersion: 2,
+          inventoryState: "complete",
+          projects: [
+            {
+              projectKey: "p".repeat(32),
+              sourcePath: "/Users/test/plugin",
+            },
+          ],
         }),
       });
       expect(captured?.headers.origin).toBeUndefined();
@@ -98,12 +118,19 @@ describe("private runtime target client", () => {
       token,
       request: async (request) => {
         requests.push(request);
-        return response;
+        return request.method === "GET" ? response : batchResponse;
       },
     });
 
     await expect(client.list()).resolves.toEqual(response);
-    await expect(client.admit("/Users/test/plugin")).resolves.toEqual(response);
+    await expect(
+      client.admitProjects({
+        inventoryState: "complete",
+        projects: [
+          { projectKey: "p".repeat(32), sourcePath: "/Users/test/plugin" },
+        ],
+      }),
+    ).resolves.toEqual(batchResponse);
     expect(requests).toEqual([
       {
         url: "http://127.0.0.1:41721/v2/targets",
@@ -116,8 +143,17 @@ describe("private runtime target client", () => {
         url: "http://127.0.0.1:41721/v2/targets/admit",
         method: "POST",
         authorization: `Bearer ${token.toString("base64url")}`,
-        body: { schemaVersion: 1, sourcePath: "/Users/test/plugin" },
-        timeoutMs: 10_000,
+        body: {
+          schemaVersion: 2,
+          inventoryState: "complete",
+          projects: [
+            {
+              projectKey: "p".repeat(32),
+              sourcePath: "/Users/test/plugin",
+            },
+          ],
+        },
+        timeoutMs: 30_000,
       },
     ]);
     client.dispose();
@@ -136,5 +172,30 @@ describe("private runtime target client", () => {
     );
     client.dispose();
     expect(retained.equals(Buffer.alloc(32))).toBe(true);
+  });
+
+  test("rejects a batch response that does not match the requested project keys", async () => {
+    const client = createRuntimeTargetClient({
+      baseUrl: "http://127.0.0.1:41721",
+      token: Buffer.alloc(32, 4),
+      request: async () => ({
+        ...batchResponse,
+        projects: [
+          {
+            ...batchResponse.projects[0]!,
+            projectKey: "q".repeat(32),
+          },
+        ],
+      }),
+    });
+    await expect(
+      client.admitProjects({
+        inventoryState: "complete",
+        projects: [
+          { projectKey: "p".repeat(32), sourcePath: "/Users/test/plugin" },
+        ],
+      }),
+    ).rejects.toThrow("Runtime target request failed");
+    client.dispose();
   });
 });

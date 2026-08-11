@@ -11,7 +11,7 @@ import {
   Unavailable,
 } from "./workbench-panel.stories";
 
-describe("Plugin Workbench visual fixtures", () => {
+describe("Plugin Studio visual fixtures", () => {
   test("keeps every finite runtime state deterministic and renderable", () => {
     for (const Story of [
       Idle,

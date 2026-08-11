@@ -9,7 +9,8 @@ import {
 } from "../contracts/ids.ts";
 import { RUNTIME_CAPABILITIES } from "../supervision/protocol.ts";
 import type {
-  CurrentProjectTargetAdmissionRequest,
+  BatchProjectTargetAdmissionRequest,
+  BatchProjectTargetAdmissionResponse,
   DevelopmentTargetListResponse,
 } from "../supervision/targets.ts";
 import {
@@ -20,10 +21,16 @@ import {
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
 const bbContextId = BbContextIdSchema.parse("b".repeat(32));
 const instanceId = OpaqueIdSchema.parse("i".repeat(32));
+const projectKey = OpaqueIdSchema.parse("a".repeat(32));
 const targetResponse: DevelopmentTargetListResponse = {
   schemaVersion: 1,
   state: "ready",
   targets: [],
+};
+const admissionResponse: BatchProjectTargetAdmissionResponse = {
+  schemaVersion: 2,
+  state: "ready",
+  projects: [{ projectKey, state: "ready", targets: [] }],
 };
 
 function context(
@@ -41,14 +48,14 @@ function context(
 }
 
 function controller(
-  calls: CurrentProjectTargetAdmissionRequest[] = [],
+  calls: BatchProjectTargetAdmissionRequest[] = [],
 ): RuntimeTargetController {
   return {
     principalId,
     bbContextId,
     admit(_context, input) {
       calls.push(input);
-      return { ...targetResponse, state: "partial" };
+      return admissionResponse;
     },
     list() {
       return targetResponse;
@@ -79,8 +86,8 @@ function request(path: string, init: RequestInit = {}) {
 }
 
 describe("runtime supervisor target routes", () => {
-  test("admits one strict bounded source request and returns only the controller projection", async () => {
-    const calls: CurrentProjectTargetAdmissionRequest[] = [];
+  test("admits one strict bounded project batch and returns only the grouped controller projection", async () => {
+    const calls: BatchProjectTargetAdmissionRequest[] = [];
     const response = await handler(
       context(),
       controller(calls),
@@ -89,21 +96,108 @@ describe("runtime supervisor target routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          schemaVersion: 1,
-          sourcePath: "/private/source-plugin",
+          schemaVersion: 2,
+          inventoryState: "complete" as const,
+          projects: [
+            {
+              projectKey: "a".repeat(32),
+              sourcePath: "/private/source-plugin",
+            },
+          ],
         }),
       }),
     );
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      schemaVersion: 1,
-      state: "partial",
-      targets: [],
+      schemaVersion: 2,
+      state: "ready",
+      projects: [{ projectKey, state: "ready", targets: [] }],
     });
     expect(calls).toEqual([
-      { schemaVersion: 1, sourcePath: "/private/source-plugin" },
+      {
+        schemaVersion: 2,
+        inventoryState: "complete" as const,
+        projects: [
+          {
+            projectKey,
+            sourcePath: "/private/source-plugin",
+          },
+        ],
+      },
     ]);
+  });
+
+  test("rejects a controller response that does not group every requested key in order", async () => {
+    const mismatched: RuntimeTargetController = {
+      ...controller(),
+      admit: () => ({
+        schemaVersion: 2,
+        state: "ready",
+        projects: [{ projectKey: "b".repeat(32), state: "ready", targets: [] }],
+      }),
+    };
+    const response = await handler(
+      context(),
+      mismatched,
+    )(
+      request("/v2/targets/admit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          schemaVersion: 2,
+          inventoryState: "complete" as const,
+          projects: [
+            { projectKey: "a".repeat(32), sourcePath: "/private/source" },
+          ],
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
+  test("passes request cancellation to target admission", async () => {
+    let observedSignal: AbortSignal | undefined;
+    let observedResolve!: () => void;
+    const observed = new Promise<void>((resolve) => {
+      observedResolve = resolve;
+    });
+    const cancellation = new AbortController();
+    const cancellable: RuntimeTargetController = {
+      ...controller(),
+      admit: (_context, _input, signal) => {
+        observedSignal = signal;
+        observedResolve();
+        return new Promise((resolve) =>
+          signal?.addEventListener("abort", () => resolve(admissionResponse), {
+            once: true,
+          }),
+        );
+      },
+    };
+    const response = handler(
+      context(),
+      cancellable,
+    )(
+      request("/v2/targets/admit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          schemaVersion: 2,
+          inventoryState: "complete" as const,
+          projects: [
+            { projectKey: "a".repeat(32), sourcePath: "/private/source" },
+          ],
+        }),
+        signal: cancellation.signal,
+      }),
+    );
+    await observed;
+    cancellation.abort();
+
+    expect((await response).status).toBe(200);
+    expect(observedSignal?.aborted).toBe(true);
   });
 
   test("lists the authorized global catalog without accepting an Origin", async () => {
@@ -142,8 +236,14 @@ describe("runtime supervisor target routes", () => {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            schemaVersion: 1,
-            sourcePath: "/private/source",
+            schemaVersion: 2,
+            inventoryState: "complete" as const,
+            projects: [
+              {
+                projectKey: "a".repeat(32),
+                sourcePath: "/private/source",
+              },
+            ],
           }),
         }),
       );
@@ -178,8 +278,14 @@ describe("runtime supervisor target routes", () => {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
-              schemaVersion: 1,
-              sourcePath: "/private/source",
+              schemaVersion: 2,
+              inventoryState: "complete" as const,
+              projects: [
+                {
+                  projectKey: "a".repeat(32),
+                  sourcePath: "/private/source",
+                },
+              ],
             }),
           }),
         )
@@ -188,7 +294,7 @@ describe("runtime supervisor target routes", () => {
   });
 
   test("rejects malformed, oversized, encoded, query, and wrong-method requests before controller mutation", async () => {
-    const calls: CurrentProjectTargetAdmissionRequest[] = [];
+    const calls: BatchProjectTargetAdmissionRequest[] = [];
     const handle = handler(context(), controller(calls));
     const attacks = [
       request("/v2/targets/admit", {
@@ -213,8 +319,14 @@ describe("runtime supervisor target routes", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          schemaVersion: 1,
-          sourcePath: `/${"x".repeat(1_025)}`,
+          schemaVersion: 2,
+          inventoryState: "complete" as const,
+          projects: [
+            {
+              projectKey: "a".repeat(32),
+              sourcePath: `/${"x".repeat(1_025)}`,
+            },
+          ],
         }),
       }),
       request("/v2/targets", { method: "POST", body: "{}" }),

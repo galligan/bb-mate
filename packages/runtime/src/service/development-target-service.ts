@@ -54,11 +54,47 @@ export function createDevelopmentTargetService(
   catalog: DevelopmentTargetCatalog,
 ) {
   return {
+    async refreshFromCompleteSnapshot(
+      context: RequestContext,
+      candidates: readonly TrustedDevelopmentTargetCandidate[],
+      options: {
+        readonly currentSourceRoots?: readonly string[];
+        readonly authoritativeSourceRoots?: readonly string[];
+        readonly uncertainSourceRoots?: readonly string[];
+        readonly signal?: AbortSignal;
+      } = {},
+    ) {
+      options.signal?.throwIfAborted();
+      const principal = authorizeUnboundTargetContext(context, "targets:write");
+      return (
+        await catalog.refreshCompleteSnapshot({
+          principalId: principal.id,
+          bbContextId: principal.bbContextId,
+          candidates,
+          ...(options.currentSourceRoots === undefined
+            ? {}
+            : { currentSourceRoots: options.currentSourceRoots }),
+          ...(options.authoritativeSourceRoots === undefined
+            ? {}
+            : {
+                authoritativeSourceRoots: options.authoritativeSourceRoots,
+              }),
+          ...(options.uncertainSourceRoots === undefined
+            ? {}
+            : { uncertainSourceRoots: options.uncertainSourceRoots }),
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
+        })
+      ).map(projectDevelopmentTarget);
+    },
     async refreshFromTrustedCandidate(
       context: RequestContext,
       input: TrustedDevelopmentTargetCandidate,
-      options: { readonly expectedRevision?: number } = {},
+      options: {
+        readonly expectedRevision?: number;
+        readonly signal?: AbortSignal;
+      } = {},
     ) {
+      options.signal?.throwIfAborted();
       const principal = authorizeUnboundTargetContext(context, "targets:write");
       if (
         options.expectedRevision !== undefined &&
@@ -75,6 +111,7 @@ export function createDevelopmentTargetService(
           ...(options.expectedRevision === undefined
             ? {}
             : { expectedRevision: options.expectedRevision }),
+          ...(options.signal === undefined ? {} : { signal: options.signal }),
         }),
       );
     },

@@ -1,15 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import {
-  assertTargetRefresh,
+  assertCatalogRefresh,
   parseMateSnapshot,
   type MateSnapshot,
 } from "./mate-managed-rpc.ts";
 
-const targetId = "a".repeat(32);
+const linearId = "a".repeat(32);
+const workbenchId = "b".repeat(32);
 
 function snapshot(): MateSnapshot {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     runtimeState: "ready",
     reason: null,
     runtimeVersion: "0.1.0-alpha.3",
@@ -19,18 +20,33 @@ function snapshot(): MateSnapshot {
     projects: {
       state: "ready",
       items: [
-        { id: "project_1", label: "Single", admission: "available" },
-        { id: "project_2", label: "Multiple", admission: "no_source" },
-      ],
-    },
-    targets: {
-      state: "ready",
-      items: [
         {
-          id: targetId,
-          label: "Alpha",
-          pluginId: "alpha",
-          revision: 1,
+          id: "bb_mate",
+          label: "BB Mate",
+          activity: { active: false, lastThreadUpdatedAt: null },
+          scan: {
+            state: "ready",
+            items: [
+              {
+                id: linearId,
+                label: "Linear",
+                pluginId: "linear",
+                revision: 1,
+              },
+              {
+                id: workbenchId,
+                label: "Plugin Workbench",
+                pluginId: "plugin-workbench",
+                revision: 1,
+              },
+            ],
+          },
+        },
+        {
+          id: "grid",
+          label: "grid",
+          activity: { active: true, lastThreadUpdatedAt: 42 },
+          scan: { state: "ready", items: [] },
         },
       ],
     },
@@ -38,7 +54,7 @@ function snapshot(): MateSnapshot {
 }
 
 describe("managed Mate RPC proof codec", () => {
-  test("accepts only the exact finite API 2 public snapshot", () => {
+  test("accepts only the exact finite API 2 schema v3 grouped snapshot", () => {
     expect(parseMateSnapshot(snapshot())).toEqual(snapshot());
     expect(() =>
       parseMateSnapshot({ ...snapshot(), baseUrl: "http://127.0.0.1:1" }),
@@ -48,32 +64,50 @@ describe("managed Mate RPC proof codec", () => {
         ...snapshot(),
         projects: {
           state: "ready",
-          items: [{ ...snapshot().projects.items[0], path: "/private" }],
+          items: [
+            { ...snapshot().projects.items[0], path: "/private" },
+            snapshot().projects.items[1],
+          ],
         },
       }),
     ).toThrow("project option keys");
     expect(() =>
       parseMateSnapshot({
         ...snapshot(),
-        targets: {
+        projects: {
           state: "ready",
-          items: [{ ...snapshot().targets.items[0], token: "secret" }],
+          items: [
+            {
+              ...snapshot().projects.items[0],
+              scan: {
+                state: "ready",
+                items: [
+                  {
+                    ...snapshot().projects.items[0]!.scan.items[0],
+                    token: "secret",
+                  },
+                ],
+              },
+            },
+          ],
         },
       }),
     ).toThrow("target summary keys");
   });
 
-  test("accepts idle before admission and rejects incoherent identity", () => {
+  test("accepts read-only idle project options and rejects incoherent identity", () => {
     const idle = {
       ...snapshot(),
       runtimeState: "idle",
       runtimeVersion: null,
       apiVersion: null,
       canStart: true,
-      targets: {
-        state: "unavailable",
-        reason: "runtime_not_ready",
-        items: [],
+      projects: {
+        state: "ready",
+        items: snapshot().projects.items.map((project) => ({
+          ...project,
+          scan: { state: "not_scanned", items: [] },
+        })),
       },
     };
     expect(parseMateSnapshot(idle)).toEqual(parseMateSnapshot(idle));
@@ -82,28 +116,84 @@ describe("managed Mate RPC proof codec", () => {
     ).toThrow("snapshot values");
   });
 
-  test("requires stable target identity and increasing revisions", () => {
+  test("requires stable grouped identities and nondecreasing target revisions", () => {
     const first = parseMateSnapshot(snapshot());
     const refreshed = parseMateSnapshot({
       ...snapshot(),
-      targets: {
+      projects: {
         state: "ready",
-        items: [{ ...snapshot().targets.items[0], revision: 2 }],
+        items: snapshot().projects.items.map((project) =>
+          project.id === "bb_mate"
+            ? {
+                ...project,
+                scan: {
+                  state: "ready",
+                  items: project.scan.items.map((target) => ({
+                    ...target,
+                    revision: target.revision + 1,
+                  })),
+                },
+              }
+            : project,
+        ),
       },
     });
-    expect(() => assertTargetRefresh(first, refreshed)).not.toThrow();
-    expect(() => assertTargetRefresh(first, first)).toThrow("advance");
+    expect(() => assertCatalogRefresh(first, refreshed)).not.toThrow();
+    expect(() => assertCatalogRefresh(first, first)).not.toThrow();
+    expect(() => assertCatalogRefresh(refreshed, first)).toThrow("regress");
     expect(() =>
-      assertTargetRefresh(
+      assertCatalogRefresh(
         first,
         parseMateSnapshot({
           ...snapshot(),
-          targets: {
+          projects: {
             state: "ready",
-            items: [{ ...snapshot().targets.items[0], id: "b".repeat(32) }],
+            items: snapshot().projects.items.map((project) =>
+              project.id === "bb_mate"
+                ? {
+                    ...project,
+                    scan: {
+                      state: "ready",
+                      items: project.scan.items.map((target, index) =>
+                        index === 0
+                          ? { ...target, id: "c".repeat(32), revision: 2 }
+                          : { ...target, revision: 2 },
+                      ),
+                    },
+                  }
+                : project,
+            ),
           },
         }),
       ),
     ).toThrow("identity");
+  });
+
+  test("requires catalog state to reflect partial and unavailable scans", () => {
+    const partial = {
+      ...snapshot(),
+      projects: {
+        state: "partial",
+        items: snapshot().projects.items.map((project) =>
+          project.id === "grid"
+            ? {
+                ...project,
+                scan: {
+                  state: "unavailable",
+                  reason: "scan_failed",
+                  items: [],
+                },
+              }
+            : project,
+        ),
+      },
+    };
+    expect(parseMateSnapshot(partial).projects.state).toBe("partial");
+    expect(() =>
+      parseMateSnapshot({
+        ...partial,
+        projects: { ...partial.projects, state: "ready" },
+      }),
+    ).toThrow("project catalog values");
   });
 });

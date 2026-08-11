@@ -10,6 +10,10 @@ export interface RuntimeHttpListener {
   stop(): Promise<void>;
 }
 
+export interface ListenRuntimeHttpOptions {
+  readonly requestTimeoutMs?: number;
+}
+
 const INVALID_REQUEST_BODY = JSON.stringify({
   error: { code: "invalid_request", message: "Invalid request" },
 });
@@ -22,6 +26,7 @@ const SECURITY_HEADERS = {
   "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff",
 } as const;
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 function setSecurityHeaders(response: ServerResponse): void {
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
@@ -77,11 +82,16 @@ function hasReadBodyFraming(request: IncomingMessage): boolean {
   );
 }
 
-function toRequest(request: IncomingMessage, url: URL): Request {
+function toRequest(
+  request: IncomingMessage,
+  url: URL,
+  signal: AbortSignal,
+): Request {
   const method = request.method ?? "GET";
   const init: RequestInit & { duplex?: "half" } = {
     method,
     headers: requestHeaders(request),
+    signal,
   };
   if (method !== "GET" && method !== "HEAD") {
     init.body = Readable.toWeb(request) as ReadableStream<Uint8Array>;
@@ -126,7 +136,13 @@ function rejectBeforeDispatch(
 
 export async function listenRuntimeHttp(
   handle: (request: Request) => Promise<Response>,
+  options: ListenRuntimeHttpOptions = {},
 ): Promise<RuntimeHttpListener> {
+  const requestTimeoutMs =
+    options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  if (!Number.isSafeInteger(requestTimeoutMs) || requestTimeoutMs < 1) {
+    throw new TypeError("Runtime request timeout must be a positive integer.");
+  }
   let port = 0;
   const server = createServer(
     { joinDuplicateHeaders: true },
@@ -142,7 +158,16 @@ export async function listenRuntimeHttp(
         rejectBeforeDispatch(request, response);
         return;
       }
-      void handle(toRequest(request, url))
+      const requestAbort = new AbortController();
+      const abort = () => requestAbort.abort();
+      const deadline = setTimeout(abort, requestTimeoutMs);
+      deadline.unref();
+      const abortIncompleteResponse = () => {
+        if (!response.writableFinished) abort();
+      };
+      request.once("aborted", abort);
+      response.once("close", abortIncompleteResponse);
+      void handle(toRequest(request, url, requestAbort.signal))
         .then((handled) => sendResponse(request, response, handled))
         .catch(() => {
           if (response.headersSent) {
@@ -157,6 +182,11 @@ export async function listenRuntimeHttp(
               error: { code: "internal", message: "Internal error" },
             }),
           );
+        })
+        .finally(() => {
+          clearTimeout(deadline);
+          request.off("aborted", abort);
+          response.off("close", abortIncompleteResponse);
         });
     },
   );

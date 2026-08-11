@@ -5,6 +5,7 @@ import path from "node:path";
 
 import {
   deriveRuntimeDataRoot,
+  loadProjectInventory,
   listProjectOptions,
   resolveProjectSource,
 } from "./project-adapter.ts";
@@ -29,14 +30,20 @@ const project = (overrides: Record<string, unknown> = {}) => ({
   createdAt: 1,
   updatedAt: 2,
   sources: [source()],
+  threads: [],
   ...overrides,
 });
 
 function sdk(projects = [project()], primaryHostId: string | null = "host-1") {
+  const listInputs: unknown[] = [];
   return {
+    listInputs,
     system: { config: async () => ({ primaryHostId, dataDir: "/bb-data" }) },
     projects: {
-      list: async () => projects,
+      list: async (input?: unknown) => {
+        listInputs.push(input);
+        return projects;
+      },
       get: async ({ projectId }: { projectId: string }) => {
         const found = projects.find(({ id }) => id === projectId);
         if (!found) throw new Error("private upstream detail");
@@ -47,12 +54,99 @@ function sdk(projects = [project()], primaryHostId: string | null = "host-1") {
 }
 
 describe("released bb project adapter", () => {
+  test("returns path-free rows beside server-private source identities", async () => {
+    const inventory = await loadProjectInventory(sdk());
+    expect(inventory.catalog.items).toEqual([
+      {
+        id: "project-1",
+        label: "Example",
+        activity: { active: false, lastThreadUpdatedAt: null },
+        scan: { state: "not_scanned", items: [] },
+      },
+    ]);
+    expect(inventory.sources).toEqual([
+      {
+        projectId: "project-1",
+        sourceId: "source-1",
+        updatedAt: 2,
+        hostId: "host-1",
+        path: "/Users/test/project",
+      },
+    ]);
+    expect(JSON.stringify(inventory.catalog)).not.toContain("/Users/test");
+  });
+
+  test("keeps eligible projects with browser-unsafe names using deterministic path-free labels", async () => {
+    const projects = [
+      project({
+        id: "project-slash",
+        name: "Client / API",
+        sources: [
+          source({ projectId: "project-slash", path: "/Users/test/slash" }),
+        ],
+      }),
+      project({
+        id: "project-control",
+        name: "Client\u0000API",
+        sources: [
+          source({
+            id: "source-control",
+            projectId: "project-control",
+            path: "/Users/test/control",
+          }),
+        ],
+      }),
+      project({
+        id: "project-long",
+        name: "A".repeat(257),
+        sources: [
+          source({
+            id: "source-long",
+            projectId: "project-long",
+            path: "/Users/test/long",
+          }),
+        ],
+      }),
+      project({
+        id: "project-safe",
+        name: "Safe Project",
+        sources: [
+          source({
+            id: "source-safe",
+            projectId: "project-safe",
+            path: "/Users/test/safe",
+          }),
+        ],
+      }),
+    ];
+
+    const inventory = await loadProjectInventory(sdk(projects));
+    expect(
+      inventory.catalog.items.map(({ id, label }) => ({ id, label })),
+    ).toEqual([
+      { id: "project-slash", label: "Project project-slash" },
+      { id: "project-control", label: "Project project-control" },
+      { id: "project-long", label: "Project project-long" },
+      { id: "project-safe", label: "Safe Project" },
+    ]);
+    expect(inventory.sources).toHaveLength(4);
+    expect(JSON.stringify(inventory.catalog)).not.toContain("/Users/test");
+  });
+
   test("admits exactly one same-project source on the primary host without requiring default", async () => {
     const api = sdk();
     expect(await listProjectOptions(api)).toEqual({
       state: "ready",
-      items: [{ id: "project-1", label: "Example", admission: "available" }],
+      items: [
+        {
+          id: "project-1",
+          label: "Example",
+          activity: { active: false, lastThreadUpdatedAt: null },
+          scan: { state: "not_scanned", items: [] },
+        },
+      ],
     });
+    expect(api.listInputs).toEqual([{ include: "threads" }]);
     expect(await resolveProjectSource(api, "project-1")).toMatchObject({
       projectId: "project-1",
       sourceId: "source-1",
@@ -116,7 +210,14 @@ describe("released bb project adapter", () => {
     const result = await listProjectOptions(sdk([...ineligible, eligible]));
     expect(result).toEqual({
       state: "ready",
-      items: [{ id: "project-zulu", label: "Zulu", admission: "available" }],
+      items: [
+        {
+          id: "project-zulu",
+          label: "Zulu",
+          activity: { active: false, lastThreadUpdatedAt: null },
+          scan: { state: "not_scanned", items: [] },
+        },
+      ],
     });
   });
 
@@ -140,6 +241,144 @@ describe("released bb project adapter", () => {
     expect(result.items.at(-1)?.id).toBe("project-127");
     expect(result.items.some(({ id }) => id === "project-128")).toBe(false);
     expect(new Set(result.items.map(({ id }) => id)).size).toBe(128);
+  });
+
+  test("orders active and recently used projects without filtering idle projects", async () => {
+    const thread = (overrides: Record<string, unknown> = {}) => ({
+      visibility: "visible" as const,
+      deletedAt: null,
+      updatedAt: 10,
+      status: "idle" as const,
+      runtime: { displayStatus: "idle" as const },
+      activity: {
+        activeWorkflowCount: 0,
+        activeBackgroundAgentCount: 0,
+        activeBackgroundCommandCount: 0,
+        activePlanModeCount: 0,
+        activeGoalCount: 0,
+      },
+      hasPendingInteraction: false,
+      ...overrides,
+    });
+    const projects = [
+      project({
+        id: "project-idle",
+        name: "Idle",
+        sources: [
+          source({
+            id: "source-idle",
+            projectId: "project-idle",
+            path: "/Users/test/idle",
+          }),
+        ],
+      }),
+      project({
+        id: "project-recent",
+        name: "Recent",
+        sources: [
+          source({
+            id: "source-recent",
+            projectId: "project-recent",
+            path: "/Users/test/recent",
+          }),
+        ],
+        threads: [thread({ updatedAt: 20 })],
+      }),
+      project({
+        id: "project-active",
+        name: "Active",
+        sources: [
+          source({
+            id: "source-active",
+            projectId: "project-active",
+            path: "/Users/test/active",
+          }),
+        ],
+        threads: [thread({ updatedAt: 5, status: "active" })],
+      }),
+      project({
+        id: "project-hidden",
+        name: "Hidden activity",
+        sources: [
+          source({
+            id: "source-hidden",
+            projectId: "project-hidden",
+            path: "/Users/test/hidden",
+          }),
+        ],
+        threads: [
+          thread({ visibility: "hidden", updatedAt: 100, status: "active" }),
+          thread({ deletedAt: 99, updatedAt: 101, status: "active" }),
+        ],
+      }),
+    ];
+
+    const result = await listProjectOptions(sdk(projects));
+    expect(result.items.map(({ id }) => id)).toEqual([
+      "project-active",
+      "project-recent",
+      "project-idle",
+      "project-hidden",
+    ]);
+    expect(result.items[0]?.activity).toEqual({
+      active: true,
+      lastThreadUpdatedAt: 5,
+    });
+    expect(result.items[3]?.activity).toEqual({
+      active: false,
+      lastThreadUpdatedAt: null,
+    });
+  });
+
+  test("recognizes every released visible-thread activity signal", async () => {
+    const baseThread = {
+      visibility: "visible" as const,
+      deletedAt: null,
+      updatedAt: 10,
+      status: "idle" as const,
+      runtime: { displayStatus: "idle" as const },
+      activity: {
+        activeWorkflowCount: 0,
+        activeBackgroundAgentCount: 0,
+        activeBackgroundCommandCount: 0,
+        activePlanModeCount: 0,
+        activeGoalCount: 0,
+      },
+      hasPendingInteraction: false,
+    };
+    const signals = [
+      { status: "starting" },
+      { status: "active" },
+      { status: "stopping" },
+      { runtime: { displayStatus: "waiting-for-host" } },
+      { hasPendingInteraction: true },
+      { activity: { ...baseThread.activity, activeWorkflowCount: 1 } },
+      { activity: { ...baseThread.activity, activeBackgroundAgentCount: 1 } },
+      {
+        activity: { ...baseThread.activity, activeBackgroundCommandCount: 1 },
+      },
+      { activity: { ...baseThread.activity, activePlanModeCount: 1 } },
+      { activity: { ...baseThread.activity, activeGoalCount: 1 } },
+    ];
+    for (const [index, signal] of signals.entries()) {
+      const id = `project-signal-${index}`;
+      const result = await listProjectOptions(
+        sdk([
+          project({
+            id,
+            sources: [
+              source({
+                id: `source-signal-${index}`,
+                projectId: id,
+                path: `/Users/test/signal-${index}`,
+              }),
+            ],
+            threads: [{ ...baseThread, ...signal }],
+          }),
+        ]),
+      );
+      expect(result.items[0]?.activity.active).toBe(true);
+    }
   });
 
   test("derives only the fixed runtime leaf from a canonical bb data directory", async () => {

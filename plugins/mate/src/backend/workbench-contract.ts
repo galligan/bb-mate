@@ -21,19 +21,15 @@ const safeLabel = (maximum: number) =>
         !/^[A-Za-z]:/u.test(value),
     );
 
+function uniqueIds<T extends { id: string }>(items: readonly T[]) {
+  return new Set(items.map(({ id }) => id)).size === items.length;
+}
+
 export const projectIdSchema = utf8Bytes(128)
   .min(1)
   .regex(/^[A-Za-z0-9_-]+$/u);
 
-export const projectOptionSchema = z
-  .object({
-    id: projectIdSchema,
-    label: safeLabel(256),
-    admission: z.enum(["available", "no_source"]),
-  })
-  .strict();
-
-const targetSummarySchema = z
+export const targetSummarySchema = z
   .object({
     id: z.string().regex(/^[A-Za-z0-9_-]{32}$/u),
     label: safeLabel(128),
@@ -44,44 +40,66 @@ const targetSummarySchema = z
   })
   .strict();
 
-const uniqueIds = <T extends { id: string }>(items: readonly T[]) =>
-  new Set(items.map(({ id }) => id)).size === items.length;
+export const projectOptionSchema = z
+  .object({
+    id: projectIdSchema,
+    label: safeLabel(256),
+    activity: z
+      .object({
+        active: z.boolean(),
+        lastThreadUpdatedAt: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER)
+          .nullable(),
+      })
+      .strict(),
+    scan: z.discriminatedUnion("state", [
+      z
+        .object({ state: z.literal("not_scanned"), items: z.tuple([]) })
+        .strict(),
+      z
+        .object({
+          state: z.enum(["ready", "partial"]),
+          items: z.array(targetSummarySchema).max(128).refine(uniqueIds),
+        })
+        .strict(),
+      z
+        .object({
+          state: z.literal("unavailable"),
+          reason: z.enum(["source_changed", "scan_failed", "capacity_reached"]),
+          items: z.tuple([]),
+        })
+        .strict(),
+    ]),
+  })
+  .strict();
 
 const projectItemsSchema = z
   .array(projectOptionSchema)
   .max(128)
-  .refine(uniqueIds);
-const targetItemsSchema = z
-  .array(targetSummarySchema)
-  .max(128)
-  .refine(uniqueIds);
+  .refine(uniqueIds)
+  .refine(
+    (items) =>
+      new Set(items.flatMap((item) => item.scan.items.map(({ id }) => id)))
+        .size <= 128,
+  );
 
 export const projectCatalogSchema = z.discriminatedUnion("state", [
-  z.object({ state: z.literal("ready"), items: projectItemsSchema }).strict(),
-  z.object({ state: z.literal("unavailable"), items: z.tuple([]) }).strict(),
-]);
-
-export const targetCatalogSchema = z.discriminatedUnion("state", [
   z
     .object({
       state: z.enum(["ready", "partial"]),
-      items: targetItemsSchema,
+      items: projectItemsSchema,
     })
-    .strict(),
-  z
-    .object({ state: z.literal("project_not_selected"), items: z.tuple([]) })
-    .strict(),
-  z
-    .object({
-      state: z.literal("unavailable"),
-      reason: z.enum([
-        "runtime_not_ready",
-        "runtime_incompatible",
-        "catalog_unavailable",
-      ]),
-      items: z.tuple([]),
-    })
-    .strict(),
+    .strict()
+    .refine((catalog) => {
+      const incomplete = catalog.items.some(
+        ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
+      );
+      return incomplete === (catalog.state === "partial");
+    }),
+  z.object({ state: z.literal("unavailable"), items: z.tuple([]) }).strict(),
 ]);
 
 const runtimeVersionSchema = utf8Bytes(64)
@@ -90,7 +108,7 @@ const runtimeVersionSchema = utf8Bytes(64)
 
 export const workbenchSnapshotSchema = z
   .object({
-    schemaVersion: z.literal(2),
+    schemaVersion: z.literal(3),
     runtimeState: z.enum([
       "idle",
       "starting",
@@ -113,7 +131,6 @@ export const workbenchSnapshotSchema = z
     canStart: z.boolean(),
     browserLaunch: z.literal("unavailable"),
     projects: projectCatalogSchema,
-    targets: targetCatalogSchema,
   })
   .strict()
   .refine((snapshot) => {
@@ -127,19 +144,6 @@ export const workbenchSnapshotSchema = z
       (snapshot.runtimeVersion !== null || snapshot.apiVersion !== null)
     )
       return false;
-    const targetState = snapshot.targets.state;
-    if (snapshot.runtimeState === "ready") {
-      if (
-        targetState === "unavailable" &&
-        snapshot.targets.reason !== "catalog_unavailable"
-      )
-        return false;
-    } else if (
-      targetState !== "unavailable" ||
-      snapshot.targets.reason === "catalog_unavailable"
-    ) {
-      return false;
-    }
     if (snapshot.runtimeState === "idle")
       return snapshot.canStart && snapshot.reason === null;
     if (snapshot.runtimeState === "unavailable")
@@ -152,5 +156,4 @@ export const workbenchSnapshotSchema = z
 export type ProjectOption = z.infer<typeof projectOptionSchema>;
 export type ProjectCatalog = z.infer<typeof projectCatalogSchema>;
 export type TargetSummary = z.infer<typeof targetSummarySchema>;
-export type TargetCatalog = z.infer<typeof targetCatalogSchema>;
-export type PluginWorkbenchSnapshotV2 = z.infer<typeof workbenchSnapshotSchema>;
+export type PluginWorkbenchSnapshotV3 = z.infer<typeof workbenchSnapshotSchema>;

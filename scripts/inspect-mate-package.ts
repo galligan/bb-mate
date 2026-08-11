@@ -340,7 +340,7 @@ export async function inspectMatePackageDirectory(
   );
   assert(
     createHash("sha256").update(packagedReadme).digest("hex") ===
-      "c31484a21c8cb608f77df159e03fe6fa7a96b6d349226061c45a9eec3df7051e" &&
+      "2d44e2cd1947dfcc4087f2f818d7a9c59782e1eeb8e07e23e89f94f67a2db2f0" &&
       Buffer.compare(packagedReadme, approvedReadme) === 0,
     "Mate packaged README differs from the approved usage document.",
   );
@@ -362,7 +362,7 @@ export async function inspectMatePackageDirectory(
   const skillText = packagedSkill.toString("utf8");
   assert(
     createHash("sha256").update(packagedSkill).digest("hex") ===
-      "3955f26db8200a737350dacf2a559483790715dc8e75181dddca3828eae92670" &&
+      "d55f24babdc963c75d30670a8dcc2a9620c6ac40d1505397b57c81260f560a9c" &&
       Buffer.compare(packagedSkill, approvedSkill) === 0 &&
       skillText.startsWith("---\nname: plugin-workbench\ndescription:") &&
       skillText.includes("# Plugin Workbench"),

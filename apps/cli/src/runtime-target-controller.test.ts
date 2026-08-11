@@ -9,8 +9,11 @@ import {
   OpaqueIdSchema,
   openDevelopmentTargetCatalog,
   PrincipalIdSchema,
+  type OpaqueId,
 } from "@bb-mate/runtime";
+import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
 import { createRuntimeTargetController } from "./runtime-target-controller.ts";
+import { discoverWorkspaceSourceCandidates } from "@bb-mate/inspection";
 
 const temporaryRoots: string[] = [];
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
@@ -71,10 +74,10 @@ function context() {
 }
 
 describe("runtime target controller", () => {
-  test("admits, passively discovers, and refreshes only this scan's targets", async () => {
+  test("admits all requested projects in one path-free grouped discovery pass", async () => {
     const fixture = await makeFixture();
-    const first = path.join(fixture.sourceRoot, "first");
-    const second = path.join(fixture.sourceRoot, "second");
+    const first = path.join(fixture.sourceRoot, "first-project");
+    const second = path.join(fixture.sourceRoot, "second-project");
     await writePlugin(first, "first");
     await writePlugin(second, "second");
     const catalog = await openDevelopmentTargetCatalog({
@@ -89,43 +92,426 @@ describe("runtime target controller", () => {
       catalog,
       principalId,
       bbContextId,
-      createRootKey: () => OpaqueIdSchema.parse("r".repeat(32)),
+      createRootKey: (() => {
+        const keys = [
+          "r".repeat(32),
+          "q".repeat(32),
+          "u".repeat(32),
+          "v".repeat(32),
+          "w".repeat(32),
+        ];
+        return () => OpaqueIdSchema.parse(keys.shift());
+      })(),
       clock: () => 1_000,
     });
 
     const response = await controller.admit(context(), {
-      schemaVersion: 1,
-      sourcePath: fixture.sourceRoot,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "f".repeat(32), sourcePath: first },
+        { projectKey: "s".repeat(32), sourcePath: second },
+      ],
     });
 
     expect(response.state).toBe("ready");
-    expect(response.targets.map((target) => target.manifest.pluginId)).toEqual([
-      "first",
-      "second",
+    expect(response.projects).toHaveLength(2);
+    expect(response.projects.map(({ projectKey }) => projectKey)).toEqual([
+      "f".repeat(32),
+      "s".repeat(32),
     ]);
-    expect(response.targets.map((target) => target.revision)).toEqual([1, 1]);
+    expect(
+      response.projects.map(({ state, targets }) => ({
+        state,
+        plugins: targets.map((target) => target.manifest.pluginId),
+      })),
+    ).toEqual([
+      { state: "ready", plugins: ["first"] },
+      { state: "ready", plugins: ["second"] },
+    ]);
     expect(JSON.stringify(response)).not.toContain(fixture.sourceRoot);
+    const secondTargetId = response.projects[1]?.targets[0]?.id;
 
     const refreshed = await controller.admit(context(), {
-      schemaVersion: 1,
-      sourcePath: first,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [{ projectKey: "f".repeat(32), sourcePath: first }],
     });
-    expect(refreshed.targets).toHaveLength(1);
-    expect(refreshed.targets[0]?.manifest.pluginId).toBe("first");
-    expect(refreshed.targets[0]?.revision).toBe(2);
+    expect(refreshed.projects[0]?.targets).toHaveLength(1);
+    expect(refreshed.projects[0]?.targets[0]?.manifest.pluginId).toBe("first");
+    expect(refreshed.projects[0]?.targets[0]?.revision).toBe(1);
 
     const global = await controller.list(context());
     expect(global.state).toBe("ready");
     expect(global.targets.map((target) => target.manifest.pluginId)).toEqual([
       "first",
-      "second",
     ]);
+
+    const reopened = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [
+        { projectKey: "f".repeat(32), sourcePath: first },
+        { projectKey: "s".repeat(32), sourcePath: second },
+      ],
+    });
+    expect(reopened.projects[1]?.targets).toMatchObject([
+      { id: secondTargetId, revision: 3, manifest: { pluginId: "second" } },
+    ]);
+    catalog.close();
+  });
+
+  test("retires absent targets only after a complete project snapshot", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "removable");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("r".repeat(32)),
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("k".repeat(32)),
+    });
+    const request = () => ({
+      schemaVersion: 2 as const,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    expect(
+      (await controller.admit(context(), request())).projects[0]?.targets,
+    ).toHaveLength(1);
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({ name: "no-longer-a-plugin", private: true }),
+    );
+    const complete = await controller.admit(context(), request());
+
+    expect(complete).toMatchObject({
+      state: "ready",
+      projects: [{ state: "ready", targets: [] }],
+    });
+    expect((await controller.list(context())).targets).toEqual([]);
+    catalog.close();
+  });
+
+  test("retires prior project targets from an empty complete inventory", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "removed-project");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("e".repeat(32)),
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    const empty = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [],
+    });
+
+    expect(empty).toEqual({
+      schemaVersion: 2,
+      state: "ready",
+      projects: [],
+    });
+    expect((await controller.list(context())).targets).toEqual([]);
+    catalog.close();
+  });
+
+  test("retains uncertain targets after a partial project snapshot", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "uncertain");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("u".repeat(32)),
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("k".repeat(32)),
+    });
+    const request = () => ({
+      schemaVersion: 2 as const,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+    await controller.admit(context(), request());
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "uncertain-workspace",
+        private: true,
+        workspaces: 42,
+      }),
+    );
+    const partial = await controller.admit(context(), request());
+
+    expect(partial).toMatchObject({
+      state: "partial",
+      projects: [{ state: "partial", targets: [] }],
+    });
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["uncertain"]);
+    catalog.close();
+  });
+
+  test("retires a healthy project's removed targets while a peer stays partial", async () => {
+    const fixture = await makeFixture();
+    const healthyRoot = path.join(fixture.sourceRoot, "healthy");
+    const partialRoot = path.join(fixture.sourceRoot, "partial");
+    await writePlugin(healthyRoot, "removable-healthy");
+    await writePlugin(partialRoot, "retained-partial");
+    const partialManifestPath = path.join(partialRoot, "package.json");
+    const partialManifest = JSON.parse(
+      await fs.readFile(partialManifestPath, "utf8"),
+    ) as Record<string, unknown>;
+    partialManifest.workspaces = 42;
+    await fs.writeFile(partialManifestPath, JSON.stringify(partialManifest));
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    const request = () => ({
+      schemaVersion: 2 as const,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "h".repeat(32), sourcePath: healthyRoot },
+        { projectKey: "p".repeat(32), sourcePath: partialRoot },
+      ],
+    });
+
+    expect((await controller.admit(context(), request())).state).toBe(
+      "partial",
+    );
+    await fs.writeFile(
+      path.join(healthyRoot, "package.json"),
+      JSON.stringify({
+        name: "healthy-workspace",
+        private: true,
+        workspaces: ["cycle-*"],
+      }),
+    );
+
+    const refreshed = await controller.admit(context(), request());
+
+    expect(refreshed.projects).toMatchObject([
+      { state: "ready", targets: [] },
+      {
+        state: "partial",
+        targets: [{ manifest: { pluginId: "retained-partial" } }],
+      },
+    ]);
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["retained-partial"]);
+
+    let previousRoot: string | undefined;
+    for (let index = 0; index <= TARGET_LIST_MAX_TARGETS; index += 1) {
+      if (previousRoot !== undefined) {
+        await fs.rm(previousRoot, { recursive: true });
+      }
+      const nextRoot = path.join(healthyRoot, `cycle-${index}`);
+      await writePlugin(nextRoot, `cycle-${index}`);
+      const cycled = await controller.admit(context(), request());
+      expect(cycled.projects[0]?.targets).toHaveLength(1);
+      previousRoot = nextRoot;
+    }
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["retained-partial", `cycle-${TARGET_LIST_MAX_TARGETS}`]);
+    catalog.close();
+  });
+
+  test("preserves targets reachable from a nested partial project", async () => {
+    const fixture = await makeFixture();
+    const parentRoot = path.join(fixture.sourceRoot, "parent");
+    const childRoot = path.join(parentRoot, "child");
+    await writePlugin(childRoot, "nested-partial");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("n".repeat(32)),
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const seed = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("s".repeat(32)),
+    });
+    await seed.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [{ projectKey: "s".repeat(32), sourcePath: childRoot }],
+    });
+
+    const keys = ["p".repeat(32), "c".repeat(32)];
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse(keys.shift()),
+      discoverCandidates: async (roots, options) => {
+        const discovered = await discoverWorkspaceSourceCandidates(
+          roots,
+          options,
+        );
+        return {
+          candidates: discovered.candidates.filter(
+            (candidate) =>
+              candidate.rootKey !== "p".repeat(32) ||
+              candidate.canonicalRoot !== childRoot,
+          ),
+          diagnostics: [
+            ...discovered.diagnostics,
+            {
+              code: "test-partial-child",
+              rootKey: "c".repeat(32),
+              displayPath: "child",
+              detail: "The nested project scan is incomplete.",
+            },
+          ],
+        };
+      },
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: parentRoot },
+        { projectKey: "c".repeat(32), sourcePath: childRoot },
+      ],
+    });
+
+    expect(response.projects.map(({ state }) => state)).toEqual([
+      "ready",
+      "partial",
+    ]);
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["nested-partial"]);
+    catalog.close();
+  });
+
+  test("scans a duplicate canonical root once and fans its projections out", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "shared");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("d".repeat(32)),
+      clock: () => 1_000,
+    });
+    const keys = [
+      "r".repeat(32),
+      "q".repeat(32),
+      "s".repeat(32),
+      "t".repeat(32),
+    ];
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse(keys.shift()),
+      clock: () => 1_000,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "a".repeat(32), sourcePath: fixture.sourceRoot },
+        { projectKey: "b".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    expect(response.state).toBe("ready");
+    expect(
+      response.projects.map(({ state, targets }) => ({
+        state,
+        ids: targets.map((target) => String(target.id)),
+        revisions: targets.map((target) => target.revision),
+      })),
+    ).toEqual([
+      { state: "ready", ids: ["d".repeat(32)], revisions: [1] },
+      { state: "ready", ids: ["d".repeat(32)], revisions: [1] },
+    ]);
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({ name: "no-longer-a-plugin", private: true }),
+    );
+    const retired = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "a".repeat(32), sourcePath: fixture.sourceRoot },
+        { projectKey: "b".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+    expect(retired.projects.map(({ targets }) => targets)).toEqual([[], []]);
+    expect((await controller.list(context())).targets).toEqual([]);
     catalog.close();
   });
 
   test("reports bounded discovery diagnostics without leaking them or skipping valid candidates", async () => {
     const fixture = await makeFixture();
-    await writePlugin(fixture.sourceRoot, "valid", { invalidSibling: true });
+    await writePlugin(fixture.sourceRoot, "valid");
+    const manifestPath = path.join(fixture.sourceRoot, "package.json");
+    const manifest = JSON.parse(
+      await fs.readFile(manifestPath, "utf8"),
+    ) as Record<string, unknown>;
+    manifest.workspaces = 42;
+    await fs.writeFile(manifestPath, JSON.stringify(manifest));
     const catalog = await openDevelopmentTargetCatalog({
       dataRoot: fixture.dataRoot,
       id: () => ObjectIdSchema.parse("t".repeat(32)),
@@ -140,21 +526,73 @@ describe("runtime target controller", () => {
     });
 
     const response = await controller.admit(context(), {
-      schemaVersion: 1,
-      sourcePath: fixture.sourceRoot,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "v".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
     });
 
     expect(response).toMatchObject({ state: "partial" });
-    expect(response.targets.map((target) => target.manifest.pluginId)).toEqual([
-      "valid",
-    ]);
+    expect(
+      response.projects[0]?.targets.map((target) => target.manifest.pluginId),
+    ).toEqual(["valid"]);
     expect(Object.keys(response).sort()).toEqual([
+      "projects",
       "schemaVersion",
       "state",
-      "targets",
     ]);
     expect(JSON.stringify(response)).not.toContain("broken");
     expect(JSON.stringify(response)).not.toContain(fixture.sourceRoot);
+    catalog.close();
+  });
+
+  test("keeps one project's discovery failure isolated from its peers", async () => {
+    const fixture = await makeFixture();
+    const partialRoot = path.join(fixture.sourceRoot, "partial");
+    const readyRoot = path.join(fixture.sourceRoot, "ready");
+    await writePlugin(partialRoot, "partial-plugin");
+    await writePlugin(readyRoot, "ready-plugin");
+    const partialManifestPath = path.join(partialRoot, "package.json");
+    const partialManifest = JSON.parse(
+      await fs.readFile(partialManifestPath, "utf8"),
+    ) as Record<string, unknown>;
+    partialManifest.workspaces = { packages: "not-an-array" };
+    await fs.writeFile(partialManifestPath, JSON.stringify(partialManifest));
+    const ids = ["a".repeat(32), "b".repeat(32)];
+    const keys = ["r".repeat(32), "q".repeat(32)];
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse(ids.shift()),
+      clock: () => 1_000,
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse(keys.shift()),
+      clock: () => 1_000,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: partialRoot },
+        { projectKey: "v".repeat(32), sourcePath: readyRoot },
+      ],
+    });
+
+    expect(response.state).toBe("partial");
+    expect(
+      response.projects.map(({ state, targets }) => ({
+        state,
+        plugins: targets.map((target) => target.manifest.pluginId),
+      })),
+    ).toEqual([
+      { state: "partial", plugins: ["partial-plugin"] },
+      { state: "ready", plugins: ["ready-plugin"] },
+    ]);
     catalog.close();
   });
 
@@ -171,17 +609,70 @@ describe("runtime target controller", () => {
     });
 
     const response = await controller.admit(context(), {
-      schemaVersion: 1,
-      sourcePath: path.join(fixture.sourceRoot, "missing"),
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        {
+          projectKey: "m".repeat(32),
+          sourcePath: path.join(fixture.sourceRoot, "missing"),
+        },
+      ],
     });
 
     expect(response).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       state: "partial",
-      targets: [],
+      projects: [{ projectKey: "m".repeat(32), state: "partial", targets: [] }],
     });
     expect((await controller.list(context())).targets).toEqual([]);
     expect(JSON.stringify(response)).not.toContain("missing");
+    catalog.close();
+  });
+
+  test("makes the batch partial without assigning a rootless diagnostic to a project", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "unreached");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const seed = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("r".repeat(32)),
+    });
+    await seed.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "s".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => "invalid" as OpaqueId,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "x".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    expect(response).toEqual({
+      schemaVersion: 2,
+      state: "partial",
+      projects: [{ projectKey: "x".repeat(32), state: "ready", targets: [] }],
+    });
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["unreached"]);
     catalog.close();
   });
 
@@ -190,6 +681,14 @@ describe("runtime target controller", () => {
     await writePlugin(path.join(fixture.sourceRoot, "a-first"), "first");
     await writePlugin(path.join(fixture.sourceRoot, "b-failing"), "failing");
     await writePlugin(path.join(fixture.sourceRoot, "c-last"), "last");
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "refresh-failure-workspace",
+        private: true,
+        workspaces: ["*"],
+      }),
+    );
     const catalog = await openDevelopmentTargetCatalog({
       dataRoot: fixture.dataRoot,
       id: (() => {
@@ -211,20 +710,158 @@ describe("runtime target controller", () => {
     });
 
     const response = await controller.admit(context(), {
-      schemaVersion: 1,
-      sourcePath: fixture.sourceRoot,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
     });
 
     expect(response.state).toBe("partial");
-    expect(response.targets.map((target) => target.manifest.pluginId)).toEqual([
-      "first",
-      "last",
-    ]);
+    expect(
+      response.projects[0]?.targets.map((target) => target.manifest.pluginId),
+    ).toEqual(["first", "last"]);
     expect(
       (await controller.list(context())).targets.map(
         (target) => target.manifest.pluginId,
       ),
     ).toEqual(["first", "last"]);
+    catalog.close();
+  });
+
+  test("does not mutate the catalog after a batch is aborted", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "cancelled");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("c".repeat(32)),
+      clock: () => 1_000,
+    });
+    const cancellation = new AbortController();
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("r".repeat(32)),
+      clock: () => 1_000,
+      discoverCandidates: async (roots, options) => {
+        const result = await discoverWorkspaceSourceCandidates(roots, options);
+        cancellation.abort();
+        return result;
+      },
+    });
+
+    await expect(
+      controller.admit(
+        context(),
+        {
+          schemaVersion: 2,
+          inventoryState: "complete" as const,
+          projects: [
+            { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+          ],
+        },
+        cancellation.signal,
+      ),
+    ).rejects.toHaveProperty("name", "AbortError");
+    expect((await controller.list(context())).targets).toEqual([]);
+
+    const retry = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "r".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+    expect(retry.projects[0]?.targets).toMatchObject([
+      { revision: 1, manifest: { pluginId: "cancelled" } },
+    ]);
+    catalog.close();
+  });
+
+  test("settles an aborted batch when discovery never resolves", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "stalled");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const cancellation = new AbortController();
+    let markDiscoveryStarted: (() => void) | undefined;
+    const discoveryStarted = new Promise<void>((resolve) => {
+      markDiscoveryStarted = resolve;
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("r".repeat(32)),
+      discoverCandidates: () => {
+        markDiscoveryStarted?.();
+        return new Promise(() => {});
+      },
+    });
+
+    const admission = controller.admit(
+      context(),
+      {
+        schemaVersion: 2,
+        inventoryState: "complete" as const,
+        projects: [
+          { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+        ],
+      },
+      cancellation.signal,
+    );
+    await discoveryStarted;
+    cancellation.abort();
+
+    await expect(admission).rejects.toHaveProperty("name", "AbortError");
+    expect((await controller.list(context())).targets).toEqual([]);
+    catalog.close();
+  });
+
+  test("observes a late discovery rejection after cancellation", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const cancellation = new AbortController();
+    let markDiscoveryStarted: (() => void) | undefined;
+    let rejectDiscovery: ((reason?: unknown) => void) | undefined;
+    const discoveryStarted = new Promise<void>((resolve) => {
+      markDiscoveryStarted = resolve;
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("r".repeat(32)),
+      discoverCandidates: () => {
+        markDiscoveryStarted?.();
+        return new Promise((_resolve, reject) => {
+          rejectDiscovery = reject;
+        });
+      },
+    });
+    const admission = controller.admit(
+      context(),
+      {
+        schemaVersion: 2,
+        inventoryState: "complete" as const,
+        projects: [
+          { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+        ],
+      },
+      cancellation.signal,
+    );
+    await discoveryStarted;
+    cancellation.abort();
+    await expect(admission).rejects.toHaveProperty("name", "AbortError");
+
+    rejectDiscovery?.(new Error("late discovery failure"));
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    expect((await controller.list(context())).targets).toEqual([]);
     catalog.close();
   });
 });

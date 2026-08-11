@@ -34,7 +34,15 @@ function resources(
     identity,
     controller: {
       ...identity,
-      admit: () => ({ schemaVersion: 1, state: "ready", targets: [] }),
+      admit: (_context, input) => ({
+        schemaVersion: 2,
+        state: "ready",
+        projects: input.projects.map(({ projectKey }) => ({
+          projectKey,
+          state: "ready" as const,
+          targets: [],
+        })),
+      }),
       list: () => ({ schemaVersion: 1, state: "ready", targets: [] }),
     },
     close,
@@ -165,9 +173,9 @@ describe("supervised serve", () => {
   test("drains an admitted target request before closing its catalog", async () => {
     const liveness = deferred<void>();
     const admission = deferred<{
-      schemaVersion: 1;
+      schemaVersion: 2;
       state: "ready";
-      targets: [];
+      projects: [{ projectKey: string; state: "ready"; targets: [] }];
     }>();
     const calls: unknown[] = [];
     const events: string[] = [];
@@ -216,8 +224,14 @@ describe("supervised serve", () => {
           host: "127.0.0.1:41721",
         },
         body: JSON.stringify({
-          schemaVersion: 1,
-          sourcePath: "/private/source",
+          schemaVersion: 2,
+          inventoryState: "complete",
+          projects: [
+            {
+              projectKey: "a".repeat(32),
+              sourcePath: "/private/source",
+            },
+          ],
         }),
       }),
     );
@@ -226,11 +240,24 @@ describe("supervised serve", () => {
     await Bun.sleep(0);
 
     expect(events).toEqual(["listener-stop"]);
-    admission.resolve({ schemaVersion: 1, state: "ready", targets: [] });
+    admission.resolve({
+      schemaVersion: 2,
+      state: "ready",
+      projects: [{ projectKey: "a".repeat(32), state: "ready", targets: [] }],
+    });
     expect((await request).status).toBe(200);
     await expect(running).resolves.toEqual({ exitCode: 0, signal: null });
     expect(calls).toEqual([
-      { schemaVersion: 1, sourcePath: "/private/source" },
+      {
+        schemaVersion: 2,
+        inventoryState: "complete",
+        projects: [
+          {
+            projectKey: "a".repeat(32),
+            sourcePath: "/private/source",
+          },
+        ],
+      },
     ]);
     expect(events).toEqual(["listener-stop", "catalog-close"]);
   });

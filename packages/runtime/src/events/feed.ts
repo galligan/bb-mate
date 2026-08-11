@@ -14,7 +14,11 @@ const MAX_PAGE_SIZE = 100;
 const CURSOR_PATTERN = /^v1_([0-9a-z]+)$/u;
 
 export type ObjectEventType =
-  "object.created" | "object.updated" | "target.native-reconciled";
+  | "object.created"
+  | "object.updated"
+  | "target.native-reconciled"
+  | "target.reopened"
+  | "target.retired";
 
 export interface ObjectEvent {
   readonly cursor: string;
@@ -51,7 +55,9 @@ function parseEventRow(row: EventRow): ObjectEvent {
     row.sequence < 1 ||
     (row.event_type !== "object.created" &&
       row.event_type !== "object.updated" &&
-      row.event_type !== "target.native-reconciled") ||
+      row.event_type !== "target.native-reconciled" &&
+      row.event_type !== "target.reopened" &&
+      row.event_type !== "target.retired") ||
     !Number.isSafeInteger(row.revision) ||
     row.revision < 1 ||
     !Number.isSafeInteger(row.occurred_at) ||
@@ -100,22 +106,38 @@ export function createEventFeed(database: Database): EventFeed {
   `);
   const ownsCursor = database.query<{ found: number }, SQLQueryBindings[]>(`
     SELECT 1 AS found
-    FROM runtime_events
-    WHERE sequence = ?
-      AND principal_id = ?
-      AND bb_context_id = ?
-      AND target_id = ?
-      AND session_id IS ?
+    FROM runtime_events e
+    WHERE e.sequence = ?
+      AND e.principal_id = ?
+      AND e.bb_context_id = ?
+      AND e.target_id = ?
+      AND e.session_id IS ?
+      AND NOT EXISTS (
+        SELECT 1
+        FROM development_target_event_retention r
+        WHERE r.object_id = e.object_id
+          AND r.principal_id = e.principal_id
+          AND r.bb_context_id = e.bb_context_id
+          AND r.expired_through_sequence >= e.sequence
+      )
   `);
   const select = database.query<EventRow, SQLQueryBindings[]>(`
     SELECT sequence, event_type, object_id, object_kind, revision, occurred_at
-    FROM runtime_events
-    WHERE sequence > ?
-      AND principal_id = ?
-      AND bb_context_id = ?
-      AND target_id = ?
-      AND session_id IS ?
-    ORDER BY sequence
+    FROM runtime_events e
+    WHERE e.sequence > ?
+      AND e.principal_id = ?
+      AND e.bb_context_id = ?
+      AND e.target_id = ?
+      AND e.session_id IS ?
+      AND NOT EXISTS (
+        SELECT 1
+        FROM development_target_event_retention r
+        WHERE r.object_id = e.object_id
+          AND r.principal_id = e.principal_id
+          AND r.bb_context_id = e.bb_context_id
+          AND r.expired_through_sequence >= e.sequence
+      )
+    ORDER BY e.sequence
     LIMIT ?
   `);
 

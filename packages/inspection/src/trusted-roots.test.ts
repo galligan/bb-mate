@@ -17,6 +17,15 @@ afterEach(async () => {
 });
 
 describe("trusted source roots", () => {
+  test("stops before filesystem admission when the request is aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      admitTrustedRoots([], { signal: controller.signal }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   test("admits a configured directory without exposing its canonical path", async () => {
     const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
     temporaryRoots.push(parent);
@@ -87,7 +96,7 @@ describe("trusted source roots", () => {
     expect(JSON.stringify(result.diagnostics)).not.toContain(parent);
   });
 
-  test("deduplicates roots by canonical directory", async () => {
+  test("aliases duplicate canonical directories to one admitted root", async () => {
     const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
     temporaryRoots.push(parent);
     const rootPath = path.join(parent, "plugin");
@@ -103,20 +112,17 @@ describe("trusted source roots", () => {
     ]);
 
     expect(result.roots.map((root) => root.rootKey)).toEqual([opaqueKey("a")]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "root-duplicate",
-        rootKey: opaqueKey("b"),
-        displayPath: "plugin",
-      }),
+    expect(result.aliases).toEqual([
+      { rootKey: opaqueKey("b"), admittedRootKey: opaqueKey("a") },
     ]);
+    expect(result.diagnostics).toEqual([]);
   });
 
-  test("bounds configured roots at sixteen", async () => {
+  test("bounds configured roots at 128", async () => {
     const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
     temporaryRoots.push(parent);
     const inputs = await Promise.all(
-      Array.from({ length: 17 }, async (_, index) => {
+      Array.from({ length: 129 }, async (_, index) => {
         const rootPath = path.join(
           parent,
           `plugin-${index.toString().padStart(2, "0")}`,
@@ -132,11 +138,11 @@ describe("trusted source roots", () => {
 
     const result = await admitTrustedRoots(inputs);
 
-    expect(result.roots).toHaveLength(16);
+    expect(result.roots).toHaveLength(128);
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
         code: "root-limit",
-        rootKey: (16).toString(36).padStart(32, "0"),
+        rootKey: (128).toString(36).padStart(32, "0"),
       }),
     ]);
   });

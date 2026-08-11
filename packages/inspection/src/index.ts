@@ -1,6 +1,7 @@
 export { inspectPlugin } from "./inspect.ts";
 export { discoverPluginRoots } from "./manifest.ts";
 export { discoverSourceCandidates } from "./discover-source-candidates.ts";
+export { discoverWorkspaceSourceCandidates } from "./discover-workspace-source-candidates.ts";
 export { admitTrustedRoots } from "./trusted-roots.ts";
 export { runCapturedCommand } from "./captured-command.ts";
 export type { CapturedCommandOptions } from "./captured-command.ts";
@@ -53,10 +54,12 @@ export type {
 } from "./native-inventory.ts";
 export type {
   DiscoveryDiagnostic,
+  DiscoveryOperationOptions,
   SourceCandidate,
   SourceDiscoveryResult,
   TrustedRoot,
   TrustedRootAdmission,
+  TrustedRootAlias,
   TrustedRootInput,
   TrustedRootKind,
 } from "./discovery-types.ts";
