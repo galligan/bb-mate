@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   prepareStandaloneOutputRoot,
   promoteStandaloneOutputRoot,
+  standaloneOutputRootFromArgs,
 } from "./build-standalone.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -19,14 +20,6 @@ async function temporaryRoot(): Promise<string> {
   return root;
 }
 
-async function temporaryHomeRoot(): Promise<string> {
-  const root = await fs.mkdtemp(
-    path.join(os.homedir(), ".bb-mate-standalone-outside-"),
-  );
-  roots.push(root);
-  return root;
-}
-
 afterEach(async () => {
   for (const root of roots.splice(0).reverse()) {
     await fs.rm(root, { recursive: true, force: true });
@@ -34,6 +27,19 @@ afterEach(async () => {
 });
 
 describe("standalone output ownership", () => {
+  test("accepts only one bounded absolute CLI output root", () => {
+    expect(standaloneOutputRootFromArgs([])).toBeUndefined();
+    expect(standaloneOutputRootFromArgs(["/tmp/standalone"])).toBe(
+      "/tmp/standalone",
+    );
+    expect(() => standaloneOutputRootFromArgs(["relative"])).toThrow(
+      "bounded absolute path",
+    );
+    expect(() => standaloneOutputRootFromArgs(["/one", "/two"])).toThrow(
+      "at most one",
+    );
+  });
+
   test("preserves the previous artifact until complete staged output is promoted", async () => {
     const parent = await temporaryRoot();
     const root = path.join(parent, "output");
@@ -105,16 +111,23 @@ describe("standalone output ownership", () => {
 
   test("rejects a symlinked ancestor without writing through it", async () => {
     const holder = await temporaryRoot();
-    const outside = await temporaryHomeRoot();
+    const outside = await temporaryRoot();
     const linkedParent = path.join(holder, "parent-link");
     const escapedOutput = path.join(linkedParent, "output");
     await fs.symlink(outside, linkedParent);
 
-    await expect(prepareStandaloneOutputRoot(escapedOutput)).rejects.toThrow(
-      "symlink component",
-    );
-    await expect(fs.access(path.join(outside, "output"))).rejects.toThrow();
-    expect(await fs.readdir(outside)).toEqual([]);
+    try {
+      await expect(prepareStandaloneOutputRoot(escapedOutput)).rejects.toThrow(
+        "symlink component",
+      );
+      await expect(fs.access(path.join(outside, "output"))).rejects.toThrow();
+      expect(await fs.readdir(outside)).toEqual([]);
+    } finally {
+      // Remove the link before afterEach removes its target. Bun's recursive
+      // removal can stall on the resulting broken symlink under aggregate load.
+      await fs.unlink(linkedParent);
+    }
+    await expect(fs.lstat(linkedParent)).rejects.toThrow();
   });
 
   test("rejects incomplete staged output without touching the previous artifact", async () => {

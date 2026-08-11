@@ -32,6 +32,7 @@ export interface StandaloneInspection {
   artifactRoot: string;
   executablePath: string;
   manifest: StandaloneManifest;
+  manifestBytes: Buffer;
 }
 
 export async function inspectStandalone(
@@ -52,8 +53,15 @@ export async function inspectStandalone(
   );
 
   const executablePath = path.join(resolvedRoot, "bb-mate");
+  const manifestBytes = await fs.readFile(
+    path.join(resolvedRoot, "manifest.json"),
+  );
+  assert(
+    manifestBytes.byteLength >= 2 && manifestBytes.byteLength <= 1024 * 1024,
+    "Standalone manifest must be bounded.",
+  );
   const manifest = JSON.parse(
-    await fs.readFile(path.join(resolvedRoot, "manifest.json"), "utf8"),
+    new TextDecoder("utf-8", { fatal: true }).decode(manifestBytes),
   ) as StandaloneManifest;
   const [workspaceManifest, cliManifest] = await Promise.all([
     fs
@@ -147,7 +155,12 @@ export async function inspectStandalone(
     "Standalone manifest contains duplicate routes.",
   );
 
-  return { artifactRoot: resolvedRoot, executablePath, manifest };
+  return {
+    artifactRoot: resolvedRoot,
+    executablePath,
+    manifest,
+    manifestBytes,
+  };
 }
 
 if (import.meta.main) {

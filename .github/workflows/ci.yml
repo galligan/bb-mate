@@ -41,6 +41,7 @@ jobs:
           path: |
             apps/workbench/dist/playwright/report
             apps/workbench/dist/playwright/results
+            plugins/mate/dist/playwright/results
           if-no-files-found: ignore
 
   standalone-darwin-arm64:
@@ -53,3 +54,4 @@ jobs:
       - run: test "$(uname -m)" = arm64
       - run: bun install --frozen-lockfile
       - run: bun run standalone:test
+      - run: bun run mate:package:test

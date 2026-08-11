@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 import { createServer } from "node:http";
+import { Writable } from "node:stream";
 import {
   observeChildClose,
   requestRuntimeHealth,
+  superviseWritable,
   type StandaloneRuntimeDescriptor,
   validateStandaloneDescriptor,
   waitForRuntimeHealth,
@@ -90,6 +92,28 @@ describe("standalone supervision proof", () => {
     await completed;
     expect(closed).toBe(true);
     expect(chunks.join("")).toContain("late secret output");
+  });
+
+  test("awaits frame delivery and deliberate FD3 teardown", async () => {
+    let deliver!: () => void;
+    const writable = new Writable({
+      write(_chunk, _encoding, callback) {
+        deliver = callback;
+      },
+    });
+    const supervisor = superviseWritable(writable, "frame\n");
+    let ready = false;
+    void supervisor.ready.then(() => {
+      ready = true;
+    });
+
+    await Promise.resolve();
+    expect(ready).toBe(false);
+    deliver();
+    await supervisor.ready;
+    expect(ready).toBe(true);
+    await supervisor.end();
+    expect(writable.closed).toBe(true);
   });
 
   test("retries connection refusal until health returns HTTP 200", async () => {

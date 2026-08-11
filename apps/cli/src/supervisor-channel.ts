@@ -3,6 +3,10 @@ import type { Readable } from "node:stream";
 const DEFAULT_FRAME_BYTES = 4_096;
 const DEFAULT_TIMEOUT_MS = 2_000;
 
+function unexpectedClose(): Error {
+  return new Error("Supervisor channel closed unexpectedly.");
+}
+
 export interface SupervisorChannel<Frame> {
   readonly frame: Frame;
   readonly closed: Promise<void>;
@@ -33,6 +37,7 @@ export async function readSupervisorChannel<Frame>(
         clearTimeout(timeout);
         stream.off("data", onData);
         stream.off("end", onEnd);
+        stream.off("close", onClose);
         stream.off("error", finish);
       };
       const finish = (error: unknown, value?: Buffer) => {
@@ -42,6 +47,7 @@ export async function readSupervisorChannel<Frame>(
       };
       const onEnd = () =>
         finish(new Error("Supervisor channel closed before its frame."));
+      const onClose = () => finish(unexpectedClose());
       const onData = (value: Buffer | string) => {
         const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
         const newline = chunk.indexOf(0x0a);
@@ -63,6 +69,7 @@ export async function readSupervisorChannel<Frame>(
 
       stream.on("data", onData);
       stream.once("end", onEnd);
+      stream.once("close", onClose);
       stream.once("error", finish);
     });
   } catch (error) {
@@ -90,14 +97,19 @@ export async function readSupervisorChannel<Frame>(
     for (const chunk of chunks) chunk.fill(0);
   }
 
-  if (stream.readableEnded || stream.destroyed) {
+  if (stream.readableEnded) {
     return { frame, closed: Promise.resolve() };
+  }
+  if (stream.destroyed) {
+    const closed = Promise.reject(unexpectedClose());
+    void closed.catch(() => undefined);
+    return { frame, closed };
   }
   const closed = new Promise<void>((resolve, reject) => {
     const cleanup = () => {
       stream.off("data", onData);
       stream.off("end", onEnd);
-      stream.off("close", onEnd);
+      stream.off("close", onClose);
       stream.off("error", onError);
     };
     const onData = () => {
@@ -108,6 +120,10 @@ export async function readSupervisorChannel<Frame>(
       cleanup();
       resolve();
     };
+    const onClose = () => {
+      cleanup();
+      reject(unexpectedClose());
+    };
     const onError = (error: Error) => {
       cleanup();
       reject(error);
@@ -115,7 +131,7 @@ export async function readSupervisorChannel<Frame>(
 
     stream.on("data", onData);
     stream.once("end", onEnd);
-    stream.once("close", onEnd);
+    stream.once("close", onClose);
     stream.once("error", onError);
   });
   stream.resume();

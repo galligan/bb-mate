@@ -22,8 +22,14 @@ export interface SupervisedRuntime {
   descriptor: Promise<Record<string, unknown>>;
   stdout: () => string;
   stderr: () => string;
-  supervisor: Writable;
+  supervisor: SupervisorControl;
   token: string;
+}
+
+export interface SupervisorControl {
+  ready: Promise<void>;
+  end(): Promise<void>;
+  destroy(): Promise<void>;
 }
 
 export function observeChildClose(child: {
@@ -128,18 +134,23 @@ export async function waitForRuntimeHealth(
     now?: () => number;
     retryDelayMs?: number;
     timeoutMs?: number;
+    context?: string;
     runtime?: Pick<SupervisedRuntime, "closed" | "stderr" | "token"> & {
       child: Pick<ChildProcess, "exitCode" | "signalCode">;
     };
   } = {},
 ): Promise<void> {
   const fetchHealth = options.fetch ?? requestRuntimeHealth;
-  const sleep = options.sleep ?? ((milliseconds) => Bun.sleep(milliseconds));
+  const sleep =
+    options.sleep ??
+    ((milliseconds) =>
+      new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   const now = options.now ?? Date.now;
   const retryDelayMs = options.retryDelayMs ?? 25;
   const timeoutMs = options.timeoutMs ?? 10_000;
   const deadline = now() + timeoutMs;
-  const deadlineMessage = "Supervised runtime did not become healthy.";
+  const context = options.context ?? "Supervised runtime";
+  const deadlineMessage = `${context} did not become healthy.`;
   const stopped = options.runtime?.closed.then<never>(() => {
     const stderr = Buffer.from(
       options
@@ -149,7 +160,7 @@ export async function waitForRuntimeHealth(
       .subarray(0, 1_024)
       .toString("utf8");
     throw new Error(
-      `Supervised runtime exited before becoming healthy: exitCode=${options.runtime!.child.exitCode}, signal=${options.runtime!.child.signalCode}, stderr=${JSON.stringify(stderr)}.`,
+      `${context} exited before becoming healthy: exitCode=${options.runtime!.child.exitCode}, signal=${options.runtime!.child.signalCode}, stderr=${JSON.stringify(stderr)}.`,
     );
   });
   const beforeRuntimeStops = <T>(promise: Promise<T>): Promise<T> =>
@@ -173,9 +184,7 @@ export async function waitForRuntimeHealth(
         controller.abort();
       }
       if (response.status !== 200) {
-        throw new Error(
-          `Supervised runtime health returned HTTP ${response.status}.`,
-        );
+        throw new Error(`${context} health returned HTTP ${response.status}.`);
       }
       return;
     } catch (error) {
@@ -190,6 +199,38 @@ export async function waitForRuntimeHealth(
 function requireReadable(value: Readable | null, name: string): Readable {
   assert(value, `Supervised runtime ${name} was not piped.`);
   return value;
+}
+
+export function superviseWritable(
+  writable: Writable,
+  frame: string,
+): SupervisorControl {
+  let closeStarted = false;
+  const closed = new Promise<void>((resolve, reject) => {
+    writable.once("error", reject);
+    writable.once("close", resolve);
+  });
+  const ready = new Promise<void>((resolve, reject) => {
+    writable.write(frame, (error) => (error ? reject(error) : resolve()));
+  });
+  void ready.catch(() => undefined);
+  void closed.catch(() => undefined);
+
+  const close = async (destroy: boolean): Promise<void> => {
+    if (closeStarted) return closed;
+    closeStarted = true;
+    if (destroy) writable.destroy();
+    else {
+      await ready;
+      writable.end();
+    }
+    await closed;
+  };
+  return {
+    ready,
+    end: () => close(false),
+    destroy: () => close(true),
+  };
 }
 
 export function spawnSupervisedRuntime(options: {
@@ -220,55 +261,61 @@ export function spawnSupervisedRuntime(options: {
   const closed = observeChildClose(child);
   const stdoutStream = requireReadable(child.stdout, "stdout");
   const stderrStream = requireReadable(child.stderr, "stderr");
-  const supervisor = child.stdio[3];
-  assert(supervisor && "write" in supervisor, "Supervisor FD3 was not piped.");
+  const supervisorWritable = child.stdio[3];
+  assert(
+    supervisorWritable && "write" in supervisorWritable,
+    "Supervisor FD3 was not piped.",
+  );
 
   const stdoutChunks: Buffer[] = [];
   const stderrChunks: Buffer[] = [];
   let descriptorBytes = 0;
   let descriptorText = "";
   let settled = false;
-  const descriptor = new Promise<Record<string, unknown>>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("exit", (code, signal) => {
-      if (!settled) {
-        reject(
-          new Error(
-            `Supervised runtime exited before its descriptor: ${code ?? signal}.`,
-          ),
-        );
-      }
-    });
-    stdoutStream.on("data", (chunk: Buffer) => {
-      stdoutChunks.push(chunk);
-      if (settled) return;
-      descriptorBytes += chunk.byteLength;
-      if (descriptorBytes > 8 * 1024) {
+  const emittedDescriptor = new Promise<Record<string, unknown>>(
+    (resolve, reject) => {
+      child.once("error", reject);
+      child.once("exit", (code, signal) => {
+        if (!settled) {
+          reject(
+            new Error(
+              `Supervised runtime exited before its descriptor: ${code ?? signal}.`,
+            ),
+          );
+        }
+      });
+      stdoutStream.on("data", (chunk: Buffer) => {
+        stdoutChunks.push(chunk);
+        if (settled) return;
+        descriptorBytes += chunk.byteLength;
+        if (descriptorBytes > 8 * 1024) {
+          settled = true;
+          reject(new Error("Supervised runtime descriptor exceeded 8 KiB."));
+          return;
+        }
+        descriptorText += chunk.toString("utf8");
+        const newline = descriptorText.indexOf("\n");
+        if (newline === -1) return;
         settled = true;
-        reject(new Error("Supervised runtime descriptor exceeded 8 KiB."));
-        return;
-      }
-      descriptorText += chunk.toString("utf8");
-      const newline = descriptorText.indexOf("\n");
-      if (newline === -1) return;
-      settled = true;
-      const line = descriptorText.slice(0, newline);
-      try {
-        resolve(JSON.parse(line) as Record<string, unknown>);
-      } catch (error) {
-        reject(
-          new AggregateError(
-            [error],
-            "Supervised runtime descriptor was not JSON.",
-          ),
-        );
-      }
-    });
-  });
+        const line = descriptorText.slice(0, newline);
+        try {
+          resolve(JSON.parse(line) as Record<string, unknown>);
+        } catch (error) {
+          reject(
+            new AggregateError(
+              [error],
+              "Supervised runtime descriptor was not JSON.",
+            ),
+          );
+        }
+      });
+    },
+  );
   stderrStream.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
   const token = "A".repeat(43);
-  supervisor.write(
+  const supervisor = superviseWritable(
+    supervisorWritable,
     `${JSON.stringify({
       schemaVersion: 1,
       expectedRuntimeVersion: options.runtimeVersion,
@@ -278,6 +325,7 @@ export function spawnSupervisedRuntime(options: {
       bbContextId: "b".repeat(32),
     })}\n`,
   );
+  const descriptor = supervisor.ready.then(() => emittedDescriptor);
 
   return {
     child,
