@@ -98,6 +98,11 @@ parallel inspection command or plugin-owned state.
   limits, then perform the authenticated capability handshake. Abort,
   `onDispose`, reload, disable, remove, server shutdown, crash, and orphan paths
   terminate the owned group and listener within a bounded grace/force window.
+- Treat only a readable supervisor-channel `end` as normal liveness EOF; a
+  close-only destruction is an error. Run the standalone supervision proof
+  under an absolute pre-resolved Node executable so its extra-FD ownership
+  matches the installed plugin rather than Bun's incompatible pipe wrapper,
+  and await both frame delivery and writer teardown between sequential lanes.
 - Frontend/RPC status and ensure inputs are strict empty objects. Runtime startup
   is project-independent in 62B because this slice admits no project source;
   project/source binding begins only when 62C can consume it. Projections contain
