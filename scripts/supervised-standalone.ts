@@ -2,14 +2,16 @@ import {
   spawn as spawnChildProcess,
   type ChildProcess,
 } from "node:child_process";
+import { realpathSync } from "node:fs";
 import { get as getHttp } from "node:http";
+import path from "node:path";
 import type { Readable, Writable } from "node:stream";
 
 export interface StandaloneRuntimeDescriptor {
-  schemaVersion: 1;
+  schemaVersion: 2;
   protocol: "bb-mate-runtime";
   runtimeVersion: string;
-  apiVersion: 1;
+  apiVersion: 2;
   pid: number;
   instanceId: string;
   baseUrl: string;
@@ -30,6 +32,10 @@ export interface SupervisorControl {
   ready: Promise<void>;
   end(): Promise<void>;
   destroy(): Promise<void>;
+}
+
+export function runtimeDataRootForCwd(cwd: string): string {
+  return path.join(realpathSync(cwd), ".bb-mate-runtime-data");
 }
 
 export function observeChildClose(child: {
@@ -68,7 +74,9 @@ function hasExpectedCapabilities(value: unknown): boolean {
   return (
     JSON.stringify(Object.keys(capabilities).sort()) ===
       JSON.stringify([...expectedCapabilityKeys]) &&
-    expectedCapabilityKeys.every((key) => capabilities[key] === false)
+    expectedCapabilityKeys.every(
+      (key) => capabilities[key] === (key === "targets"),
+    )
   );
 }
 
@@ -275,11 +283,15 @@ export function spawnSupervisedRuntime(options: {
   const emittedDescriptor = new Promise<Record<string, unknown>>(
     (resolve, reject) => {
       child.once("error", reject);
-      child.once("exit", (code, signal) => {
+      child.once("close", (code, signal) => {
         if (!settled) {
+          const stderr = Buffer.concat(stderrChunks)
+            .toString("utf8")
+            .trim()
+            .slice(-2_000);
           reject(
             new Error(
-              `Supervised runtime exited before its descriptor: ${code ?? signal}.`,
+              `Supervised runtime exited before its descriptor: ${code ?? signal}; stderr=${JSON.stringify(stderr)}.`,
             ),
           );
         }
@@ -317,12 +329,11 @@ export function spawnSupervisedRuntime(options: {
   const supervisor = superviseWritable(
     supervisorWritable,
     `${JSON.stringify({
-      schemaVersion: 1,
+      schemaVersion: 2,
       expectedRuntimeVersion: options.runtimeVersion,
-      expectedApiVersion: 1,
+      expectedApiVersion: 2,
       token,
-      principalId: "p".repeat(32),
-      bbContextId: "b".repeat(32),
+      dataRoot: runtimeDataRootForCwd(options.cwd),
     })}\n`,
   );
   const descriptor = supervisor.ready.then(() => emittedDescriptor);
@@ -355,13 +366,13 @@ export function validateStandaloneDescriptor(
   assert(
     JSON.stringify(Object.keys(descriptor).sort()) ===
       JSON.stringify(expectedKeys),
-    "Supervised descriptor fields differ from the V1 allowlist.",
+    "Supervised descriptor fields differ from the V2 allowlist.",
   );
   assert(
-    descriptor.schemaVersion === 1 &&
+    descriptor.schemaVersion === 2 &&
       descriptor.protocol === "bb-mate-runtime" &&
       descriptor.runtimeVersion === options.runtimeVersion &&
-      descriptor.apiVersion === 1 &&
+      descriptor.apiVersion === 2 &&
       (options.pid === undefined || descriptor.pid === options.pid) &&
       Number.isSafeInteger(descriptor.pid) &&
       (descriptor.pid as number) > 0 &&

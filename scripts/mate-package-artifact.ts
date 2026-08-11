@@ -100,7 +100,7 @@ export interface MateRuntimeStamp {
   runtimeVersion: string;
   manifestSize: number;
   manifestSha256: string;
-  expectedApiVersion: 1;
+  expectedApiVersion: 2;
 }
 
 export function createMateRuntimeStamp(
@@ -122,7 +122,7 @@ export function createMateRuntimeStamp(
     runtimeVersion: manifest.runtimeVersion,
     manifestSize: manifestBytes.byteLength,
     manifestSha256: createHash("sha256").update(manifestBytes).digest("hex"),
-    expectedApiVersion: 1,
+    expectedApiVersion: 2,
   };
 }
 

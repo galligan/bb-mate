@@ -1,7 +1,7 @@
 import path from "node:path";
 
 export const MATE_PACKAGE_NAME = "bb-plugin-mate";
-export const MATE_PACKAGE_VERSION = "0.1.0-alpha.1";
+export const MATE_PACKAGE_VERSION = "0.1.0-alpha.2";
 
 export function createMateRegistryDocument(args: {
   baseUrl: string;

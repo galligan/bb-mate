@@ -80,10 +80,10 @@ describe("standalone asset graph", () => {
     const entry = generateStandaloneEntry({
       assets: [...graph.assets].reverse(),
       entrypointPath: "/repo/apps/cli/src/entrypoint.ts",
-      runtimeVersion: "0.1.0-alpha.2",
+      runtimeVersion: "0.1.0-alpha.3",
     });
     expect(entry).toContain('mode: "standalone"');
-    expect(entry).toContain('runtimeVersion: "0.1.0-alpha.2"');
+    expect(entry).toContain('runtimeVersion: "0.1.0-alpha.3"');
     expect(entry.indexOf('"/assets/app.js"')).toBeLessThan(
       entry.indexOf('"/index.html"'),
     );
@@ -92,7 +92,7 @@ describe("standalone asset graph", () => {
       graph,
       executable: new TextEncoder().encode("executable"),
       bunVersion: "1.3.14",
-      runtimeVersion: "0.1.0-alpha.2",
+      runtimeVersion: "0.1.0-alpha.3",
     });
     expect(manifest).toMatchObject({
       target: "bun-darwin-arm64",

@@ -20,7 +20,7 @@ function buildMetadata() {
     sdkVersion: "0.4.1",
     artifactFormatVersion: 1,
     pluginId: "mate",
-    pluginVersion: "0.1.0-alpha.1",
+    pluginVersion: "0.1.0-alpha.2",
     builtWith: { bbVersion: "0.36.0", pluginSdkVersion: "0.4.1" },
   };
 }
@@ -28,7 +28,7 @@ function buildMetadata() {
 function packageManifest() {
   return {
     name: "bb-plugin-mate",
-    version: "0.1.0-alpha.1",
+    version: "0.1.0-alpha.2",
     private: true,
     type: "module",
     license: "MIT",
