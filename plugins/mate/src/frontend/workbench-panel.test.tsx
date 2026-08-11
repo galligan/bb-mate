@@ -94,7 +94,11 @@ describe("Plugin Workbench nav panel", () => {
     const empty = render(snapshot({ projects: { state: "ready", items: [] } }));
     expect(unavailable).toContain("Project list unavailable");
     expect(unavailable).toContain("Refresh status");
-    expect(empty).toContain("No bb projects available");
+    expect(empty).toContain("No eligible local projects");
+    expect(empty).toContain(
+      "Open a project with a local source on this machine",
+    );
+    expect(empty).not.toContain("Create a project in bb");
   });
 
   test("renders empty, one, many, partial, and unavailable target states", () => {

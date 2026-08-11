@@ -223,9 +223,10 @@ export function PluginWorkbenchView({
               0
             </span>
             <div>
-              <h3>No bb projects available</h3>
+              <h3>No eligible local projects</h3>
               <p>
-                Create a project in bb before admitting development plugins.
+                Open a project with a local source on this machine before
+                admitting development plugins.
               </p>
             </div>
           </div>

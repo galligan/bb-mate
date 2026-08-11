@@ -298,7 +298,9 @@ describe("Plugin Workbench app registration", () => {
     await flush();
 
     await new Promise((resolve) => setTimeout(resolve, 5));
-    expect(document.body.textContent).not.toContain("No bb projects available");
+    expect(document.body.textContent).not.toContain(
+      "No eligible local projects",
+    );
     expect(rpcCall).toHaveBeenCalledTimes(3);
   });
 });
