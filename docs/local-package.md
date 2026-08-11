@@ -1,6 +1,6 @@
 # Clean-room package and npm release
 
-BB Mate produces the exact public alpha artifact locally before npm publication.
+bb Plugin Studio produces the exact public alpha artifact locally before npm publication.
 Package construction remains separate from the registry operation so the same
 reviewed bytes can be installed, inspected, and checksummed before release.
 

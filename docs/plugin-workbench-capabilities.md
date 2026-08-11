@@ -1,11 +1,11 @@
-# Plugin Workbench released-capability matrix
+# Plugin Studio released-capability matrix
 
 Date verified: 2026-08-10  
 Released target: `bb-app@0.36.0`, plugin SDK declarations `0.4.1`
 
-Plugin Workbench is allowed to depend only on public behavior shipped in a
+Plugin Studio is allowed to depend only on public behavior shipped in a
 released bb artifact. This matrix records the clean-room Gate 0 probe that
-decides which host integrations can be built in BB Mate without importing the
+decides which host integrations can be built in bb Plugin Studio without importing the
 upstream checkout or inventing an SDK substitute.
 
 ## Result
@@ -211,7 +211,7 @@ isolated test recipe; it does not change the compiled `bb-mate` runtime target.
 ### Harness mode
 
 `@bb/plugin-sdk@0.4.1` still returns npm E404, so the official external Harness
-is unavailable. BB Mate must continue to label Harness unavailable rather than
+is unavailable. bb Plugin Studio must continue to label Harness unavailable rather than
 copying it from the sibling checkout. Fixture and isolated Live bb proofs remain
 separate and honest.
 
@@ -224,7 +224,7 @@ handoff, Workbench-owned Fixture capture, and mentions/quotes/panels/tool images
 
 ## Admission decision
 
-All six conditional host rows are admitted to the downstream Plugin Workbench
+All six conditional host rows are admitted to the downstream Plugin Studio
 program. A later regression in one row narrows only that dependent slice; it
 does not authorize a private fallback or block the runtime, browser, domain, or
 MCP work that remains independent.

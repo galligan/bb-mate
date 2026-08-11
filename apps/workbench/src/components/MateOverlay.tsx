@@ -255,7 +255,9 @@ export function MateOverlay({
               className="mate-fab"
               size="icon-lg"
               aria-label={
-                open ? "Hide BB Mate controls" : "Show BB Mate controls"
+                open
+                  ? "Hide bb Plugin Studio controls"
+                  : "Show bb Plugin Studio controls"
               }
             />
           }
@@ -271,7 +273,7 @@ export function MateOverlay({
         >
           <PopoverHeader className="mate-panel-header">
             <div className="mate-heading-copy">
-              <span className="mate-kicker">BB Mate</span>
+              <span className="mate-kicker">bb Plugin Studio</span>
               <PopoverTitle>Workbench controls</PopoverTitle>
             </div>
             <Button

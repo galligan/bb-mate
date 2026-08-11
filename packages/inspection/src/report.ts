@@ -34,7 +34,7 @@ function statusLabel(status: InspectionCheck["status"]): string {
 
 export function formatInspection(report: PluginInspection): string {
   const lines = [
-    `BB Mate compatibility report v${report.schemaVersion}`,
+    `bb Plugin Studio compatibility report v${report.schemaVersion}`,
     `Outcome: ${report.outcome}`,
     report.target
       ? `Plugin: ${report.target.displayName} (${report.target.displayPath})`

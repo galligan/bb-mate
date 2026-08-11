@@ -53,7 +53,7 @@ interface MateRuntimeSupervisor {
   status(): RuntimeSupervisorSnapshot;
   ensure(dataRoot: string): Promise<RuntimeSupervisorSnapshot>;
   admitProjects(input: {
-    readonly inventoryState: "complete";
+    readonly inventoryState: "complete" | "partial";
     readonly projects: readonly {
       readonly projectKey: string;
       readonly sourcePath: string;
@@ -304,7 +304,11 @@ export function createMatePlugin(
       } else {
         try {
           const result = await supervisor.admitProjects({
-            inventoryState: "complete",
+            inventoryState:
+              before.inventoryState === "complete" &&
+              after.inventoryState === "complete"
+                ? "complete"
+                : "partial",
             projects: admitted.map(({ projectKey, sourcePath }) => ({
               projectKey,
               sourcePath,

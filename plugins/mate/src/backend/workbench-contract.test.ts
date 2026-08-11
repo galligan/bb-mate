@@ -24,7 +24,7 @@ const project = {
   scan: { state: "not_scanned" as const, items: [] as [] },
 };
 
-describe("Plugin Workbench v3 contract", () => {
+describe("Plugin Studio v3 contract", () => {
   test("accepts the exact finite path-free idle projection", () => {
     expect(workbenchSnapshotSchema.parse(idle)).toEqual(idle);
     expect(

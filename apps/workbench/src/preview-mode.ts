@@ -15,12 +15,12 @@ export function previewModeCapabilities(
   return {
     fixture: {
       available: true,
-      detail: "Deterministic approximation rendered by BB Mate.",
+      detail: "Deterministic approximation rendered by bb Plugin Studio.",
     },
     harness: {
       available: false,
       detail: harness?.available
-        ? "The official Harness contract resolves, but BB Mate has no upstream-backed Harness adapter yet."
+        ? "The official Harness contract resolves, but bb Plugin Studio has no upstream-backed Harness adapter yet."
         : (harness?.detail ?? "Inspecting the official SDK testing contract."),
     },
     live: {

@@ -1,7 +1,7 @@
-# Plugin Workbench
+# Plugin Studio
 
 `bb-plugin-mate` is the released-contract bb host shell for the packaged `bb-mate`
-runtime. Opening Plugin Workbench first requests a read-only status snapshot
+runtime. Opening Plugin Studio first requests a read-only status snapshot
 from the schema-v3 contract. That request does not start the runtime, open its
 catalog, or inspect project source. It may report the current runtime state as
 idle, starting, ready, stopping, unavailable, or failed without changing it.
@@ -16,7 +16,7 @@ expanded, and each plugin row opens that target's detail view.
 
 Each refresh returns a finite, redacted point-in-time snapshot rather than a
 realtime monitor. The runtime owns target identity and returns only bounded
-opaque projections. Plugin Workbench does not execute target code, package
+opaque projections. Plugin Studio does not execute target code, package
 scripts, native plugin lifecycle commands, or installed-plugin inventory.
 Source paths remain server-private, and the plugin never prints or exposes a
 runtime URL, credential, process ID, installed path, source paths, or host

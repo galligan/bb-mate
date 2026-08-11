@@ -225,6 +225,7 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
     if (!item) throw new Error();
     values.push(parseYamlPatternScalar(item[1]!));
   }
+  if (!sawPackages) throw new Error();
   return values;
 }
 
@@ -246,11 +247,20 @@ function parseYamlPatternScalar(input: string): string {
   const withoutComment = value.replace(/\s+#.*$/u, "").trimEnd();
   if (
     withoutComment === "" ||
+    isYamlCoreNonStringScalar(withoutComment) ||
     /^[\[\]{|>&*]/u.test(withoutComment) ||
     /^!(?:!|<)/u.test(withoutComment)
   )
     throw new Error();
   return withoutComment;
+}
+
+function isYamlCoreNonStringScalar(value: string): boolean {
+  return (
+    /^(?:~|null|true|false)$/iu.test(value) ||
+    /^[-+]?(?:0o[0-7]+|0x[\da-f]+|\d+)$/iu.test(value) ||
+    /^[-+]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?|\.inf|\.nan)$/iu.test(value)
+  );
 }
 
 function parseWorkspacePatterns(

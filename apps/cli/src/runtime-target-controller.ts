@@ -49,7 +49,7 @@ export function createRuntimeTargetController({
   return {
     principalId,
     bbContextId,
-    async admit(context, { projects }, signal) {
+    async admit(context, { inventoryState, projects }, signal) {
       signal?.throwIfAborted();
       const groups = new Map<
         string,
@@ -165,6 +165,7 @@ export function createRuntimeTargetController({
             )
             .map(([, sourceRoot]) => sourceRoot);
       const canReplaceProjectScopes =
+        inventoryState === "complete" &&
         admission.diagnostics.length === 0 &&
         !rootlessUncertainty &&
         canonicalSourceRootByAdmittedRoot.size === admission.roots.length;

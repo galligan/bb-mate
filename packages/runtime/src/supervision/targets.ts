@@ -34,7 +34,7 @@ const BatchProjectTargetAdmissionItemSchema = z.strictObject({
 export const BatchProjectTargetAdmissionRequestSchema = z
   .strictObject({
     schemaVersion: z.literal(2),
-    inventoryState: z.literal("complete"),
+    inventoryState: z.enum(["complete", "partial"]),
     projects: z
       .array(BatchProjectTargetAdmissionItemSchema)
       .max(TARGET_ADMISSION_MAX_PROJECTS),

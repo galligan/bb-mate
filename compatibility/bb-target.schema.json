@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bb-mate.local/compatibility/bb-target.schema.json",
-  "title": "BB Mate compatibility target",
+  "title": "bb Plugin Studio compatibility target",
   "type": "object",
   "required": [
     "schemaVersion",

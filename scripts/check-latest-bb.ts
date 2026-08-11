@@ -85,9 +85,9 @@ export async function checkLatestBbRelease(
 function formatReport(report: BbReleaseReport): string {
   if (report.status === "current") return "";
   if (report.status === "update-available") {
-    return `bb-app ${report.latestVersion} is available; BB Mate targets ${report.targetVersion}.\n`;
+    return `bb-app ${report.latestVersion} is available; bb Plugin Studio targets ${report.targetVersion}.\n`;
   }
-  return `BB Mate targets ${report.targetVersion}, ahead of npm latest ${report.latestVersion}.\n`;
+  return `bb Plugin Studio targets ${report.targetVersion}, ahead of npm latest ${report.latestVersion}.\n`;
 }
 
 async function main(): Promise<void> {

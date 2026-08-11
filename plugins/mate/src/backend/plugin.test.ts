@@ -98,7 +98,7 @@ function hostFixture(
   };
 }
 
-describe("Plugin Workbench backend v3", () => {
+describe("Plugin Studio backend v3", () => {
   test("keeps status read-only and refreshes every stable project in one batch", async () => {
     let ensures = 0;
     let allocations = 0;
@@ -198,6 +198,52 @@ describe("Plugin Workbench backend v3", () => {
         ],
       },
     ]);
+  });
+
+  test("marks a truncated eligible project inventory partial before admission", async () => {
+    let admission: unknown;
+    const projects = Array.from({ length: 129 }, (_, index) => {
+      const id = `project-${String(index).padStart(3, "0")}`;
+      return project(id, `Project ${String(index).padStart(3, "0")}`, {
+        sources: [source(id)],
+      });
+    });
+    const host = hostFixture(
+      {
+        status: () => idle,
+        async ensure() {
+          return ready;
+        },
+        async admitProjects(input) {
+          admission = input;
+          return {
+            schemaVersion: 2,
+            state: "ready",
+            projects: input.projects.map(({ projectKey }) => ({
+              projectKey,
+              state: "ready" as const,
+              targets: [],
+            })),
+          };
+        },
+        async runService() {},
+        async stop() {},
+      },
+      { projects },
+    );
+
+    const result = (await host.handlers().refresh({} as never)) as {
+      projects: { items: unknown[] };
+    };
+
+    expect(result.projects.items).toHaveLength(128);
+    const admitted = admission as {
+      inventoryState: string;
+      projects: { sourcePath: string }[];
+    };
+    expect(admitted.inventoryState).toBe("partial");
+    expect(admitted.projects).toHaveLength(128);
+    expect(admitted.projects[0]?.sourcePath).toBe("/Users/test/project-000");
   });
 
   test("attests a complete empty inventory while list failures make no runtime demand", async () => {

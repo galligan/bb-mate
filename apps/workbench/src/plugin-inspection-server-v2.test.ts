@@ -70,7 +70,7 @@ describe("catalog-backed plugin inspection session", () => {
     const json = JSON.stringify(first);
 
     expect(first.schemaVersion).toBe(2);
-    expect(first.workspace.label).toBe("Plugin Workbench");
+    expect(first.workspace.label).toBe("Plugin Studio");
     expect(first.workspace.candidates[0]?.id).toMatch(/^[A-Za-z0-9_-]{32}$/);
     expect(second.workspace.candidates[0]?.id).toBe(
       first.workspace.candidates[0]?.id,

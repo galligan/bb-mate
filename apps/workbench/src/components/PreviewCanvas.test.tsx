@@ -6,7 +6,7 @@ import { resolveCatalogSelection } from "../surface-catalog";
 const selection = resolveCatalogSelection("thread-list", "agents");
 
 describe("PreviewCanvas", () => {
-  test("renders Fixture through the deterministic BB Mate shell", () => {
+  test("renders Fixture through the deterministic bb Plugin Studio shell", () => {
     const markup = renderToStaticMarkup(
       <PreviewCanvas
         selection={selection}
@@ -16,7 +16,7 @@ describe("PreviewCanvas", () => {
       />,
     );
 
-    expect(markup).toContain('aria-label="BB Mate workbench"');
+    expect(markup).toContain('aria-label="bb Plugin Studio workbench"');
     expect(markup).toContain('data-viewport="compact"');
   });
 
@@ -32,7 +32,7 @@ describe("PreviewCanvas", () => {
 
     expect(markup).toContain("Continue in native bb");
     expect(markup).toContain("does not fetch, embed, or reproduce");
-    expect(markup).not.toContain('aria-label="BB Mate workbench"');
+    expect(markup).not.toContain('aria-label="bb Plugin Studio workbench"');
     expect(markup).not.toContain("<iframe");
   });
 });

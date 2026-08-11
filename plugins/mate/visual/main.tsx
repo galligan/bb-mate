@@ -34,7 +34,7 @@ const targetA = "abcdefghijklmnopqrstuvwxzy012345";
 const targetB = "0123456789abcdefghijklmnopqrstuv";
 const target = {
   id: targetA,
-  label: "Plugin Workbench",
+  label: "Plugin Studio",
   pluginId: "mate",
   revision: 3,
 } as const;
@@ -74,7 +74,7 @@ function readySnapshot(
 const allProjects = readySnapshot([
   project(
     "project_01",
-    "BB Mate",
+    "bb Plugin Studio",
     {
       state: "ready",
       items: [
@@ -138,7 +138,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       projects: {
         state: "partial",
         items: [
-          project("project_01", "BB Mate", {
+          project("project_01", "bb Plugin Studio", {
             state: "unavailable",
             reason: "scan_failed",
             items: [],
@@ -153,7 +153,7 @@ const fixtures: Record<FixtureName, Fixture> = {
   "all-projects": { snapshot: allProjects },
   partial: {
     snapshot: readySnapshot([
-      project("project_01", "BB Mate", {
+      project("project_01", "bb Plugin Studio", {
         state: "partial",
         items: [target],
       }),
@@ -167,7 +167,10 @@ const fixtures: Record<FixtureName, Fixture> = {
   },
   "partial-empty": {
     snapshot: readySnapshot([
-      project("project_01", "BB Mate", { state: "partial", items: [] }),
+      project("project_01", "bb Plugin Studio", {
+        state: "partial",
+        items: [],
+      }),
       project("project_02", "Linear Tools", {
         state: "ready",
         items: [
@@ -245,7 +248,7 @@ function VisualFixture({ fixture }: { fixture: Fixture }) {
     return (
       <PluginWorkbenchTargetDetail
         snapshot={fixture.snapshot}
-        projectLabel="BB Mate"
+        projectLabel="bb Plugin Studio"
         target={target}
         threads={
           fixture.detail === "ready"

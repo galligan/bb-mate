@@ -116,7 +116,7 @@ export function BbShell({
     <main
       className={`bb-app bb-theme-${theme}`}
       data-viewport={viewport}
-      aria-label="BB Mate workbench"
+      aria-label="bb Plugin Studio workbench"
     >
       {mobileSidebarOpen ? (
         <button

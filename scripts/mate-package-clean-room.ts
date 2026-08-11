@@ -225,7 +225,7 @@ export async function runMatePackageCleanRoom(): Promise<void> {
       writePassiveTarget(
         path.join(bbMateSourceRoot, "plugins", "plugin-workbench"),
         "plugin-workbench",
-        "Plugin Workbench",
+        "Plugin Studio",
         targetMarker,
       ),
       fs.writeFile(

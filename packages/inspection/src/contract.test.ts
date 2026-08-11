@@ -457,7 +457,7 @@ describe("runtime and evidence claims", () => {
       (check) => check.id === "native.plugin-list",
     )?.nativeError;
 
-    expect(evidence?.stderr).toContain("[truncated by BB Mate]");
+    expect(evidence?.stderr).toContain("[truncated by bb Plugin Studio]");
     expect(
       Buffer.byteLength(evidence?.stderr ?? "", "utf8"),
     ).toBeLessThanOrEqual(8_192);

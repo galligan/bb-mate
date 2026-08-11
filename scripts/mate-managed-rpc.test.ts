@@ -22,7 +22,7 @@ function snapshot(): MateSnapshot {
       items: [
         {
           id: "bb_mate",
-          label: "BB Mate",
+          label: "bb Plugin Studio",
           activity: { active: false, lastThreadUpdatedAt: null },
           scan: {
             state: "ready",
@@ -35,7 +35,7 @@ function snapshot(): MateSnapshot {
               },
               {
                 id: workbenchId,
-                label: "Plugin Workbench",
+                label: "Plugin Studio",
                 pluginId: "plugin-workbench",
                 revision: 1,
               },

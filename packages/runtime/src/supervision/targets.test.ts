@@ -75,9 +75,20 @@ describe("supervised target transport", () => {
       projects: [],
     });
 
+    expect(
+      BatchProjectTargetAdmissionRequestSchema.parse({
+        schemaVersion: 2,
+        inventoryState: "partial",
+        projects: [],
+      }),
+    ).toEqual({
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [],
+    });
+
     for (const input of [
       { schemaVersion: 2, projects: [] },
-      { schemaVersion: 2, inventoryState: "partial", projects: [] },
       {
         schemaVersion: 2,
         inventoryState: "complete",

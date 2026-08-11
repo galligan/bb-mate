@@ -53,7 +53,7 @@ describe("launcher preview capabilities", () => {
     expect(capabilities.harness).toEqual({
       available: false,
       detail:
-        "The official Harness contract resolves, but BB Mate has no upstream-backed Harness adapter yet.",
+        "The official Harness contract resolves, but bb Plugin Studio has no upstream-backed Harness adapter yet.",
     });
   });
 

@@ -1,11 +1,11 @@
 ---
 name: plugin-workbench
-description: Use Plugin Workbench to inspect source plugins across eligible local bb projects with the packaged bb-mate runtime.
+description: Use Plugin Studio to inspect source plugins across eligible local bb projects with the packaged bb-mate runtime.
 ---
 
-# Plugin Workbench
+# Plugin Studio
 
-Open **Plugin Workbench** from bb's plugin navigation to inspect the packaged
+Open **Plugin Studio** from bb's plugin navigation to inspect the packaged
 runtime and its finite schema-v3 catalog.
 
 - Opening the panel first requests read-only status. That request does not start
@@ -25,6 +25,6 @@ runtime and its finite schema-v3 catalog.
 - Preview remains unavailable under #70. Do not invent a runtime URL, expose a
   loopback listener, or substitute installed inventory for source discovery.
 - Use native `bb plugin build`, `bb plugin dev`, and `bb plugin reload` for
-  lifecycle work. Plugin Workbench does not replace those commands.
+  lifecycle work. Plugin Studio does not replace those commands.
 - Treat Fixture, Harness, and Live claims separately. Harness remains
   unavailable while the official testing package is not publicly resolvable.

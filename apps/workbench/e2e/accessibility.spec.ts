@@ -80,7 +80,9 @@ test("Mate overlay and minimized FAB pass axe and restore focus", async ({
   await expectNoAxeViolations(page, ".mate-popover");
 
   await page.keyboard.press("Escape");
-  const fab = page.getByRole("button", { name: "Show BB Mate controls" });
+  const fab = page.getByRole("button", {
+    name: "Show bb Plugin Studio controls",
+  });
   await expect(fab).toBeVisible();
   await expect(fab).toBeFocused();
   await expect(fab).toHaveAttribute("aria-haspopup", "dialog");

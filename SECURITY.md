@@ -2,14 +2,14 @@
 
 ## Reporting a vulnerability
 
-Please report suspected BB Mate vulnerabilities through
-[GitHub's private vulnerability reporting](https://github.com/galligan/bb-mate/security/advisories/new).
+Please report suspected bb Plugin Studio vulnerabilities through
+[GitHub's private vulnerability reporting](https://github.com/galligan/bb-plugin-studio/security/advisories/new).
 
 Do not open a public issue or include exploit details, credentials, customer
 data, authenticated state, or local paths in public logs or comments. A useful
 private report includes:
 
-- the affected BB Mate version or source commit;
+- the affected bb Plugin Studio version or source commit;
 - reproduction steps using fake data;
 - the expected and observed behavior;
 - the potential impact;
@@ -25,7 +25,7 @@ Security problems in native bb or `@bb/plugin-sdk` should follow the
 
 ## Security boundary
 
-BB Mate treats plugins as full-trust local code. It is not a sandbox.
+bb Plugin Studio treats plugins as full-trust local code. It is not a sandbox.
 
 Passive inspection is designed to read manifests and generated metadata without
 importing the plugin entrypoint. Native build and Live commands are explicit
@@ -37,13 +37,13 @@ See [docs/trust-model.md](docs/trust-model.md) for the detailed filesystem,
 network, secret, content-script, and native-command boundaries.
 
 A third-party plugin intentionally reading files or using the network is usually
-a plugin issue. The following are BB Mate security issues:
+a plugin issue. The following are bb Plugin Studio security issues:
 
 - passive inspection executes a selected plugin;
 - diagnostics expose paths that should be redacted;
 - the packaged server escapes its static-lab root or binds beyond its documented
   loopback boundary;
-- BB Mate runs a native mutation without an explicit user handoff;
+- bb Plugin Studio runs a native mutation without an explicit user handoff;
 - a content-script fixture mounts trusted plugin code during ordinary discovery.
 
 ## Supported versions

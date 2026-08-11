@@ -161,6 +161,50 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("preserves projects omitted from a partial inventory", async () => {
+    const fixture = await makeFixture();
+    const visible = path.join(fixture.sourceRoot, "visible-project");
+    const omitted = path.join(fixture.sourceRoot, "omitted-project");
+    await writePlugin(visible, "visible");
+    await writePlugin(omitted, "omitted");
+    const ids = ["v".repeat(32), "o".repeat(32)];
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse(ids.shift()),
+      clock: () => 1_000,
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [
+        { projectKey: "v".repeat(32), sourcePath: visible },
+        { projectKey: "o".repeat(32), sourcePath: omitted },
+      ],
+    });
+
+    const partial = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "v".repeat(32), sourcePath: visible }],
+    });
+
+    expect(partial).toMatchObject({
+      state: "ready",
+      projects: [{ projectKey: "v".repeat(32), state: "ready" }],
+    });
+    expect(
+      (await controller.list(context())).targets
+        .map((target) => target.manifest.pluginId)
+        .sort(),
+    ).toEqual(["omitted", "visible"]);
+    catalog.close();
+  });
+
   test("retires absent targets only after a complete project snapshot", async () => {
     const fixture = await makeFixture();
     await writePlugin(fixture.sourceRoot, "removable");

@@ -425,7 +425,7 @@ export async function verifyManagedMatePackage(args: {
         cwd: args.hostileCwd,
         env,
         machineId,
-        name: "BB Mate",
+        name: "bb Plugin Studio",
         root: args.bbMateSourceRoot,
       }),
       createProject({
@@ -438,7 +438,7 @@ export async function verifyManagedMatePackage(args: {
       }),
     ]);
     const expectedProjects = new Map([
-      [bbMateProjectId, "BB Mate"],
+      [bbMateProjectId, "bb Plugin Studio"],
       [gridProjectId, "grid"],
     ]);
     const expectedCatalog = new Map([
@@ -446,7 +446,7 @@ export async function verifyManagedMatePackage(args: {
         bbMateProjectId,
         [
           { label: "Linear", pluginId: "linear" },
-          { label: "Plugin Workbench", pluginId: "plugin-workbench" },
+          { label: "Plugin Studio", pluginId: "plugin-workbench" },
         ],
       ],
       [gridProjectId, []],

@@ -43,7 +43,7 @@ test("Mate overlay and minimized FAB remain visually stable", async ({
 
   await page.getByRole("button", { name: "Minimize controls" }).click();
   await expect(
-    page.getByRole("button", { name: "Show BB Mate controls" }),
+    page.getByRole("button", { name: "Show bb Plugin Studio controls" }),
   ).toBeFocused();
   await expect(page).toHaveScreenshot("mate-overlay-minimized.png", {
     fullPage: true,

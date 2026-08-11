@@ -9,8 +9,8 @@
     "bbPluginSdk": "^0.4.1"
   },
   "bb": {
-    "name": "Plugin Workbench",
-    "description": "Develop source plugins with the supervised bb-mate runtime.",
+    "name": "Plugin Studio",
+    "description": "Build, inspect, and preview bb plugins.",
     "branding": {
       "icon": "Toolbox"
     },

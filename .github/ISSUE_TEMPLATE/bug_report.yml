@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in BB Mate
+description: Report a reproducible problem in bb Plugin Studio
 title: "bug: "
 labels:
   - bug
@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve BB Mate. Native bb or SDK problems generally belong in [get-bb/bb](https://github.com/get-bb/bb/issues). Do not include secrets or vulnerability details here.
+        Thanks for helping improve bb Plugin Studio. Native bb or SDK problems generally belong in [get-bb/bb](https://github.com/get-bb/bb/issues). Do not include secrets or vulnerability details here.
   - type: textarea
     id: summary
     attributes:
@@ -29,7 +29,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: BB Mate version
+      label: bb Plugin Studio version
       placeholder: bb-mate@0.1.0-alpha.2 or source commit
     validations:
       required: true
@@ -57,7 +57,7 @@ body:
     attributes:
       label: Reporting boundary
       options:
-        - label: This concerns BB Mate inspection, fixtures, diagnostics, orchestration, packaging, or documentation.
+        - label: This concerns bb Plugin Studio inspection, fixtures, diagnostics, orchestration, packaging, or documentation.
           required: true
         - label: I have removed secrets, private data, and unredacted local paths.
           required: true

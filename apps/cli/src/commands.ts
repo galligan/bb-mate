@@ -58,7 +58,7 @@ const help = `Usage: bb-mate [path]
        bb-mate live [path]
        bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>
 
-Fixture workbench, packaged surface lab, and passive inspection stay in BB Mate.
+Fixture workbench, packaged surface lab, and passive inspection stay in bb Plugin Studio.
 Native bb owns build, install, dev/reload, and live runtime.`;
 
 function line(writer: (value: string) => void, value = "") {

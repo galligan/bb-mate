@@ -1,6 +1,9 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { BatchProjectTargetAdmissionRequestSchema } from "@bb-mate/runtime/supervision";
+import {
+  BatchProjectTargetAdmissionRequestSchema,
+  TARGET_ADMISSION_MAX_PROJECTS,
+} from "@bb-mate/runtime/supervision";
 
 import {
   projectCatalogSchema,
@@ -67,6 +70,7 @@ export interface ResolvedProjectSource {
 export type ProjectInventory =
   | {
       readonly state: "ready";
+      readonly inventoryState: "complete" | "partial";
       readonly catalog: Extract<ProjectCatalog, { state: "ready" | "partial" }>;
       readonly sources: readonly ResolvedProjectSource[];
       readonly primaryHostId: string;
@@ -125,7 +129,7 @@ export async function loadProjectInventory(
       sdk.projects.list({ include: "threads" }),
     ]);
     if (!primaryHostId) throw new Error();
-    const admitted = projects
+    const eligible = projects
       .flatMap((project, nativeOrder) => {
         if (!projectIdSchema.safeParse(project.id).success) return [];
         const source = sourceFor(project, primaryHostId);
@@ -170,8 +174,8 @@ export async function loadProjectInventory(
           left.nativeOrder - right.nativeOrder ||
           left.option.label.localeCompare(right.option.label) ||
           left.option.id.localeCompare(right.option.id),
-      )
-      .slice(0, 128);
+      );
+    const admitted = eligible.slice(0, TARGET_ADMISSION_MAX_PROJECTS);
     const catalog = projectCatalogSchema.parse({
       state: "ready",
       items: admitted.map(({ option }) => option),
@@ -179,6 +183,10 @@ export async function loadProjectInventory(
     if (catalog.state === "unavailable") throw new Error();
     return Object.freeze({
       state: "ready",
+      inventoryState:
+        eligible.length > TARGET_ADMISSION_MAX_PROJECTS
+          ? "partial"
+          : "complete",
       catalog,
       sources: Object.freeze(admitted.map(({ source }) => source)),
       primaryHostId,

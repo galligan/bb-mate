@@ -1,6 +1,6 @@
 # Plugin-author guide
 
-BB Mate is an optional downstream authoring companion for native
+bb Plugin Studio is an optional downstream authoring companion for native
 [bb](https://github.com/get-bb/bb) plugins. Native bb still owns scaffold,
 declaration refresh, build, install, dev/reload, and the live runtime.
 
@@ -15,7 +15,7 @@ declaration refresh, build, install, dev/reload, and the live runtime.
   diagnostics but are best-effort until the compatibility target is updated.
 
 Install native bb through its own supported distribution before using native
-handoffs. The local BB Mate artifact does not bundle, install, configure, or
+handoffs. The local bb Plugin Studio artifact does not bundle, install, configure, or
 start bb on the author's behalf.
 
 Fixture exploration does not require native bb, Connect, secrets, a sibling
@@ -26,7 +26,7 @@ Fixture exploration does not require native bb, Connect, secrets, a sibling
 From a fresh checkout:
 
 ```sh
-git clone https://github.com/galligan/bb-mate.git
+git clone https://github.com/galligan/bb-plugin-studio.git
 cd bb-mate
 bun install --frozen-lockfile
 bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61000
@@ -44,7 +44,7 @@ inert. Stop the server with Control-C.
 
 ## Inspect an existing plugin
 
-Run BB Mate from this repository and pass an explicit plugin directory:
+Run bb Plugin Studio from this repository and pass an explicit plugin directory:
 
 ```sh
 plugin="/absolute/path/to/plugin"
@@ -73,7 +73,7 @@ bun run bb-mate "$plugin"
 
 The server performs the same passive inspection before it starts. Keep the host
 on loopback unless you intentionally want the Fixture server reachable from
-another machine. BB Mate reports existing Connect shares but never exposes,
+another machine. bb Plugin Studio reports existing Connect shares but never exposes,
 unexposes, or pairs Connect.
 
 ## Native build and Live handoffs
@@ -90,7 +90,7 @@ refreshes the compatibility report. It can execute the plugin's build toolchain
 and writes native build artifacts.
 
 `live` delegates exactly `bb plugin dev .` only after native bb proves that the
-same real plugin path is installed. If it is not installed, BB Mate prints the
+same real plugin path is installed. If it is not installed, bb Plugin Studio prints the
 exact `bb plugin install <path> --yes` handoff and exits; it does not run the
 installation. Native dev executes full-trust plugin code and may reload the
 installed plugin. Review the [trust and operation model](trust-model.md) before
@@ -132,7 +132,7 @@ native lanes with the [clean-room alpha trial runbook](alpha-trial-runbook.md).
 
 ## Plugin package boundary
 
-A plugin is an independently versioned package, not a BB Mate workspace
+A plugin is an independently versioned package, not a bb Plugin Studio workspace
 manifest. The expected boundary is:
 
 ```text
@@ -148,7 +148,7 @@ my-plugin/
 Declare honest `engines.bb` and `engines.bbPluginSdk` ranges. Frontend adapters
 that import `@bb/plugin-sdk/app` belong inside the plugin entrypoint or a thin
 plugin-owned adapter because that runtime exists only inside bb. Reusable visual
-components should stay host-neutral; add a shared BB Mate package only after two
+components should stay host-neutral; add a shared bb Plugin Studio package only after two
 real consumers need the same boundary.
 
 Do not import application internals, copy the plugin SDK or testing harness, or
@@ -165,7 +165,7 @@ dependencies, Harness is unavailable.
 | Live bb | Real plugin integration inside the supported bb app | Compatibility with untested future bb releases |
 
 Fixture is intentionally an approximation. Harness stays disabled until both
-the official `@bb/plugin-sdk/testing` package resolves and BB Mate has an
+the official `@bb/plugin-sdk/testing` package resolves and bb Plugin Studio has an
 upstream-backed adapter. Live bb is the visual authority because bb owns the
 actual host layout, styling, routing, state, action lifecycle, and runtime.
 

@@ -1,13 +1,13 @@
-# BB Mate
+# bb Plugin Studio
 
-BB Mate is an experimental, fixture-driven authoring companion for native
+bb Plugin Studio is an experimental, fixture-driven authoring companion for native
 [bb](https://github.com/get-bb/bb) plugins.
 
 The package contains the `bb-mate` CLI and a deterministic static plugin-surface
 lab. It does not contain bb, plugin packages, a copied plugin SDK, or
 authenticated host state.
 
-> BB Mate is an independent community project. Native bb and
+> bb Plugin Studio is an independent community project. Native bb and
 > `@bb/plugin-sdk` remain authoritative for plugin contracts, scaffolding,
 > build/install/dev behavior, host rendering, and runtime state.
 
@@ -48,23 +48,23 @@ The installed `dev` command serves the bundled 13-story lab on loopback. It
 does not install, build, reload, or run the selected plugin, and it never serves
 inspection data over HTTP.
 
-## bb, the SDK, and BB Mate
+## bb, the SDK, and bb Plugin Studio
 
 - **bb** owns scaffolding, declaration refresh, build, install, update,
   dev/reload, host UI, and live runtime.
 - **`@bb/plugin-sdk`** owns the typed backend/frontend contracts and official
   testing contracts.
-- **BB Mate** adds passive inspection, deterministic Fixture stories,
+- **bb Plugin Studio** adds passive inspection, deterministic Fixture stories,
   compatibility diagnostics, visual/a11y tooling, and native handoff.
 
-BB Mate never copies the SDK testing harness or uses private bb application code
+bb Plugin Studio never copies the SDK testing harness or uses private bb application code
 as a substitute. Harness mode remains unavailable until the selected plugin can
-resolve the official testing package and BB Mate has an upstream-backed adapter.
+resolve the official testing package and bb Plugin Studio has an upstream-backed adapter.
 Live bb is always the visual and integration authority.
 
 Learn more in the
-[repository README](https://github.com/galligan/bb-mate#readme) and
-[plugin-author guide](https://github.com/galligan/bb-mate/blob/main/docs/plugin-author-guide.md).
+[repository README](https://github.com/galligan/bb-plugin-studio#readme) and
+[plugin-author guide](https://github.com/galligan/bb-plugin-studio/blob/main/docs/plugin-author-guide.md).
 
 ## Runtime support
 
@@ -75,7 +75,7 @@ Learn more in the
 - Fixture and package checks are also exercised in isolated Linux CI.
 
 The repository also builds a separate, unsigned macOS arm64 executable for
-isolated Plugin Workbench development:
+isolated Plugin Studio development:
 
 ```sh
 bun run standalone:build
@@ -93,19 +93,19 @@ these commands.
 
 Plugins are full-trust local code. Review a plugin before using native
 `check` or `live` handoffs. See the
-[trust model](https://github.com/galligan/bb-mate/blob/main/docs/trust-model.md)
+[trust model](https://github.com/galligan/bb-plugin-studio/blob/main/docs/trust-model.md)
 for the filesystem, network, secret, and execution boundaries.
 
 Report bugs through
-[GitHub Issues](https://github.com/galligan/bb-mate/issues). Report
+[GitHub Issues](https://github.com/galligan/bb-plugin-studio/issues). Report
 vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/galligan/bb-mate/security/advisories/new).
+[GitHub Security Advisories](https://github.com/galligan/bb-plugin-studio/security/advisories/new).
 
 ## Source and license
 
-Source: <https://github.com/galligan/bb-mate>
+Source: <https://github.com/galligan/bb-plugin-studio>
 
-BB Mate is available under the
-[MIT License](https://github.com/galligan/bb-mate/blob/main/LICENSE). bb and its
+bb Plugin Studio is available under the
+[MIT License](https://github.com/galligan/bb-plugin-studio/blob/main/LICENSE). bb and its
 plugin SDK are separate upstream software governed by their own repository and
 license.

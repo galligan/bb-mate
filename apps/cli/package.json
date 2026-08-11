@@ -1,15 +1,15 @@
 {
   "name": "bb-mate",
   "version": "0.1.0-alpha.3",
-  "description": "A fixture-driven authoring companion for native bb plugins",
-  "homepage": "https://github.com/galligan/bb-mate#readme",
+  "description": "Build, inspect, and preview bb plugins.",
+  "homepage": "https://github.com/galligan/bb-plugin-studio#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/galligan/bb-mate.git",
+    "url": "git+https://github.com/galligan/bb-plugin-studio.git",
     "directory": "apps/cli"
   },
   "bugs": {
-    "url": "https://github.com/galligan/bb-mate/issues"
+    "url": "https://github.com/galligan/bb-plugin-studio/issues"
   },
   "license": "MIT",
   "keywords": [

@@ -34,9 +34,8 @@ function packageManifest() {
     license: "MIT",
     engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
     bb: {
-      name: "Plugin Workbench",
-      description:
-        "Develop source plugins with the supervised bb-mate runtime.",
+      name: "Plugin Studio",
+      description: "Build, inspect, and preview bb plugins.",
       branding: { icon: "Toolbox" },
       server: "./dist/server.js",
       app: "./dist/app.js",
@@ -47,6 +46,17 @@ function packageManifest() {
 }
 
 describe("Mate package inspection", () => {
+  test("ships the Plugin Studio product name without changing compatibility identities", () => {
+    const manifest = packageManifest();
+    expect(manifest.name).toBe("bb-plugin-mate");
+    expect(manifest.bb.name).toBe("Plugin Studio");
+    expect(manifest.bb.description).toBe(
+      "Build, inspect, and preview bb plugins.",
+    );
+    expect(manifest.bb.skills).toEqual(["./skills/plugin-workbench"]);
+    expect(buildMetadata().pluginId).toBe("mate");
+  });
+
   test("ships schema-v3 all-project guidance without stale admission controls", async () => {
     const [readme, skill] = await Promise.all([
       Bun.file(new URL("../plugins/mate/README.md", import.meta.url)).text(),

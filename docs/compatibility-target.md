@@ -1,7 +1,7 @@
-# BB Mate compatibility target
+# bb Plugin Studio compatibility target
 
 `compatibility/bb-target.json` is the reviewable record of the public bb
-contracts and deliberately measured fixture values that BB Mate targets. The
+contracts and deliberately measured fixture values that bb Plugin Studio targets. The
 check is an alarm, not an updater.
 
 ```sh

@@ -1,6 +1,6 @@
 # Native bb plugin interface system
 
-Status: working reference for BB Mate plugin surfaces
+Status: working reference for bb Plugin Studio plugin surfaces
 
 This document reverse-engineers bb's current interface grammar from the live
 bb 0.36 Settings surfaces and the corresponding upstream source. Live bb is
@@ -10,7 +10,7 @@ and compose them with the same semantic tokens.
 
 ## Product direction
 
-Plugin Workbench is a source-plugin control surface for bb plugin developers.
+Plugin Studio is a source-plugin control surface for bb plugin developers.
 Its single job is to show every eligible local bb project and its passively
 discoverable source plugins, then provide a stable place to move between those
 plugins, their project tasks, and—when the public handoff exists—their live
@@ -142,7 +142,7 @@ of readiness, failure, or progress.
 
 ## Controls and actions
 
-- Primary actions are rare. In Plugin Workbench, plugin rows are the only
+- Primary actions are rare. In Plugin Studio, plugin rows are the only
   per-item Open actions; project headings are noninteractive structure.
 - Use outline buttons for secondary explicit actions and ghost buttons for
   refresh/overflow affordances.
@@ -175,7 +175,7 @@ of readiness, failure, or progress.
 
 ## Registry component policy
 
-Vendor the smallest set needed by the actual UI. For Plugin Workbench:
+Vendor the smallest set needed by the actual UI. For Plugin Studio:
 
 - `button`: refresh, open, retry, back, and thread actions.
 - `card`: native section surface.
@@ -188,7 +188,7 @@ helpers. A small local `NativeSettingsSection` composition is appropriate;
 publishing a shared package is not justified until another real plugin needs
 the same abstraction.
 
-## Plugin Workbench application
+## Plugin Studio application
 
 1. Runtime metadata: one machine-style dot, plain state text, inline version
    metadata, and the Settings → Usage icon refresh action. Do not give healthy
@@ -223,4 +223,4 @@ threads.
 The recurring grammar held across preferences, resource inventories, async
 status, plugin-owned configuration, external links, destructive actions, and
 empty collections. That consistency is why these patterns are a stronger
-foundation for BB Mate than a standalone dashboard aesthetic.
+foundation for bb Plugin Studio than a standalone dashboard aesthetic.
