@@ -60,6 +60,23 @@ function requestHeaders(request: IncomingMessage): Headers {
   return headers;
 }
 
+function hasRawHeader(request: IncomingMessage, name: string): boolean {
+  for (let index = 0; index < request.rawHeaders.length; index += 2) {
+    if (request.rawHeaders[index]?.toLowerCase() === name) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasReadBodyFraming(request: IncomingMessage): boolean {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  return (
+    hasRawHeader(request, "content-length") ||
+    hasRawHeader(request, "transfer-encoding")
+  );
+}
+
 function toRequest(request: IncomingMessage, url: URL): Request {
   const method = request.method ?? "GET";
   const init: RequestInit & { duplex?: "half" } = {
@@ -95,30 +112,40 @@ export async function listenRuntimeHttp(
   handle: (request: Request) => Promise<Response>,
 ): Promise<RuntimeHttpListener> {
   let port = 0;
-  const server = createServer((request, response) => {
-    const target = request.url ?? "";
-    const origin = `http://127.0.0.1:${port}`;
-    const url = canonicalOriginForm(target, origin);
-    if (!url) {
-      rejectInvalidTarget(response);
-      return;
-    }
-    void handle(toRequest(request, url))
-      .then((handled) => sendResponse(response, handled))
-      .catch(() => {
-        if (response.headersSent) {
-          response.destroy();
-          return;
-        }
-        response.statusCode = 500;
-        setSecurityHeaders(response);
-        response.end(
-          JSON.stringify({
-            error: { code: "internal", message: "Internal error" },
-          }),
-        );
-      });
-  });
+  const server = createServer(
+    { joinDuplicateHeaders: true },
+    (request, response) => {
+      const target = request.url ?? "";
+      const origin = `http://127.0.0.1:${port}`;
+      const url = canonicalOriginForm(target, origin);
+      if (!url) {
+        rejectInvalidTarget(response);
+        return;
+      }
+      if (hasReadBodyFraming(request)) {
+        response.shouldKeepAlive = false;
+        response.setHeader("Connection", "close");
+        response.once("finish", () => request.destroy());
+        rejectInvalidTarget(response);
+        return;
+      }
+      void handle(toRequest(request, url))
+        .then((handled) => sendResponse(response, handled))
+        .catch(() => {
+          if (response.headersSent) {
+            response.destroy();
+            return;
+          }
+          response.statusCode = 500;
+          setSecurityHeaders(response);
+          response.end(
+            JSON.stringify({
+              error: { code: "internal", message: "Internal error" },
+            }),
+          );
+        });
+    },
+  );
   await new Promise<void>((resolve, reject) => {
     const onError = (error: Error) => {
       server.off("listening", onListening);

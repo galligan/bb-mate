@@ -15,6 +15,8 @@ async function rawRequest(
     readonly method?: string;
     readonly host?: string;
     readonly headers?: Readonly<Record<string, string>>;
+    readonly rawHeaderLines?: readonly string[];
+    readonly body?: string;
   } = {},
 ) {
   const socket = connect({ host: "127.0.0.1", port });
@@ -28,10 +30,11 @@ async function rawRequest(
   });
   const headers = Object.entries(init.headers ?? {})
     .map(([name, value]) => `${name}: ${value}\r\n`)
+    .concat((init.rawHeaderLines ?? []).map((line) => `${line}\r\n`))
     .join("");
   socket.once("connect", () =>
     socket.write(
-      `${init.method ?? "GET"} ${target} HTTP/1.1\r\nHost: ${init.host ?? `127.0.0.1:${port}`}\r\n${headers}Connection: close\r\n\r\n`,
+      `${init.method ?? "GET"} ${target} HTTP/1.1\r\nHost: ${init.host ?? `127.0.0.1:${port}`}\r\n${headers}Connection: close\r\n\r\n${init.body ?? ""}`,
     ),
   );
   await closed;
@@ -39,6 +42,169 @@ async function rawRequest(
 }
 
 describe("runtime HTTP listener", () => {
+  test("rejects a slow chunked GET before handler dispatch", async () => {
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp(async () => {
+      handlerCalls += 1;
+      return Response.json({ reached: true });
+    });
+    const socket = connect({ host: "127.0.0.1", port: listener.port });
+    const response = new Promise<string>((resolve, reject) => {
+      socket.once("data", (chunk) => resolve(chunk.toString("utf8")));
+      socket.once("error", reject);
+    });
+    try {
+      await new Promise<void>((resolve) => socket.once("connect", resolve));
+      socket.write(
+        `GET /healthz HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n1\r\na\r\n`,
+      );
+      const firstBytes = await Promise.race([
+        response,
+        Bun.sleep(1_000).then(() => {
+          throw new Error("Listener did not reject the framed GET promptly.");
+        }),
+      ]);
+
+      expect(firstBytes).toStartWith("HTTP/1.1 400");
+      expect(firstBytes.toLowerCase()).toContain("cache-control: no-store");
+      expect(handlerCalls).toBe(0);
+    } finally {
+      socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("rejects a slow chunked HEAD before handler dispatch", async () => {
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp(async () => {
+      handlerCalls += 1;
+      return Response.json({ reached: true });
+    });
+    const socket = connect({ host: "127.0.0.1", port: listener.port });
+    const response = new Promise<string>((resolve, reject) => {
+      socket.once("data", (chunk) => resolve(chunk.toString("utf8")));
+      socket.once("error", reject);
+    });
+    try {
+      await new Promise<void>((resolve) => socket.once("connect", resolve));
+      socket.write(
+        `HEAD /healthz HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n1\r\na\r\n`,
+      );
+      const firstBytes = await Promise.race([
+        response,
+        Bun.sleep(1_000).then(() => {
+          throw new Error("Listener did not reject the framed HEAD promptly.");
+        }),
+      ]);
+
+      expect(firstBytes).toStartWith("HTTP/1.1 400");
+      expect(firstBytes.toLowerCase()).toContain("cache-control: no-store");
+      expect(handlerCalls).toBe(0);
+    } finally {
+      socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("rejects Content-Length zero before trailing bytes can escape accounting", async () => {
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp(async () => {
+      handlerCalls += 1;
+      return Response.json({ reached: true });
+    });
+    const socket = connect({ host: "127.0.0.1", port: listener.port });
+    const response = new Promise<string>((resolve, reject) => {
+      socket.once("data", (chunk) => resolve(chunk.toString("utf8")));
+      socket.once("error", reject);
+    });
+    try {
+      await new Promise<void>((resolve) => socket.once("connect", resolve));
+      socket.write(
+        `GET /healthz HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nContent-Length: 0\r\n\r\nG`,
+      );
+      const firstBytes = await Promise.race([
+        response,
+        Bun.sleep(1_000).then(() => {
+          throw new Error("Listener did not reject the framed GET promptly.");
+        }),
+      ]);
+
+      expect(firstBytes).toStartWith("HTTP/1.1 400");
+      expect(firstBytes.toLowerCase()).toContain("connection: close");
+      expect(firstBytes.toLowerCase()).toContain("cache-control: no-store");
+      expect(handlerCalls).toBe(0);
+    } finally {
+      socket.destroy();
+      await listener.stop();
+    }
+  });
+
+  test("rejects every GET or HEAD body-framing header without dispatch", async () => {
+    let handlerCalls = 0;
+    const listener = await listenRuntimeHttp(async () => {
+      handlerCalls += 1;
+      return Response.json({ reached: true });
+    });
+    try {
+      const responses = await Promise.all([
+        rawRequest(listener.port, "/healthz", {
+          headers: { "Content-Length": "1" },
+        }),
+        rawRequest(listener.port, "/healthz", {
+          method: "HEAD",
+          headers: { "Content-Length": "0" },
+        }),
+        rawRequest(listener.port, "/healthz", {
+          rawHeaderLines: ["Content-Length: 0", "Content-Length: 0"],
+        }),
+      ]);
+
+      for (const [index, response] of responses.entries()) {
+        expect(response, `framing case ${index}`).toStartWith("HTTP/1.1 400");
+        expect(response.toLowerCase(), `framing case ${index}`).toContain(
+          "cache-control: no-store",
+        );
+        expect(response.toLowerCase(), `framing case ${index}`).toContain(
+          "connection: close",
+        );
+      }
+      expect(handlerCalls).toBe(0);
+    } finally {
+      await listener.stop();
+    }
+  });
+
+  test("preserves bodyless GET and HEAD plus streamed mutation bodies", async () => {
+    const calls: Array<{ method: string; body: string }> = [];
+    const listener = await listenRuntimeHttp(async (request) => {
+      const body = request.body ? await request.text() : "";
+      calls.push({ method: request.method, body });
+      return Response.json({ method: request.method, body });
+    });
+    try {
+      const get = await rawRequest(listener.port, "/healthz");
+      const head = await rawRequest(listener.port, "/healthz", {
+        method: "HEAD",
+      });
+      const post = await rawRequest(listener.port, "/v1/capabilities", {
+        method: "POST",
+        headers: { "Content-Length": "3" },
+        body: "abc",
+      });
+
+      expect(get).toStartWith("HTTP/1.1 200");
+      expect(head).toStartWith("HTTP/1.1 200");
+      expect(post).toStartWith("HTTP/1.1 200");
+      expect(calls).toEqual([
+        { method: "GET", body: "" },
+        { method: "HEAD", body: "" },
+        { method: "POST", body: "abc" },
+      ]);
+    } finally {
+      await listener.stop();
+    }
+  });
+
   test("rejects encoded-dot route aliases before Request normalization", async () => {
     const token = Buffer.alloc(32, 7).toString("base64url");
     let handler: ((request: Request) => Promise<Response>) | undefined;

@@ -498,15 +498,15 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
 check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
 run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
 run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
-  passed 510 tests: inspection 136, runtime 175, CLI 60, Workbench 66, Linear
+  passed 515 tests: inspection 136, runtime 175, CLI 65, Workbench 66, Linear
   plugin 21, and scripts 52. One initial aggregate run hit the existing
   five-second standalone symlink-ancestor test timeout; the focused 6/6 retry
   and complete aggregate rerun passed. The legacy package clean room contained
   41 files and 13 stories with SHA-256
-  `f4fe45151ce055fbf305a54c5dddbe179c6d54a727de42e63325cc13ebb2cb72`.
+  `c0a077788d0b2870baf91a0c0aa218d1836fa37c140c2ff0455d632622c340a0`.
   The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
   64,783,586 bytes, 35 assets, 13 stories, and SHA-256
-  `f2ec32ddac59a7dedf036b0220c86ef2bebdeb090ed44811cf7494c3130e0897`.
+  `25401cda38e0c46e8b052d026b6734d812f80309935fb3d29c85dd641f6444ee`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -623,6 +623,14 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   secret-nonleak assertions. Focused regressions reproduce each prior gap and
   pass after remediation. PR #76 remains draft while the replacement exact-head
   hosted checks and independent reviews are pending.
+- Targeted host-shell round 2 then found THS-004: raw GET/HEAD body framing was
+  omitted while constructing the Fetch request, so an incomplete chunked health
+  request could receive 200 before its body ended and escape the runtime body and
+  concurrency accounting. The raw listener now rejects any Content-Length or
+  Transfer-Encoding on GET/HEAD before dispatch, returns the secured generic 400,
+  closes the connection, and destroys the unread request after the response.
+  Slow chunked GET/HEAD, Content-Length zero plus trailing bytes, nonzero length,
+  duplicate length, canonical bodyless reads, and streamed POST regressions pass.
 
 ## Prompt / Goal Alignment
 
