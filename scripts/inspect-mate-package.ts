@@ -202,6 +202,7 @@ export interface MatePackageInspection {
 
 export async function inspectMatePackageDirectory(
   packageRoot: string,
+  canonicalStandaloneRoot?: string,
 ): Promise<MatePackageInspection> {
   const resolvedRoot = path.resolve(packageRoot);
   const paths = await collectPackageFiles(resolvedRoot);
@@ -216,7 +217,7 @@ export async function inspectMatePackageDirectory(
     appMetadata,
   ] = await Promise.all([
     inspectStandalone(runtimeRoot),
-    inspectStandalone(),
+    inspectStandalone(canonicalStandaloneRoot),
     fs
       .readFile(path.join(resolvedRoot, "package.json"), "utf8")
       .then((value) => JSON.parse(value) as PackagedManifest),
@@ -491,6 +492,7 @@ export function assertSafeMateTarHeaders(
 export async function inspectMatePackageArchive(
   archivePath: string,
   tarExecutable: string,
+  canonicalStandaloneRoot?: string,
 ): Promise<MatePackageInspection> {
   assert(path.isAbsolute(tarExecutable), "tarExecutable must be absolute.");
   const resolvedArchive = path.resolve(archivePath);
@@ -525,6 +527,7 @@ export async function inspectMatePackageArchive(
     );
     return await inspectMatePackageDirectory(
       path.join(temporaryRoot, "package"),
+      canonicalStandaloneRoot,
     );
   } finally {
     await fs.rm(temporaryRoot, { recursive: true, force: true });

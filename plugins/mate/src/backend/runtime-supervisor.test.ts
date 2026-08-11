@@ -202,6 +202,33 @@ describe("runtime supervisor", () => {
     });
   });
 
+  test("never returns ready when an immediately closed runtime is already failed", async () => {
+    const supervisor = new RuntimeSupervisor({
+      async resolve() {
+        return available;
+      },
+      async launch() {
+        return {
+          identity: {
+            runtimeVersion: available.runtimeVersion,
+            apiVersion: 1,
+            instanceId: "i".repeat(32),
+          },
+          closed: Promise.resolve(),
+          async stop() {},
+        };
+      },
+    });
+
+    const returned = await supervisor.ensure();
+    expect(returned).toMatchObject({
+      runtimeState: "failed",
+      reason: "startup_failed",
+      canStart: true,
+    });
+    expect(returned).toBe(supervisor.status());
+  });
+
   test("retains demand and relaunches when bb restarts the service after a crash", async () => {
     const first = controlledRuntime();
     const second = controlledRuntime();

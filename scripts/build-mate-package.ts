@@ -87,13 +87,14 @@ export async function buildMatePackage(options: {
   artifactRoot?: string;
   env?: NodeJS.ProcessEnv;
   npmExecutable: string;
+  standaloneRoot?: string;
 }): Promise<{ artifactPath: string; result: PackResult }> {
   const env = options.env ?? process.env;
   const artifactRoot = path.resolve(
     options.artifactRoot ?? defaultArtifactRoot,
   );
   const [standalone, sourceManifestText, originalStamp] = await Promise.all([
-    inspectStandalone(),
+    inspectStandalone(options.standaloneRoot),
     fs.readFile(path.join(pluginRoot, "package.json"), "utf8"),
     readOptional(generatedStampPath),
   ]);

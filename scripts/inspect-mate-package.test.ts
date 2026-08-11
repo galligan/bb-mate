@@ -12,6 +12,7 @@ import {
   preflightMateTarBytes,
 } from "./inspect-mate-package.ts";
 import { MATE_PACKAGE_ALLOWLIST } from "./mate-package-artifact.ts";
+import { createCanonicalUstarFixture } from "./mate-package-ustar-fixture.ts";
 
 function buildMetadata() {
   return {
@@ -122,42 +123,31 @@ describe("Mate package inspection", () => {
     );
     async function createArchive(
       name: string,
-      args: readonly string[],
+      entries: Parameters<typeof createCanonicalUstarFixture>[0],
     ): Promise<string> {
       const archive = path.join(temporaryRoot, `${name}.tgz`);
-      const child = Bun.spawn(
-        [tarExecutable, "--format", "ustar", "-czf", archive, ...args],
-        {
-          cwd: temporaryRoot,
-          stdout: "ignore",
-          stderr: "pipe",
-        },
+      await fs.writeFile(
+        archive,
+        gzipSync(createCanonicalUstarFixture(entries)),
       );
-      const [stderr, exitCode] = await Promise.all([
-        new Response(child.stderr).text(),
-        child.exited,
-      ]);
-      if (exitCode !== 0) throw new Error(stderr);
       return archive;
     }
     try {
-      const packageRoot = path.join(temporaryRoot, "package");
-      await fs.mkdir(packageRoot);
-      await fs.writeFile(path.join(packageRoot, "file"), "fixture");
-      await fs.symlink("file", path.join(packageRoot, "symlink"));
-      await fs.link(
-        path.join(packageRoot, "file"),
-        path.join(packageRoot, "hardlink"),
-      );
-      const symlink = await createArchive("symlink", ["package/symlink"]);
+      const symlink = await createArchive("symlink", [
+        { name: "package/symlink", type: "2", linkName: "file" },
+      ]);
       const hardlink = await createArchive("hardlink", [
-        "package/file",
-        "package/hardlink",
+        { name: "package/hardlink", type: "1", linkName: "package/file" },
       ]);
       const traversal = await createArchive("traversal", [
-        "-s",
-        "|package/file|../escape|",
-        "package/file",
+        { name: "../escape", contents: "fixture" },
+      ]);
+      const longname = await createArchive("longname", [
+        {
+          name: "././@LongLink",
+          type: "L",
+          contents: `${"package/"}${"a".repeat(120)}\0`,
+        },
       ]);
       await expect(
         inspectMatePackageArchive(symlink, tarExecutable),
@@ -168,6 +158,9 @@ describe("Mate package inspection", () => {
       await expect(
         inspectMatePackageArchive(traversal, tarExecutable),
       ).rejects.toThrow("unsafe raw header");
+      await expect(
+        inspectMatePackageArchive(longname, tarExecutable),
+      ).rejects.toThrow("unsupported raw header type");
       expect(
         await fs
           .access(path.join(temporaryRoot, "escape"))
@@ -180,50 +173,26 @@ describe("Mate package inspection", () => {
   });
 
   test("rejects a second gzip member and noncanonical tar endings", async () => {
-    const temporaryRoot = await fs.mkdtemp(
-      path.join(os.tmpdir(), "mate-canonical-tar-"),
+    const expanded = createCanonicalUstarFixture(
+      MATE_PACKAGE_ALLOWLIST.map((file) => ({
+        name: `package/${file}`,
+        contents: file,
+      })),
     );
-    try {
-      for (const file of MATE_PACKAGE_ALLOWLIST) {
-        const absolute = path.join(temporaryRoot, "package", file);
-        await fs.mkdir(path.dirname(absolute), { recursive: true });
-        await fs.writeFile(absolute, file);
-      }
-      const archivePath = path.join(temporaryRoot, "valid.tgz");
-      const child = Bun.spawn(
-        [
-          "/usr/bin/tar",
-          "--format",
-          "ustar",
-          "-czf",
-          archivePath,
-          ...MATE_PACKAGE_ALLOWLIST.map((file) => `package/${file}`),
-        ],
-        { cwd: temporaryRoot, stdout: "ignore", stderr: "pipe" },
-      );
-      const [stderr, exitCode] = await Promise.all([
-        new Response(child.stderr).text(),
-        child.exited,
-      ]);
-      if (exitCode !== 0) throw new Error(stderr);
-      const valid = await fs.readFile(archivePath);
-      expect(preflightMateTarBytes(valid)).toHaveLength(14);
-      expect(() =>
-        preflightMateTarBytes(
-          Buffer.concat([valid, gzipSync("SECRET_SOURCE_PAYLOAD")]),
-        ),
-      ).toThrow("canonical end");
-      const expanded = gunzipMateTar(valid);
-      expect(() =>
-        preflightMateTarBytes(gzipSync(expanded.subarray(0, -512))),
-      ).toThrow("canonical end");
-      expect(() =>
-        preflightMateTarBytes(
-          gzipSync(Buffer.concat([expanded, Buffer.alloc(512)])),
-        ),
-      ).toThrow("canonical end");
-    } finally {
-      await fs.rm(temporaryRoot, { recursive: true, force: true });
-    }
+    const valid = gzipSync(expanded);
+    expect(preflightMateTarBytes(valid)).toHaveLength(14);
+    expect(() =>
+      preflightMateTarBytes(
+        Buffer.concat([valid, gzipSync("SECRET_SOURCE_PAYLOAD")]),
+      ),
+    ).toThrow("canonical end");
+    expect(() =>
+      preflightMateTarBytes(gzipSync(expanded.subarray(0, -512))),
+    ).toThrow("canonical end");
+    expect(() =>
+      preflightMateTarBytes(
+        gzipSync(Buffer.concat([expanded, Buffer.alloc(512)])),
+      ),
+    ).toThrow("canonical end");
   });
 });

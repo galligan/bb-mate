@@ -101,12 +101,13 @@ export class RuntimeSupervisor {
     this.demanded = true;
     if (this.stopping) await this.stopping;
     if (this.runtime) return this.snapshot;
-    if (this.starting) return this.starting;
-    this.starting = this.start();
+    const starting = this.starting ?? this.start();
+    this.starting = starting;
     try {
-      return await this.starting;
+      await starting;
+      return this.snapshot;
     } finally {
-      this.starting = undefined;
+      if (this.starting === starting) this.starting = undefined;
     }
   }
 

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMatePackage } from "./build-mate-package.ts";
+import { buildStandalone } from "./build-standalone.ts";
 import { inspectMatePackageArchive } from "./inspect-mate-package.ts";
 import { verifyManagedMatePackage } from "./mate-package-managed-clean-room.ts";
 
@@ -82,6 +83,8 @@ export async function runMatePackageCleanRoom(): Promise<void> {
   );
   const originalCwd = process.cwd();
   try {
+    const standaloneRoot = path.join(temporaryRoot, "standalone");
+    await buildStandalone({ outputRoot: standaloneRoot });
     const hostileCwd = path.join(temporaryRoot, "hostile-cwd");
     const toolRoot = path.join(temporaryRoot, "bin");
     const homeRoot = path.join(temporaryRoot, "home");
@@ -155,11 +158,13 @@ export async function runMatePackageCleanRoom(): Promise<void> {
       artifactRoot: path.join(temporaryRoot, "artifact-a"),
       env,
       npmExecutable,
+      standaloneRoot,
     });
     const second = await buildMatePackage({
       artifactRoot: path.join(temporaryRoot, "artifact-b"),
       env,
       npmExecutable,
+      standaloneRoot,
     });
     const [firstHash, secondHash] = await Promise.all([
       sha256(first.artifactPath),
@@ -170,8 +175,16 @@ export async function runMatePackageCleanRoom(): Promise<void> {
       "Fresh Mate package builds are not byte-for-byte deterministic.",
     );
     const [firstInspection, secondInspection] = await Promise.all([
-      inspectMatePackageArchive(first.artifactPath, tarExecutable),
-      inspectMatePackageArchive(second.artifactPath, tarExecutable),
+      inspectMatePackageArchive(
+        first.artifactPath,
+        tarExecutable,
+        standaloneRoot,
+      ),
+      inspectMatePackageArchive(
+        second.artifactPath,
+        tarExecutable,
+        standaloneRoot,
+      ),
     ]);
     assert(
       JSON.stringify(firstInspection) === JSON.stringify(secondInspection),
