@@ -7,6 +7,11 @@ import { fileURLToPath } from "node:url";
 import { buildMatePackage } from "./build-mate-package.ts";
 import { buildStandaloneFresh } from "./fresh-standalone-build.ts";
 import { inspectMatePackageArchive } from "./inspect-mate-package.ts";
+import { inspectStandalone } from "./inspect-standalone.ts";
+import {
+  createMateRuntimeStamp,
+  generateMateRuntimeStampModule,
+} from "./mate-package-artifact.ts";
 import { verifyManagedMatePackage } from "./mate-package-managed-clean-room.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -85,6 +90,14 @@ export async function runMatePackageCleanRoom(): Promise<void> {
   try {
     const standaloneRoot = path.join(temporaryRoot, "standalone");
     await buildStandaloneFresh({ outputRoot: standaloneRoot });
+    const standalone = await inspectStandalone(standaloneRoot);
+    const expectedStamp = generateMateRuntimeStampModule(
+      createMateRuntimeStamp(standalone.manifest, standalone.manifestBytes),
+    );
+    assert(
+      originalStamp.equals(Buffer.from(expectedStamp)),
+      "The committed Mate runtime stamp does not match a fresh deterministic standalone build.",
+    );
     const hostileCwd = path.join(temporaryRoot, "hostile-cwd");
     const toolRoot = path.join(temporaryRoot, "bin");
     const homeRoot = path.join(temporaryRoot, "home");
