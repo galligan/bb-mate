@@ -112,7 +112,7 @@ export function assertMatePackageMetadata(
       manifest.bb?.description ===
         "Develop source plugins with the supervised bb-mate runtime." &&
       JSON.stringify(manifest.bb?.branding) ===
-        JSON.stringify({ icon: "Wrench" }) &&
+        JSON.stringify({ icon: "Toolbox" }) &&
       JSON.stringify(manifest.bb?.skills) ===
         JSON.stringify(["./skills/plugin-workbench"]),
     "Mate package entrypoints must reference built dist files.",

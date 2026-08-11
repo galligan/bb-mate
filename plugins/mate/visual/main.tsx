@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 
-import { PluginWorkbenchView } from "../src/frontend/workbench-panel";
-import "../src/frontend/workbench-panel.css";
+import {
+  PluginWorkbenchTargetDetail,
+  PluginWorkbenchView,
+} from "../src/frontend/workbench-panel";
+import "../dist/app.css";
 import {
   parsePluginWorkbenchSnapshot,
   type PluginWorkbenchSnapshot,
@@ -21,7 +24,8 @@ type FixtureName =
   | "partial"
   | "unavailable"
   | "changed"
-  | "hostile";
+  | "hostile"
+  | "detail";
 
 const targetA = "abcdefghijklmnopqrstuvwxzy012345";
 const targetB = "0123456789abcdefghijklmnopqrstuv";
@@ -50,10 +54,10 @@ const readyBase = {
 
 interface Fixture {
   snapshot: PluginWorkbenchSnapshot;
-  selectedProjectId: string;
-  selectedTargetId: string | null;
+  openedProjectId: string | null;
   selectionMessage: string | null;
   admitting?: boolean;
+  detail?: boolean;
 }
 
 const fixtures: Record<FixtureName, Fixture> = {
@@ -66,8 +70,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       canStart: true,
       targets: { state: "unavailable", reason: "runtime_not_ready", items: [] },
     }),
-    selectedProjectId: "",
-    selectedTargetId: null,
+    openedProjectId: null,
     selectionMessage: null,
   },
   failed: {
@@ -84,8 +87,7 @@ const fixtures: Record<FixtureName, Fixture> = {
         items: [],
       },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: null,
+    openedProjectId: project.id,
     selectionMessage: "Project admission failed safely. Try again.",
   },
   admitting: {
@@ -93,8 +95,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       ...readyBase,
       targets: { state: "project_not_selected", items: [] },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: null,
+    openedProjectId: null,
     selectionMessage: null,
     admitting: true,
   },
@@ -104,8 +105,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       projects: { state: "ready", items: [] },
       targets: { state: "project_not_selected", items: [] },
     }),
-    selectedProjectId: "",
-    selectedTargetId: null,
+    openedProjectId: null,
     selectionMessage: null,
   },
   empty: {
@@ -113,8 +113,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       ...readyBase,
       targets: { state: "ready", items: [] },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: null,
+    openedProjectId: project.id,
     selectionMessage: null,
   },
   single: {
@@ -122,8 +121,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       ...readyBase,
       targets: { state: "ready", items: [target] },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: target.id,
+    openedProjectId: project.id,
     selectionMessage: null,
   },
   multiple: {
@@ -137,8 +135,7 @@ const fixtures: Record<FixtureName, Fixture> = {
         ],
       },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: null,
+    openedProjectId: project.id,
     selectionMessage: null,
   },
   "partial-empty": {
@@ -146,8 +143,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       ...readyBase,
       targets: { state: "partial", items: [] },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: null,
+    openedProjectId: project.id,
     selectionMessage: null,
   },
   partial: {
@@ -155,8 +151,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       ...readyBase,
       targets: { state: "partial", items: [target] },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: target.id,
+    openedProjectId: project.id,
     selectionMessage: null,
   },
   unavailable: {
@@ -169,8 +164,7 @@ const fixtures: Record<FixtureName, Fixture> = {
         items: [],
       },
     }),
-    selectedProjectId: "",
-    selectedTargetId: null,
+    openedProjectId: null,
     selectionMessage: null,
   },
   changed: {
@@ -183,8 +177,7 @@ const fixtures: Record<FixtureName, Fixture> = {
         ],
       },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: null,
+    openedProjectId: project.id,
     selectionMessage: "The target list changed. Choose a target.",
   },
   hostile: {
@@ -199,9 +192,17 @@ const fixtures: Record<FixtureName, Fixture> = {
         items: [{ ...target, label: '<script>alert("x")' }],
       },
     }),
-    selectedProjectId: project.id,
-    selectedTargetId: target.id,
+    openedProjectId: project.id,
     selectionMessage: null,
+  },
+  detail: {
+    snapshot: parsePluginWorkbenchSnapshot({
+      ...readyBase,
+      targets: { state: "ready", items: [target] },
+    }),
+    openedProjectId: project.id,
+    selectionMessage: null,
+    detail: true,
   },
 };
 
@@ -215,18 +216,32 @@ document.documentElement.dataset.theme =
 document.documentElement.dataset.fixture = selected;
 
 function VisualFixture({ fixture }: { fixture: Fixture }) {
-  const [projectId, setProjectId] = useState(fixture.selectedProjectId);
-  const [targetId, setTargetId] = useState(fixture.selectedTargetId);
+  const [projectId, setProjectId] = useState(fixture.openedProjectId);
+  if (fixture.detail) {
+    return (
+      <PluginWorkbenchTargetDetail
+        snapshot={fixture.snapshot}
+        projectLabel="BB Mate"
+        target={target}
+        threads={[
+          { id: "thread_01", title: "Native Workbench design", updatedAt: 2 },
+          { id: "thread_02", title: "Plugin target admission", updatedAt: 1 },
+        ]}
+        onBack={() => {}}
+        onOpenThread={() => {}}
+        onNewThread={() => {}}
+        onRefresh={() => {}}
+      />
+    );
+  }
   return (
     <PluginWorkbenchView
       snapshot={fixture.snapshot}
-      selectedProjectId={projectId}
-      selectedTargetId={targetId}
-      admitting={fixture.admitting ?? false}
+      openedProjectId={projectId}
+      admittingProjectId={fixture.admitting ? project.id : null}
       selectionMessage={fixture.selectionMessage}
-      onProjectChange={setProjectId}
-      onTargetChange={setTargetId}
-      onAdmit={() => {}}
+      onOpenProject={setProjectId}
+      onOpenTarget={() => {}}
       onRefresh={() => {}}
     />
   );
@@ -235,4 +250,5 @@ function VisualFixture({ fixture }: { fixture: Fixture }) {
 const root = document.querySelector("#panel-fixture");
 if (!(root instanceof HTMLElement))
   throw new Error("Fixture root unavailable.");
+root.dataset.bbPlugin = "mate";
 createRoot(root).render(<VisualFixture fixture={fixtures[selected]} />);

@@ -128,7 +128,7 @@ describe("Mate package runtime artifact", () => {
       bb: {
         name: "Plugin Workbench",
         description: "Develop source plugins.",
-        branding: { icon: "Wrench" },
+        branding: { icon: "Toolbox" },
         server: "./server.ts",
         app: "./app.tsx",
         skills: ["./skills/plugin-workbench"],
@@ -148,7 +148,7 @@ describe("Mate package runtime artifact", () => {
       bb: {
         name: "Plugin Workbench",
         description: "Develop source plugins.",
-        branding: { icon: "Wrench" },
+        branding: { icon: "Toolbox" },
         server: "./dist/server.js",
         app: "./dist/app.js",
         skills: ["./skills/plugin-workbench"],

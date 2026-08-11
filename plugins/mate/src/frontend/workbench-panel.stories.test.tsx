@@ -23,9 +23,9 @@ describe("Plugin Workbench visual fixtures", () => {
       HostileVersion,
     ]) {
       const html = renderToStaticMarkup(<Story />);
-      expect(html).toContain("Supervised runtime");
-      expect(html).toContain("Development targets");
-      expect(html).toContain("Workbench preview");
+      expect(html).toMatch(/runtime/iu);
+      expect(html).toContain("Projects");
+      expect(html).not.toContain("Workbench preview");
     }
   });
 

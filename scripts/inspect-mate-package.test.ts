@@ -37,7 +37,7 @@ function packageManifest() {
       name: "Plugin Workbench",
       description:
         "Develop source plugins with the supervised bb-mate runtime.",
-      branding: { icon: "Wrench" },
+      branding: { icon: "Toolbox" },
       server: "./dist/server.js",
       app: "./dist/app.js",
       skills: ["./skills/plugin-workbench"],
