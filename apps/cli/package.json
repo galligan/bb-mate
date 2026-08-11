@@ -46,7 +46,8 @@
     "test": "bun test src"
   },
   "dependencies": {
-    "@bb-mate/inspection": "workspace:*"
+    "@bb-mate/inspection": "workspace:*",
+    "@bb-mate/runtime": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.3.4",

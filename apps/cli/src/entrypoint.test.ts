@@ -22,6 +22,7 @@ describe("bb-mate entrypoint modes", () => {
 
     const runtime = await createBbMateCliRuntime({
       mode: "standalone",
+      runtimeVersion: "0.1.0-alpha.2",
       assets: { "/index.html": indexPath },
     });
 
@@ -29,7 +30,11 @@ describe("bb-mate entrypoint modes", () => {
     expect(runtime.bunExecutable).toBeUndefined();
     expect(runtime.workspaceRoot).toBeUndefined();
     await expect(
-      createBbMateCliRuntime({ mode: "standalone", assets: {} }),
+      createBbMateCliRuntime({
+        mode: "standalone",
+        runtimeVersion: "0.1.0-alpha.2",
+        assets: {},
+      }),
     ).rejects.toThrow("Standalone surface lab assets must include /index.html");
   });
 
@@ -44,6 +49,7 @@ describe("bb-mate entrypoint modes", () => {
       mode: "source-or-package",
       moduleUrl,
       bunExecutable: "/actual/bun",
+      runtimeVersion: "0.1.0-alpha.2",
     });
     expect(source.bunExecutable).toBe("/actual/bun");
     expect(source.runFixture).toBeUndefined();
@@ -54,6 +60,7 @@ describe("bb-mate entrypoint modes", () => {
       mode: "source-or-package",
       moduleUrl,
       bunExecutable: "/actual/bun",
+      runtimeVersion: "0.1.0-alpha.2",
     });
     expect(packaged.runFixture).toBeFunction();
     expect(packaged.bunExecutable).toBeUndefined();
@@ -67,7 +74,11 @@ describe("bb-mate entrypoint modes", () => {
     const stdout: string[] = [];
 
     const result = await runBbMateEntrypoint(
-      { mode: "standalone", assets: { "/index.html": indexPath } },
+      {
+        mode: "standalone",
+        runtimeVersion: "0.1.0-alpha.2",
+        assets: { "/index.html": indexPath },
+      },
       {
         argv: ["--help"],
         stdout: (value) => stdout.push(value),

@@ -25,10 +25,12 @@ checked before any public distribution decision.
 | tailwind-merge                     | MIT        | <https://github.com/dcastil/tailwind-merge>     |
 | tw-animate-css                     | MIT        | <https://github.com/Wombosvideo/tw-animate-css> |
 | xmlchars                           | MIT        | <https://github.com/lddubeau/xmlchars>          |
+| Zod                                | MIT        | <https://github.com/colinhacks/zod>             |
 
 The generated payload includes Base UI's runtime dependency closure, Ladle,
 classnames, Prism React Renderer and PrismJS, PropTypes and React Is, React and
 scheduler, the Focus Lock/React Remove Scroll family, Reach UI dialog, tslib,
 and the inspection parser dependency closure. This inventory and those notices
-cover third-party components only. BB Mate itself is distributed under the MIT
-License included as `LICENSE` in the package.
+cover third-party components, including the runtime protocol's bundled Zod
+schema implementation, only. BB Mate itself is distributed under the MIT License
+included as `LICENSE` in the package.

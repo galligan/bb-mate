@@ -228,6 +228,9 @@ export async function buildStandalone(
   }
 
   const graph = await inspectStandaloneAssets(labRoot);
+  const sourceManifest = JSON.parse(
+    await fs.readFile(path.join(cliRoot, "package.json"), "utf8"),
+  ) as { version: string };
   const temporaryRoot = await fs.mkdtemp(
     path.join(os.tmpdir(), "bb-mate-standalone-build-"),
   );
@@ -241,6 +244,7 @@ export async function buildStandalone(
       generateStandaloneEntry({
         assets: graph.assets,
         entrypointPath: path.join(cliRoot, "src", "entrypoint.ts"),
+        runtimeVersion: sourceManifest.version,
       }),
     );
 
@@ -263,9 +267,6 @@ export async function buildStandalone(
     }
     await fs.chmod(stagedExecutablePath, 0o755);
 
-    const sourceManifest = JSON.parse(
-      await fs.readFile(path.join(cliRoot, "package.json"), "utf8"),
-    ) as { version: string };
     const executable = await fs.readFile(stagedExecutablePath);
     const manifest = createStandaloneManifest({
       graph,

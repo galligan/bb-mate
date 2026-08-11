@@ -1,0 +1,147 @@
+# Plugin Workbench host shell and supervised runtime
+
+Date: 2026-08-10
+Status: Slice 62A implementation and review complete; merge pending
+Issue: #62
+Parent: #21
+Depends on: #54, #55, #56, and #57 (all merged)
+
+## Outcome
+
+Ship a real `bb-plugin-mate` package whose released `navPanel` lazily
+supervises the exact packaged macOS-arm64 `bb-mate` runtime. The plugin stays a
+thin public-contract adapter; the runtime owns its protocol and canonical
+state. Missing, tampered, incompatible, or unsupported artifacts remain
+actionable unavailable states and spawn nothing.
+
+## Delivery shape
+
+Deliver #62 as two merge-first slices:
+
+1. **62A — supervised runtime protocol.** Add a standalone-safe `serve`
+   command, one private inherited supervisor/liveness channel, a bounded public
+   launch descriptor, authenticated capability handshake, and deterministic
+   shutdown/orphan proof.
+2. **62B — installed Plugin Workbench host.** Add `plugins/mate`, exact runtime
+   package/stamp verification, installed-root resolution, lazy serialized
+   supervision, released `navPanel`, skill, and isolated bb 0.36 lifecycle
+   proof.
+
+Issue #62 closes only after both slices merge and reconcile.
+
+## 62A protocol contract
+
+- `bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd 3` is the
+  only supervised entrypoint. The host is fixed internally to numerical
+  `127.0.0.1`; supervised mode exposes no caller-selected host option. It
+  bypasses passive target inspection and rejects host overrides, missing JSON
+  mode, invalid FDs, and unexpected positional targets.
+- FD 3 carries one strict, bounded JSON line with schema/runtime/API
+  expectations, a 32-byte base64url credential, principal ID, and bb-context
+  ID. The writer keeps that same pipe open; extra bytes are a protocol error and
+  EOF is the primary parent-death signal. No secret enters argv, environment,
+  URLs, files, descriptor, stdout, stderr, or logs.
+- Parent PID monitoring is secondary to liveness EOF. Signal, EOF, parent
+  disappearance, startup failure, and normal shutdown converge on one
+  idempotent graceful-stop path.
+- Bind exact numerical `127.0.0.1`; port zero selects the listener port. Emit
+  exactly one UTF-8 JSON descriptor line on stdout, bounded to 8 KiB, with exact
+  schema/runtime/API versions, child PID, opaque runtime-instance ID, exact
+  loopback base URL, and the finite capability document. Human diagnostics use
+  bounded redacted stderr only.
+- `GET /healthz` remains constant and unauthenticated. `GET
+/v1/capabilities` requires the supervisor bearer and returns metadata and
+  capabilities exactly matching the descriptor. Host/Origin/body/concurrency
+  rules remain those of the runtime foundation. No target, browser bootstrap,
+  MCP, object mutation, static UI, SSE, or WebSocket route is added.
+- Compile with ambient dotenv/bunfig disabled. Managed launch clears
+  `BUN_BE_BUN` and `BUN_OPTIONS`; direct invocation cannot claim protection
+  from a parent that sets `BUN_BE_BUN` before app code.
+
+## 62B host/package contract
+
+- `plugins/mate` is `bb-plugin-mate` with `engines.bb >=0.36` and
+  `engines.bbPluginSdk ^0.4.1`, released `navPanel`, backend
+  `background.service`/`onDispose`, and a project-scoped skill. Harness remains
+  unavailable while the public SDK package is E404.
+- Build stages only `runtime/darwin-arm64/{bb-mate,manifest.json}` from the
+  exact deterministic standalone output. The npm allowlist is exact and package
+  inspection proves stamped frontend/backend artifacts, skill/docs, executable
+  mode 0755, Mach-O arm64, size, version, API, SHA-256, and absence of source,
+  node_modules, symlinks, traversal, or extra entries.
+- The backend embeds the expected runtime SHA/size/arch/version/API. It resolves
+  only the literal runtime path relative to built `import.meta.url`, verifies
+  containment and identity immediately before spawn, and never consults cwd,
+  PATH, HOME, inventory, Bun, bunx, or a global `bb-mate`.
+- One lazy supervisor state machine serializes `ensure`/reuse/stop. Plugin load
+  alone starts no process or listener. Concurrent nav/RPC demand shares one
+  start. `background.service` owns capped crash restart; deterministic artifact
+  failures become `NeedsConfigurationError`, not a custom restart loop.
+- Spawn one process group with a minimized environment and inherited private
+  channel. Enforce descriptor byte/time/schema/version/PID/base-URL/capability
+  limits, then perform the authenticated capability handshake. Abort,
+  `onDispose`, reload, disable, remove, server shutdown, crash, and orphan paths
+  terminate the owned group and listener within a bounded grace/force window.
+- Frontend/RPC projections contain only finite status enums, public target
+  projections, versions, and non-secret opaque context facts. They contain no
+  paths, PID, hostname, command, environment, secret, bearer, base URL, browser
+  URL, Connect fact, or topology conclusion. Browser launch stays visibly
+  unavailable until #70.
+
+## TDD execution
+
+1. [x] Add strict supervisor-frame and launch-descriptor contracts with bounds,
+       unknown-field rejection, secret redaction, and version/capability
+       equality tests.
+2. [x] Add `serve` argument handling and ensure it bypasses inspection, binds
+       only numerical loopback/port zero, prints one descriptor line, and keeps
+       logs on stderr.
+3. [x] Add bearer authentication, FD liveness, parent/signal shutdown, bounded
+       request handling, and idempotent listener cleanup tests.
+4. [x] Extend the moved empty-PATH standalone clean room to prove the private
+       channel, descriptor/capability handshake, EOF/orphan cleanup, no checkout
+       assets, and no leaked secret.
+5. [ ] Run focused, aggregate, package, standalone, hosted, and two independent
+       5/5 review lanes; merge and reconcile 62A.
+6. [ ] Scaffold `plugins/mate` only from released 0.36 artifacts; add the exact
+       package stamp/allowlist/resolver and adversarial pack/extract tests.
+7. [ ] Add the lazy supervisor, status RPC, released nav panel, and skill with
+       race/crash/dispose/unavailable tests and no browser-launch claim.
+8. [ ] Prove the extracted package in a disposable bb 0.36 profile: install,
+       idle-before-demand, one child, reload, disable, enable/redemand, crash,
+       remove, graceful shutdown, forced parent loss, no orphan/listener, and
+       no normal-profile mutation.
+9. [ ] Run full local/hosted gates and two 5/5 review lanes; merge 62B, close
+       #62, reconcile GitButler, and update #21.
+
+## Verification
+
+- Focused CLI/runtime/protocol/supervisor/package/frontend tests while
+  iterating.
+- `bun run format:check && bun run check && bun run test && bun run build`
+- `bun run visual:test` for 62B UI changes.
+- `bun run compatibility:latest`
+- `bun run package:inspect && bun run package:test`
+- `bun run standalone:inspect && bun run standalone:test`
+- Native `bb plugin types --check`, `bb plugin build`, exact tar inspection, and
+  disposable-profile path install from an extracted package.
+- Exact-head hosted checks, zero review threads, 5/5 standing and targeted
+  reports, immutable merge SHA, and clean GitButler reconciliation per slice.
+
+## Stop conditions
+
+Stop before PATH/Bun/bunx fallback, chmod/postinstall repair, unsupported
+platform claims, browser credentials or secret-bearing URLs, automatic host
+browser control, target execution, native target lifecycle mutation, Connect,
+MCP, publication/release/signing, upstream submission, or normal-profile
+mutation. Stop 62B launch work if 62A is not merged or if packaged hash, mode,
+architecture, installed-root containment, descriptor handshake, or cleanup
+proof fails.
+
+## Done
+
+Both slices are merged to `main`; #62 and #21 are current; exact local, hosted,
+package, standalone, and isolated lifecycle gates pass; two independent review
+lanes score 5/5 with zero P0-P3 per slice; GitButler is clean/reconciled; and
+the goal retrospective records exact proof without crossing release or browser
+bootstrap boundaries.

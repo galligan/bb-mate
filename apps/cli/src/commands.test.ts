@@ -135,6 +135,7 @@ function runtime(
       resolveBb: async () => "/fake/bin/bb",
       runCaptured: captured,
       runInherited: async () => processExit,
+      runServe: async () => ({ exitCode: 1, signal: null }),
       ...overrides,
     } satisfies CliRuntime,
   };
@@ -170,6 +171,49 @@ describe("bb-mate CLI", () => {
     expect(result).toEqual({ exitCode: 0, signal: null });
     expect(nativeCall).toBe(false);
     expect(testRuntime.stdout.join("")).toContain("Usage: bb-mate [path]");
+    expect(testRuntime.stdout.join("")).toContain(
+      "bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>",
+    );
+  });
+
+  test("routes supervised serve before plugin inspection or native bb lookup", async () => {
+    let nativeCall = false;
+    const serveCalls: unknown[] = [];
+    const testRuntime = runtime(
+      "/workspace",
+      async () => {
+        nativeCall = true;
+        return { stdout: "", stderr: "", exitCode: 1 };
+      },
+      {
+        resolveBb: async () => {
+          nativeCall = true;
+          return null;
+        },
+        runServe: async (options) => {
+          serveCalls.push(options);
+          return { exitCode: 0, signal: null };
+        },
+      },
+    );
+
+    const result = await runCli(
+      [
+        "serve",
+        "--port",
+        "0",
+        "--json",
+        "--parent-pid",
+        "4321",
+        "--supervisor-fd",
+        "3",
+      ],
+      testRuntime.value,
+    );
+
+    expect(result).toEqual({ exitCode: 0, signal: null });
+    expect(serveCalls).toEqual([{ port: 0, parentPid: 4321, supervisorFd: 3 }]);
+    expect(nativeCall).toBe(false);
   });
 
   test("inspects a standalone plugin without executing its entrypoint", async () => {

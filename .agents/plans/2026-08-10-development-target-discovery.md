@@ -1,7 +1,7 @@
 # Source-first development-target discovery
 
 Date: 2026-08-10
-Status: Slices 57A and 57B1 merged; slice 57B2 implementation and review complete, merge pending
+Status: Complete
 Issue: #57
 Parent: #21
 Depends on: #55 (merged through PR #71)
@@ -111,7 +111,7 @@ decision; #70 owns that gate.
 6. [x] Run aggregate gates and two 5/5 lanes, then merge and reconcile 57B1.
 7. [x] Adapt one-authorized-target inspection and Workbench selection to
        opaque target IDs; reverse the prior external-symlink acceptance test.
-8. [ ] Run visual/accessibility and aggregate gates, two 5/5 reviews, hosted
+8. [x] Run visual/accessibility and aggregate gates, two 5/5 reviews, hosted
        CI, merge 57B2, close #57, and reconcile GitButler.
 
 ## Verification

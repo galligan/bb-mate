@@ -8,9 +8,10 @@ Status: Active
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
-and reconciled. Source-first development-target discovery #57 is the active
-milestone. Slices 57A and 57B1 are merged and reconciled. Slice 57B2, the
-catalog-backed opaque-target Workbench adapter, is now active.
+and reconciled. Source-first development-target discovery #57 is merged,
+reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A's
+supervised runtime implementation and review are complete in PR #76; merge and
+reconciliation remain before the packaged plugin slice 62B begins.
 
 ## Readiness
 
@@ -21,15 +22,16 @@ evidence and is reconciled. The transport-neutral runtime foundation #55 has
 passed focused/aggregate verification, two independent exact-head reviews, and
 hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
 and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
-GitButler reconciliation gates. Slice 57B2 is active; browser
-bootstrap/topology remains isolated in #70.
+GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
+has passed local, hosted, and implementation-head review gates; its final
+exact-head review, ready transition, merge, and reconciliation remain.
+Browser bootstrap/topology remains isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/workbench/opaque-target-adapter`; issue #57; draft PR
-  #75.
-- Current merge base: `73e6865e2a135dfd02dc2429ebc3debaa179d79d`.
+- Active branch: `feat/plugin-workbench/host-shell`; issue #62; draft PR #76.
+- Current merge base: `6ed0c33ddbe8b971eadb36d170fc705dbf9550b3`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -494,6 +496,21 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
   passed. The unchanged package clean room remained 41 files/13 stories at
   SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
+- Host-shell slice 62A remediation gate passed `bun run format:check`, `bun run
+check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
+run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
+run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
+  passed 531 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
+  plugin 21, and scripts 58. Repeated aggregate runs exposed a test-teardown
+  race that recursively removed a symlink holder and its external temporary
+  target concurrently. Teardown now removes temporary roots sequentially in
+  reverse creation order; 100 focused reruns (600 tests), the full scripts
+  suite, and the complete aggregate passed. The legacy package clean room contained
+  41 files and 13 stories with SHA-256
+  `c2480bdd519e1d5bfe22691d8ccb9da64b5516162a8d9c9210e57ecc11711a9f`.
+  The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
+  64,783,586 bytes, 35 assets, 13 stories, and SHA-256
+  `df2218e931e2c048ed0c2896a4448313169af324eca9595cc72717364a1ca16f`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -581,6 +598,88 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   and unrelated #73 remained preserved. Superseded Workbench rounds 1-3 were
   scratch-archived only after all findings and fixed dispositions were recorded
   here.
+- PR #75 was made ready only after exact final head
+  `cc4c7e383dd0dac6b665f14b0075b9aaa288ebb0` passed terminal hosted checks,
+  zero-thread verification, packet doctor, and final standing plus targeted
+  5/5 reviews. GitHub async request
+  `2cc9e6c7-3d21-41ba-8ad9-cb643da8dd6b` merged it as
+  `6ed0c33ddbe8b971eadb36d170fc705dbf9550b3`. `but pull` removed the
+  integrated 57B2 branch and reconciled the workspace; #57 closed complete and
+  #21 now records source-first development-target discovery as merged. The
+  unrelated #73 lane remains isolated in its pre-existing force-push-required
+  state.
+- Slice 62A now supplies the prerequisite protocol that #62 previously lacked.
+  The strict inherited FD carries one bounded credential frame and remains the
+  primary liveness signal; port-zero `serve` binds only numerical loopback,
+  emits one bounded descriptor line, and exposes only constant health plus an
+  authenticated capability document with exact runtime/API/instance identity.
+  Parent disappearance, extra frame bytes, EOF, SIGINT, and SIGTERM converge on
+  one awaited listener stop. The moved empty-PATH executable proves EOF,
+  parent-loss-with-FD-open, and signal cleanup without a checkout asset or normal
+  profile.
+- Targeted host-shell round 1 found three release blockers after the initial
+  implementation review. THS-001 is fixed by including bundled Zod in generated
+  third-party notices and asserting its MIT license in the package clean room.
+  THS-002 is fixed by inspecting raw origin-form request targets before WHATWG
+  normalization, so encoded-dot, absolute, scheme-relative, backslash, and
+  fragment aliases cannot reach either runtime route. THS-003 is fixed by
+  awaiting child stdio `close`, not only process `exit`, before output-purity and
+  secret-nonleak assertions. Focused regressions reproduce each prior gap and
+  pass after remediation. At that point PR #76 remained draft while replacement
+  exact-head hosted checks and independent reviews were pending.
+- Targeted host-shell round 2 then found THS-004: raw GET/HEAD body framing was
+  omitted while constructing the Fetch request, so an incomplete chunked health
+  request could receive 200 before its body ended and escape the runtime body and
+  concurrency accounting. The raw listener now rejects any Content-Length or
+  Transfer-Encoding on GET/HEAD before dispatch, returns the secured generic 400,
+  closes the connection, and destroys the unread request after the response.
+  Slow chunked GET/HEAD, Content-Length zero plus trailing bytes, nonzero length,
+  duplicate length, canonical bodyless reads, and streamed POST regressions pass.
+- Exact-head round 3 showed that THS-004 still applied to noncanonical targets:
+  target validation returned the secured 400 before the framing cleanup path,
+  leaving an incomplete keep-alive socket open outside request accounting. Every
+  listener-level pre-dispatch rejection now uses one close path that disables
+  keep-alive, flushes the secured generic 400, and then destroys the unread
+  request. Slow encoded-dot GET, fragment HEAD, absolute-form POST, and 33-way
+  concurrent incomplete-request regressions all close within the bounded window
+  with zero runtime-handler calls. The replacement aggregate passed 525 tests;
+  package and moved-standalone proofs produced the hashes recorded above.
+- The next targeted pass found the same unread-body lifetime gap after canonical
+  requests reached early Host, Origin, authentication, encoding, declared-size,
+  or capacity responses. The Node listener now treats request completion as the
+  systemic ownership boundary: before sending any handler response for an
+  incomplete message it overrides connection headers to close, preserves the
+  handler status/body/security policy, flushes the response, and destroys the
+  unread request. Focused slow-body tests cover 400/401/403/413/415/503, 33-way
+  concurrent rejection, the 32-request capacity boundary, handler header
+  override, and successful keep-alive reuse after a completely consumed body.
+- Exact implementation head `2897369eaad4fedfc202b1a08fd23bac14f5f88f`
+  passed the 525-test aggregate, exact package and standalone proofs, hosted
+  verify/visual/standalone rerun, GitGuardian, zero-thread, and clean GitButler
+  gates. Standing round five awarded 5/5 with zero P0-P3. Targeted round five
+  found only THS-005: this ledger's current-state header still described merged
+  57B2 as active and hosted readiness as pending. Those current-state fields are
+  now corrected; executable and build-input bytes are unchanged. Slice 62A is
+  implementation-and-review complete, while final exact-head review, ready,
+  merge, and reconciliation remain.
+- The first hosted standalone job at both the implementation and docs heads
+  emitted a valid orphan-lane descriptor and then hit an immediate loopback
+  connection refusal; same-head reruns and every local moved-binary proof passed.
+  The clean-room readiness probe initially retried only connection-refused
+  failures for two seconds after descriptor validation. One of two duplicate
+  hosted runs still exceeded that arbitrary allowance while the other passed.
+  A later duplicate hosted run exhausted even the ten-second allowance after a
+  valid orphan descriptor while its twin passed. Because descriptors follow the
+  Node listener's `listening` event, that was not ordinary startup delay. The
+  final proof uses a fresh non-pooled loopback connection for each health and
+  cleanup probe, races readiness against child close with bounded redacted exit
+  diagnostics, and replaces the timed sleep parent with an owner-held indefinite
+  sentinel asserted alive before the deliberate parent-loss transition. It still
+  requires exact HTTP 200 and fails immediately on HTTP or unrelated network
+  errors. Focused tests cover fresh connections, canceled-socket cleanup,
+  readiness after 2.5 seconds, runtime exit, non-200, unrelated failure, and
+  deadline exhaustion. The harness-only changes raise the aggregate to 531 tests
+  while leaving the exact package and standalone hashes recorded above unchanged.
 
 ## Prompt / Goal Alignment
 
@@ -599,8 +698,9 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
-source-catalog slices 57A and 57B1 are merged and reconciled. Slice 57B2
-implementation, local and hosted verification, and dual 5/5 review are complete
-on draft PR #75; the final docs-only exact-head review, ready/merge, issue
-closure, and reconciliation remain. All release/upstream/Connect/normal-profile
-stop boundaries remain intact.
+source-catalog slices 57A, 57B1, and 57B2 are merged and reconciled; #57 is
+closed. Host-shell #62 is active with an explicit merge-first split: 62A's
+implementation and review are complete in draft PR #76, with final exact-head
+review, ready transition, merge, and reconciliation pending; 62B then packages
+and supervises that exact runtime from `bb-plugin-mate`. All
+release/upstream/Connect/normal-profile stop boundaries remain intact.

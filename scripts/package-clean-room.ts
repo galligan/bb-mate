@@ -379,6 +379,7 @@ try {
     "react-inspector@",
     "scheduler@",
     "tslib@",
+    "zod@",
     "@fontsource-variable/geist@",
     "@fontsource-variable/inter@",
     "Apache License",
