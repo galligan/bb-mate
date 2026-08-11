@@ -11,6 +11,14 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+function assertProcessAlive(pid: number, message: string): void {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    throw new Error(message);
+  }
+}
+
 function assertCleanOutput(
   runtime: SupervisedRuntime,
   descriptor: object,
@@ -44,7 +52,7 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    await waitForRuntimeHealth(descriptor.baseUrl);
+    await waitForRuntimeHealth(descriptor.baseUrl, { runtime });
     const unauthorized = await fetch(`${descriptor.baseUrl}/v1/capabilities`);
     assert(
       unauthorized.status === 401,
@@ -86,13 +94,17 @@ export async function verifyStandaloneSupervision(options: {
     );
     runtime = null;
 
-    monitoredParent = Bun.spawn(["/bin/sleep", "30"], {
+    monitoredParent = Bun.spawn(["/bin/cat"], {
       cwd: options.temporaryRoot,
       env: options.env,
-      stdin: "ignore",
+      stdin: "pipe",
       stdout: "ignore",
       stderr: "ignore",
     });
+    assertProcessAlive(
+      monitoredParent.pid,
+      "Orphan-cleanup sentinel exited before runtime launch.",
+    );
     runtime = spawnSupervisedRuntime({
       ...options,
       parentPid: monitoredParent.pid,
@@ -105,7 +117,15 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    await waitForRuntimeHealth(orphanDescriptor.baseUrl);
+    assertProcessAlive(
+      monitoredParent.pid,
+      "Orphan-cleanup sentinel exited before descriptor validation.",
+    );
+    await waitForRuntimeHealth(orphanDescriptor.baseUrl, { runtime });
+    assertProcessAlive(
+      monitoredParent.pid,
+      "Orphan-cleanup sentinel exited before forced parent loss.",
+    );
     monitoredParent.kill("SIGKILL");
     await monitoredParent.exited;
     monitoredParent = null;
@@ -132,7 +152,7 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    await waitForRuntimeHealth(signalDescriptor.baseUrl);
+    await waitForRuntimeHealth(signalDescriptor.baseUrl, { runtime });
     runtime.child.kill("SIGTERM");
     await within(
       runtime.closed,

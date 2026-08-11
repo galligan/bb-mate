@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
+import { createServer } from "node:http";
 import {
   observeChildClose,
+  requestRuntimeHealth,
   type StandaloneRuntimeDescriptor,
   validateStandaloneDescriptor,
   waitForRuntimeHealth,
@@ -114,6 +116,89 @@ describe("standalone supervision proof", () => {
     expect(sleeps).toBe(1);
   });
 
+  test("probes runtime health through a fresh connection", async () => {
+    let connections = 0;
+    const server = createServer((_request, response) => {
+      response.end();
+    });
+    server.on("connection", () => {
+      connections += 1;
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Test listener did not receive a port.");
+    }
+    try {
+      expect(
+        await requestRuntimeHealth(`http://127.0.0.1:${address.port}/healthz`),
+      ).toEqual({ status: 200 });
+      expect(
+        await requestRuntimeHealth(`http://127.0.0.1:${address.port}/healthz`),
+      ).toEqual({ status: 200 });
+      expect(connections).toBe(2);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
+  test("destroys a pending health request when its bound is canceled", async () => {
+    let received!: () => void;
+    const requestReceived = new Promise<void>((resolve) => {
+      received = resolve;
+    });
+    let closed!: () => void;
+    const socketClosed = new Promise<void>((resolve) => {
+      closed = resolve;
+    });
+    let socket: import("node:net").Socket | undefined;
+    const server = createServer((request) => {
+      socket = request.socket;
+      socket.once("close", closed);
+      received();
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    const address = server.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Test listener did not receive a port.");
+    }
+    const controller = new AbortController();
+    try {
+      const requested = requestRuntimeHealth(
+        `http://127.0.0.1:${address.port}/healthz`,
+        controller.signal,
+      ).then(
+        () => "resolved",
+        () => "aborted",
+      );
+      await requestReceived;
+      controller.abort();
+      expect(
+        await Promise.race([
+          requested,
+          Bun.sleep(50).then(() => "still pending"),
+        ]),
+      ).toBe("aborted");
+      expect(
+        await Promise.race([
+          socketClosed.then(() => "closed"),
+          Bun.sleep(50).then(() => "still open"),
+        ]),
+      ).toBe("closed");
+    } finally {
+      socket?.destroy();
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
   test("allows bounded hosted startup beyond two seconds", async () => {
     let now = 0;
     await waitForRuntimeHealth("http://127.0.0.1:41721", {
@@ -132,6 +217,27 @@ describe("standalone supervision proof", () => {
     });
 
     expect(now).toBe(2_500);
+  });
+
+  test("reports a runtime exit instead of retrying a closed listener", async () => {
+    const token = "A".repeat(43);
+    const failure = waitForRuntimeHealth("http://127.0.0.1:41721", {
+      fetch: async () => {
+        throw Object.assign(new Error("not listening"), {
+          code: "ConnectionRefused",
+        });
+      },
+      runtime: {
+        closed: Promise.resolve(),
+        child: { exitCode: 1, signalCode: null },
+        stderr: () => `parent unavailable ${token}`,
+        token,
+      },
+    });
+
+    await expect(failure).rejects.toThrow(
+      'Supervised runtime exited before becoming healthy: exitCode=1, signal=null, stderr="parent unavailable [redacted]".',
+    );
   });
 
   test("fails immediately on HTTP failure and bounds repeated refusal", async () => {

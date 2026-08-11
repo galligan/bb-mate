@@ -2,6 +2,7 @@ import {
   spawn as spawnChildProcess,
   type ChildProcess,
 } from "node:child_process";
+import { get as getHttp } from "node:http";
 import type { Readable, Writable } from "node:stream";
 
 export interface StandaloneRuntimeDescriptor {
@@ -90,33 +91,87 @@ function isConnectionRefused(error: unknown): boolean {
   return "cause" in error && isConnectionRefused(error.cause);
 }
 
+export function requestRuntimeHealth(
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ status: number }> {
+  return new Promise((resolve, reject) => {
+    const request = getHttp(url, { agent: false }, (response) => {
+      const status = response.statusCode ?? 0;
+      response.once("error", reject);
+      response.once("end", () => resolve({ status }));
+      response.resume();
+    });
+    const abort = () => {
+      const error = Object.assign(
+        new Error("Runtime health request aborted."),
+        {
+          cause: signal?.reason,
+          code: "ABORT_ERR",
+        },
+      );
+      request.destroy(error);
+      reject(error);
+    };
+    signal?.addEventListener("abort", abort, { once: true });
+    request.once("close", () => signal?.removeEventListener("abort", abort));
+    request.once("error", reject);
+    if (signal?.aborted) abort();
+  });
+}
+
 export async function waitForRuntimeHealth(
   baseUrl: string,
   options: {
-    fetch?: (url: string) => Promise<Response>;
+    fetch?: (url: string, signal?: AbortSignal) => Promise<{ status: number }>;
     sleep?: (milliseconds: number) => Promise<void>;
     now?: () => number;
     retryDelayMs?: number;
     timeoutMs?: number;
+    runtime?: Pick<SupervisedRuntime, "closed" | "stderr" | "token"> & {
+      child: Pick<ChildProcess, "exitCode" | "signalCode">;
+    };
   } = {},
 ): Promise<void> {
-  const fetchHealth = options.fetch ?? ((url) => globalThis.fetch(url));
+  const fetchHealth = options.fetch ?? requestRuntimeHealth;
   const sleep = options.sleep ?? ((milliseconds) => Bun.sleep(milliseconds));
   const now = options.now ?? Date.now;
   const retryDelayMs = options.retryDelayMs ?? 25;
   const timeoutMs = options.timeoutMs ?? 10_000;
   const deadline = now() + timeoutMs;
   const deadlineMessage = "Supervised runtime did not become healthy.";
+  const stopped = options.runtime?.closed.then<never>(() => {
+    const stderr = Buffer.from(
+      options
+        .runtime!.stderr()
+        .replaceAll(options.runtime!.token, "[redacted]"),
+    )
+      .subarray(0, 1_024)
+      .toString("utf8");
+    throw new Error(
+      `Supervised runtime exited before becoming healthy: exitCode=${options.runtime!.child.exitCode}, signal=${options.runtime!.child.signalCode}, stderr=${JSON.stringify(stderr)}.`,
+    );
+  });
+  const beforeRuntimeStops = <T>(promise: Promise<T>): Promise<T> =>
+    stopped ? Promise.race([promise, stopped]) : promise;
 
   while (true) {
     try {
       const remaining = deadline - now();
       if (remaining <= 0) throw new Error(deadlineMessage);
-      const response = await within(
-        fetchHealth(`${baseUrl}/healthz`),
-        remaining,
-        deadlineMessage,
-      );
+      const controller = new AbortController();
+      let response: { status: number };
+      try {
+        response = await beforeRuntimeStops(
+          within(
+            fetchHealth(`${baseUrl}/healthz`, controller.signal),
+            remaining,
+            deadlineMessage,
+          ),
+        );
+      } finally {
+        controller.abort();
+      }
       if (response.status !== 200) {
         throw new Error(
           `Supervised runtime health returned HTTP ${response.status}.`,
@@ -127,7 +182,7 @@ export async function waitForRuntimeHealth(
       if (!isConnectionRefused(error)) throw error;
       const remaining = deadline - now();
       if (remaining <= 0) throw new Error(deadlineMessage, { cause: error });
-      await sleep(Math.min(retryDelayMs, remaining));
+      await beforeRuntimeStops(sleep(Math.min(retryDelayMs, remaining)));
     }
   }
 }
@@ -278,12 +333,21 @@ export function validateStandaloneDescriptor(
 export async function assertListenerUnavailable(
   baseUrl: string,
 ): Promise<void> {
-  await fetch(`${baseUrl}/healthz`, {
-    signal: AbortSignal.timeout(1_000),
-  }).then(
-    () => {
-      throw new Error("Standalone listener remained reachable after shutdown.");
-    },
-    () => undefined,
-  );
+  const controller = new AbortController();
+  try {
+    await within(
+      requestRuntimeHealth(`${baseUrl}/healthz`, controller.signal),
+      1_000,
+      "Standalone listener reachability check timed out.",
+    ).then(
+      () => {
+        throw new Error(
+          "Standalone listener remained reachable after shutdown.",
+        );
+      },
+      () => undefined,
+    );
+  } finally {
+    controller.abort();
+  }
 }

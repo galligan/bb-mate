@@ -500,8 +500,8 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
 check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
 run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
 run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
-  passed 528 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
-  plugin 21, and scripts 55. Repeated aggregate runs exposed a test-teardown
+  passed 531 tests: inspection 136, runtime 175, CLI 75, Workbench 66, Linear
+  plugin 21, and scripts 58. Repeated aggregate runs exposed a test-teardown
   race that recursively removed a symlink holder and its external temporary
   target concurrently. Teardown now removes temporary roots sequentially in
   reverse creation order; 100 focused reruns (600 tests), the full scripts
@@ -668,12 +668,18 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   The clean-room readiness probe initially retried only connection-refused
   failures for two seconds after descriptor validation. One of two duplicate
   hosted runs still exceeded that arbitrary allowance while the other passed.
-  The final bounded window is ten seconds, matching the existing descriptor
-  deadline; it still requires exact HTTP 200 and fails immediately on HTTP or
-  unrelated network errors. Focused tests cover readiness after 2.5 seconds,
-  non-200, unrelated failure, and deadline exhaustion. The harness-only change
-  raises the aggregate to 528 tests while leaving the exact package and
-  standalone hashes recorded above unchanged.
+  A later duplicate hosted run exhausted even the ten-second allowance after a
+  valid orphan descriptor while its twin passed. Because descriptors follow the
+  Node listener's `listening` event, that was not ordinary startup delay. The
+  final proof uses a fresh non-pooled loopback connection for each health and
+  cleanup probe, races readiness against child close with bounded redacted exit
+  diagnostics, and replaces the timed sleep parent with an owner-held indefinite
+  sentinel asserted alive before the deliberate parent-loss transition. It still
+  requires exact HTTP 200 and fails immediately on HTTP or unrelated network
+  errors. Focused tests cover fresh connections, canceled-socket cleanup,
+  readiness after 2.5 seconds, runtime exit, non-200, unrelated failure, and
+  deadline exhaustion. The harness-only changes raise the aggregate to 531 tests
+  while leaving the exact package and standalone hashes recorded above unchanged.
 
 ## Prompt / Goal Alignment
 
