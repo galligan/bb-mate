@@ -843,6 +843,15 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   the embedded arm64 runtime is 64,849,634 bytes with SHA-256
   `8a8397f198368f43d81beeac56782c334a20fc0149626b08d5420dbaf327e155`
   and runtime version `0.1.0-alpha.3`.
+- The authoritative exact-tree aggregate passes 642 tests: inspection 136,
+  runtime 186, CLI 82, Workbench 66, Linear plugin 21, Mate plugin 66, and
+  scripts 85. The first aggregate correctly found that the legacy CLI package
+  proof still pinned alpha.2; advancing that proof to alpha.3 closed the only
+  integration drift. The final 41-file CLI package has SHA-256
+  `14f21a0f885cbc9abbce64e9e1a429d0bfffca40403870c76aa8b06d026face4`.
+  Formatting, type and compatibility checks, all builds, 26 browser/axe/
+  screenshot cases, native declaration checks, the moved standalone proof, and
+  the final extracted Mate package proof are green.
 - Browser launch remains unavailable under #70; target execution, native
   inventory mutation, Connect, publication, and external redistribution remain
   outside 62C. The private-package and #77 licensing boundary is unchanged.
