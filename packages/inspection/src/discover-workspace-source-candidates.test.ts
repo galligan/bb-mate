@@ -41,6 +41,34 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("continues through a package boundary when a declared pattern reaches a nested workspace", async () => {
+    const root = await harness.createRoot();
+    const parentPackage = path.join(root, "packages", "tools");
+    const nestedPlugin = path.join(parentPackage, "examples", "demo");
+    await fs.mkdir(nestedPlugin, { recursive: true });
+    await fs.writeFile(
+      path.join(parentPackage, "package.json"),
+      JSON.stringify({ name: "tools", private: true }),
+    );
+    await harness.writePlugin(nestedPlugin, "demo");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["packages/*", "packages/*/examples/*"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual(["demo"]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("supports pnpm workspace includes and exclusions", async () => {
     const root = await harness.createRoot();
     const included = path.join(root, "plugins", "included");

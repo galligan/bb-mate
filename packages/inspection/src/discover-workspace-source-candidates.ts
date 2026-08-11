@@ -380,7 +380,13 @@ async function inspectPendingDirectory(
     attestation,
   );
   state.signal?.throwIfAborted();
-  if (!stable || packageBoundary || state.patterns.length === 0) return;
+  if (
+    !stable ||
+    (packageBoundary &&
+      !couldContainStrictMatch(state.patterns, current.relative)) ||
+    state.patterns.length === 0
+  )
+    return;
 
   if (state.budget.visitedEntries < state.budget.maxVisitedEntries) {
     const entries = await readDirectoryEntries(
@@ -622,6 +628,27 @@ function couldContainMatch(
   );
 }
 
+function couldContainStrictMatch(
+  patterns: readonly WorkspacePattern[],
+  relative: string,
+): boolean {
+  const segments = relative.split(path.sep);
+  if (
+    patterns.some(
+      (pattern) =>
+        pattern.negative &&
+        pattern.segments.at(-1) === "**" &&
+        matchesSegments(pattern.segments, segments),
+    )
+  )
+    return false;
+  return patterns.some(
+    (pattern) =>
+      !pattern.negative &&
+      prefixCanMatch(pattern.segments, segments, { strictDescendant: true }),
+  );
+}
+
 function matchesSegments(
   pattern: readonly string[],
   input: readonly string[],
@@ -650,6 +677,7 @@ function matchesSegments(
 function prefixCanMatch(
   pattern: readonly string[],
   input: readonly string[],
+  options: { strictDescendant?: boolean } = {},
 ): boolean {
   let states = new Set([0]);
   for (const inputSegment of input) {
@@ -665,7 +693,10 @@ function prefixCanMatch(
     states = next;
     if (states.size === 0) return false;
   }
-  return closeGlobstars(pattern, states).size > 0;
+  const reachable = closeGlobstars(pattern, states);
+  return options.strictDescendant
+    ? [...reachable].some((state) => state < pattern.length)
+    : reachable.size > 0;
 }
 
 function closeGlobstars(
