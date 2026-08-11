@@ -12,8 +12,10 @@ and reconciled. Source-first development-target discovery #57 is merged,
 reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A is
 merged and reconciled through PR #76. Slice 62B's installed host/status shell,
 exact packaged-runtime adapter, and disposable released-bb lifecycle proof are
-locally complete and the pre-commit audit is clean. Exact-head PR review, hosted
-verification, merge, and reconciliation remain in draft PR #78.
+locally complete and the pre-commit audit is clean. The final executable head's
+hosted verify, visual, standalone, and GitGuardian matrix is green. The final
+docs-only head preserves those executable inputs and must pass its exact-head
+review/hosted gates before ready, merge, and reconciliation in draft PR #78.
 
 ## Readiness
 
@@ -27,8 +29,10 @@ and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
 GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
 passed local, hosted, two-lane exact-head review, merge, and reconciliation
 gates. Slice 62B passes its focused, aggregate, build, visual, package,
-managed-lifecycle, and pre-commit audit gates. Exact-head standing and targeted
-reviews plus hosted CI remain before draft PR #78 can leave draft.
+managed-lifecycle, and pre-commit audit gates. The final executable head's
+hosted matrix is terminal green. The docs-only exact head preserves executable
+inputs and remains subject to standing/targeted review and hosted checks before
+draft PR #78 can leave draft.
 Browser bootstrap/topology remains isolated in #70.
 
 ## Baseline
@@ -776,11 +780,23 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   incomplete runtime-manifest stamp. The final tests cover strict empty RPC
   inputs, current-state supervisor returns, exact manifest-byte size/SHA-256,
   valid-shape manifest mutations, and the real released nav-panel Start action.
-- Implementation head `e4b249cc0ccbe3d7bb213741f61b733a574c6979` is
+- Standing round one then found `MATE-BUILD-001`: the ordinary plugin build
+  still embedded the pre-determinism generated runtime stamp while only the
+  package builder transiently compiled the final identity. The committed stamp
+  now matches the fresh `0c032556...` runtime and exact manifest bytes; the
+  managed clean room derives the fresh stamp again and compares its data to the
+  imported committed object. That semantic comparison deliberately survives
+  Prettier formatting, after a source-byte comparison failed both hosted jobs.
+  Ordinary `bb-plugin-mate build`, the full managed lifecycle, and the hosted
+  replacement matrix are green. Standing round one's sole finding is fixed and
+  its superseded scratch report is archived before the final clean round.
+- Final executable head `0ed874318799b4d64a49b99d4c07169d80edc973` is
   pushed in draft PR #78 with an exact verification and distribution-boundary
   body. Issue #62 carries the slice handoff, remains open for 62C, and issue #77
-  remains the independent public-distribution blocker. Hosted checks and the two
-  exact-head review lanes are pending.
+  remains the independent public-distribution blocker. Hosted verify, visual,
+  standalone, and GitGuardian checks are terminal green on that executable head;
+  the docs-only exact-head review/hosted proof, ready, merge, and local
+  reconciliation remain coordinator gates.
 
 ## Prompt / Goal Alignment
 
@@ -801,7 +817,9 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
 source-catalog slices 57A, 57B1, and 57B2, and host-shell slice 62A are merged
 and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B's
-installed `bb-plugin-mate` host/status shell is locally complete and awaits its
-PR #78 review, hosted, merge, and reconciliation gates. Slice 62C still owns runtime
-source admission and opaque target listing. All release/upstream/Connect/
+installed `bb-plugin-mate` host/status shell is locally complete. Its final
+executable head is hosted-green; the docs-only exact head still requires
+standing/targeted review, hosted proof, ready, merge, and reconciliation. Slice
+62C still owns runtime source admission and opaque target listing. All
+release/upstream/Connect/
 normal-profile stop boundaries remain intact.
