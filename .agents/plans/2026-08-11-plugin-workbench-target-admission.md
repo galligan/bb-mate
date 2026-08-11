@@ -1,7 +1,7 @@
 # Plugin Workbench runtime-owned target admission
 
 Date: 2026-08-11
-Status: Active
+Status: Implementation complete; final verification and review active
 Issue: #62 (slice 62C)
 Depends on: PR #78 / 62B merged as `4b6253e4eabd34d437a0d8907c05a87018ddd35c`
 
@@ -25,7 +25,7 @@ credential runtime channel. The runtime remains the sole owner of target state.
 - The public backend SDK exposes `projects.list/get()` and
   `system.config().primaryHostId/dataDir`. Project source paths are available to
   the full-trust plugin backend but must never enter an RPC response.
-- The merged runtime API is capability-v1, opens no catalog, and uses random
+- Before this slice, the merged runtime API was capability-v1, opened no catalog, and used random
   principal/context identities on every launch. Persistent authorized targets
   require a runtime data root and a runtime-owned stable security subject.
 - Canonical target envelopes, private source rows, and the strict stable runtime
@@ -72,21 +72,21 @@ credential runtime channel. The runtime remains the sole owner of target state.
 
 ## TDD execution
 
-1. [ ] Add protocol-v2 frame/descriptor/capability and strict target transport
+1. [x] Add protocol-v2 frame/descriptor/capability and strict target transport
        schemas, including unknown-key, body, origin, scope, and route attacks.
-2. [ ] Compose the CLI runtime data root, catalog, trusted source bridge,
+2. [x] Compose the CLI runtime data root, catalog, trusted source bridge,
        admission controller, authorized list route, persistence/reopen, and
        shutdown cleanup.
-3. [ ] Add plugin data-root composition and an owned runtime client whose
+3. [x] Add plugin data-root composition and an owned runtime client whose
        token/base URL/path facts never enter public snapshots.
-4. [ ] Add released-SDK project filtering and exact project-ID revalidation;
+4. [x] Add released-SDK project filtering and exact project-ID revalidation;
        make `admit({projectId})` the sole demand/admission edge.
-5. [ ] Add strict frontend schema/UI for no-project, idle, admitting, empty,
+5. [x] Add strict frontend schema/UI for no-project, idle, admitting, empty,
        one, many, partial/unavailable/error, hostile-text, keyboard, axe, and
        deterministic visual states. Do not claim source freshness from a
        catalog read; only a vanished client selection gets a generic list-
        changed message.
-6. [ ] Extend the moved standalone and extracted private-package bb 0.36 clean
+6. [x] Extend the moved standalone and extracted private-package bb 0.36 clean
        rooms to prove idle/no DB mutation before demand, admission, opaque list,
        persistence after runtime restart, no target execution, and complete
        cleanup across crash/reload/disable/remove/server loss.
@@ -115,7 +115,7 @@ catalog identity, target execution, native inventory mutation, PATH/Bun/bunx
 fallback, Connect/browser bootstrap, private bb imports, normal-profile
 mutation, publication/release/external redistribution, or upstream edits.
 Stop if released public SDK cannot authoritatively resolve a selected project's
-default primary-host source, if the runtime cannot persist/reopen the same
+unique primary-host local source, if the runtime cannot persist/reopen the same
 authorized targets, or if any lifecycle leaves a listener/process/catalog lock.
 
 ## Done

@@ -1,15 +1,18 @@
 # Plugin Workbench
 
 `bb-plugin-mate` is the released-contract bb host shell for the packaged `bb-mate`
-runtime. The plugin starts no child process until the user opens the Plugin
-Workbench panel and explicitly requests the runtime.
+runtime. Opening the Plugin Workbench panel is read-only. The plugin starts no
+child process until the user explicitly admits an eligible bb project.
 
-The panel reports a finite, redacted point-in-time snapshot on mount and after
-an explicit start or retry action; it does not claim realtime monitoring in this
-slice. Browser launch and source target discovery remain unavailable until their
-dedicated authenticated runtime protocol slices land; the plugin never prints
-or exposes the runtime URL, credential, process id, installed path, or host
-topology.
+The panel reports a finite, redacted point-in-time snapshot on mount, refresh,
+and admission; it does not claim realtime monitoring. It lists released-bb
+projects whose primary-host local source can be admitted, performs bounded
+passive source discovery only after explicit admission, and renders runtime-
+owned opaque target projections. Source paths remain server-private and no
+target code, package script, native plugin lifecycle, or installed-plugin
+inventory is executed or mutated. Browser launch remains unavailable under
+#70. The plugin never prints or exposes the runtime URL, credential, process
+ID, installed path, source path, or host topology.
 
 ## Development
 

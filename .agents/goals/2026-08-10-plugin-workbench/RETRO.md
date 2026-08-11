@@ -811,6 +811,42 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   standing/targeted review gates, ready, merge, and local reconciliation remain
   coordinator gates.
 
+### 62C runtime-owned target admission
+
+- PR #78 subsequently passed both exact-head 5/5 review lanes, merged as
+  `4b6253e4eabd34d437a0d8907c05a87018ddd35c`, and reconciled locally. Issue #62
+  stayed open for the final runtime target-admission slice.
+- Released bb 0.36 nav panels provide no implicit project context. The 62C
+  panel therefore lists bounded eligible projects and requires an explicit
+  selection. `status({})` is read-only; `admit({projectId})` is the only runtime
+  start and source-admission edge. The backend re-resolves exactly one local
+  source on the released primary host through public SDK calls and never sends
+  its path to the browser.
+- The supervisor frame, descriptor, capability document, and route namespace
+  advance together to API 2. FD 3 privately carries the canonical runtime data
+  root; the runtime persists its own stable principal/context identity and
+  opens one catalog beneath that root. The per-child bearer remains ephemeral.
+  Absent-Origin supervisor routes admit a source and list targets only with the
+  exact target scopes.
+- Admission performs bounded passive discovery, one-use inspection transition,
+  and per-target atomic catalog refresh. Public target rows contain only opaque
+  ID, bounded label, plugin ID, and positive revision. No source path, root key,
+  credential, runtime URL, process fact, host fact, native inventory, package
+  path, or browser topology enters the public snapshot.
+- The extracted private-package bb 0.36 proof admits one-target and multi-target
+  projects, preserves target revisions through runtime crash, reload, disable/
+  enable, and graceful reopen, then proves removal, reinstall, forced server-
+  child loss, listener/process cleanup, hostile-PATH nonexecution, log nonleak,
+  inert retained cache bytes, and normal-profile preservation. Its exact local
+  verification artifact contains 14 files with SHA-256
+  `f6f969432a75968246825a8978b73e4ef48c87c641d78558ddefb1a667211450`;
+  the embedded arm64 runtime is 64,849,634 bytes with SHA-256
+  `8a8397f198368f43d81beeac56782c334a20fc0149626b08d5420dbaf327e155`
+  and runtime version `0.1.0-alpha.3`.
+- Browser launch remains unavailable under #70; target execution, native
+  inventory mutation, Connect, publication, and external redistribution remain
+  outside 62C. The private-package and #77 licensing boundary is unchanged.
+
 ## Prompt / Goal Alignment
 
 The prompt carries the `merged` horizon, conditional Gate 0, authority,
@@ -828,11 +864,11 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 ## Final State
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
-source-catalog slices 57A, 57B1, and 57B2, and host-shell slice 62A are merged
-and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B's
-installed `bb-plugin-mate` host/status shell is locally complete. Its final
-replacement head is locally green and is governed by standing/targeted review
-and hosted proof before ready. Ready, merge, and local
-reconciliation remain. Slice 62C still owns runtime source admission and opaque
-target listing. All release/upstream/Connect/
-normal-profile stop boundaries remain intact.
+source-catalog slices 57A, 57B1, and 57B2, and host-shell slices 62A and 62B are
+merged and reconciled; #57 is closed. Host-shell #62 remains open for active
+slice 62C. Its runtime-owned target-admission implementation and extracted
+released-bb lifecycle proof are locally complete; final aggregate verification,
+standing and targeted exact-head review, hosted proof, ready, merge, and local
+reconciliation remain. All release/upstream/Connect/normal-profile stop
+boundaries remain intact, and #77 remains the independent external-
+distribution blocker.
