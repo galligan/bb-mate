@@ -1,7 +1,7 @@
 # Plugin Workbench runtime-owned target admission
 
 Date: 2026-08-11
-Status: Round-one review remediation and artifact reconciliation in progress
+Status: Complete — merged and reconciled
 Issue: #62 (slice 62C)
 Depends on: PR #78 / 62B merged as `4b6253e4eabd34d437a0d8907c05a87018ddd35c`
 
@@ -90,7 +90,7 @@ credential runtime channel. The runtime remains the sole owner of target state.
        rooms to prove idle/no DB mutation before demand, admission, opaque list,
        persistence after runtime restart, no target execution, and complete
        cleanup across crash/reload/disable/remove/server loss.
-7. [ ] Regenerate exact runtime/package stamps, run all local/hosted gates, pass
+7. [x] Regenerate exact runtime/package stamps, run all local/hosted gates, pass
        standing and targeted 5/5 exact-head reviews, merge/reconcile, close #62,
        and update #21.
 

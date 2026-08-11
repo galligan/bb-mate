@@ -1,34 +1,31 @@
 # Plugin Workbench goal retrospective and evidence ledger
 
 Date started: 2026-08-10
-Status: Active
+Status: Complete
 
 ## Summary
 
-The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
-released-capability Gate 0 PR #68, standalone-runtime PR #69, runtime foundation
-#71, source-first development-target discovery #57, and Plugin Workbench host
-slices 62A/62B are merged and reconciled. Host-shell #62 is in its final 62C
-runtime-owned target-admission slice through draft PR #79. Its implementation,
-local matrix, and first hosted matrix are green; exact-head standing and
-targeted review findings are being remediated before ready, merge, and local
-reconciliation.
+The upstream-independent execution goal is complete. Compatibility baseline
+#52, spec/goal PR #53, released-capability Gate 0 PR #68, standalone-runtime PR
+#69, runtime foundation #71, source-first development-target discovery #57, and
+Plugin Workbench host slices 62A/62B/62C are merged and reconciled. Final 62C PR
+#79 merged as `259293a7252735fe15b7beac0af73b683dc0852d`; issue #62 is closed.
+Browser bootstrap/topology #70 and external-distribution compliance #77 remain
+explicitly outside this completed horizon under the open parent #21.
 
 ## Readiness
 
-Active. All predecessor slices through 62B are merged and reconciled. Slice 62C
-passes its focused, aggregate, build, visual, standalone, extracted-package,
-managed-lifecycle, and first hosted gates. Its initial exact-head reviews found
-bounded fail-closed and current-state gaps that must be fixed and independently
-re-reviewed before draft PR #79 can leave draft. Browser bootstrap/topology
-remains isolated in #70, and external distribution remains blocked by #77.
+Complete for the upstream-independent horizon. Slice 62C passed its focused,
+aggregate, build, visual, standalone, extracted-package, managed-lifecycle,
+hosted, and two independent 5/5 exact-head review gates before PR #79 merged and
+reconciled. Browser bootstrap/topology remains isolated in #70, and external
+distribution remains blocked by #77.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/plugin-workbench/runtime-target-admission`; issue #62;
-  draft PR #79.
-- Current merge base: `4b6253e4eabd34d437a0d8907c05a87018ddd35c`.
+- Reconciled main: `259293a7252735fe15b7beac0af73b683dc0852d`, the
+  merge commit for ready PR #79; issue #62 is closed.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -883,13 +880,12 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 ## Final State
 
-Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
-source-catalog slices 57A, 57B1, and 57B2, and host-shell slices 62A and 62B are
-merged and reconciled; #57 is closed. Host-shell #62 remains open for active
-slice 62C. Its runtime-owned target-admission implementation, extracted
-released-bb lifecycle proof, aggregate, and hosted proof are complete. The seven
-first-round review findings and two adjacent replacement-review UI gaps are
-remediated, and final standing plus targeted exact-head review governs
-readiness. Ready, merge, and local reconciliation remain. All release/upstream/
-Connect/normal-profile stop boundaries remain intact, and #77 remains the
-independent external-distribution blocker.
+Execution is complete for the authorized upstream-independent horizon. Gate 0,
+standalone-runtime #56, runtime foundation #55, source-catalog slices 57A, 57B1,
+and 57B2, and host-shell slices 62A, 62B, and 62C are merged and reconciled;
+#57 and #62 are closed. Final PR #79 passed its aggregate, visual, standalone,
+managed-package, duplicate hosted, and two independent 5/5 exact-head review
+gates before merging as `259293a7252735fe15b7beac0af73b683dc0852d`.
+All release/upstream/Connect/normal-profile stop boundaries remain intact. The
+open parent #21 now carries the explicitly separate #70 browser-topology and
+#77 external-distribution horizons.
