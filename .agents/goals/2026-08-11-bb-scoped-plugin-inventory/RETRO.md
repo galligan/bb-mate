@@ -15,11 +15,18 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 - Completion horizon: `ready-pr`.
 - Authority used: preparation goal, packet creation, four read-only delegated
   audits, GitHub issue creation/sub-issue linkage, parent roadmap update.
-- Outcome: preparation complete; direct execution starting.
+- Outcome: preparation and the independently reviewable native project-browser
+  milestone are complete. PR #83 is the first ready-PR candidate; the bb-scoped
+  catalog remains isolated in stacked draft PR #84.
 - Tracker/PR/source-control state: #82 open beneath #21; #62 complete; #70/#77
-  open and out of scope; PR #73 preserved; native redesign uncommitted.
-- Verification: prompt, doctor, Prettier, and diff checks pass.
-- Review state: pending.
+  open and out of scope; PR #73 preserved; PR #83 implementation head
+  `af7b4dd1a712fbe015bd93a249e2d156a382fa44`.
+- Verification: prompt/doctor, Mate 80/80 (378 assertions), plugin check/build,
+  15 Chromium screenshot/axe cases including 420px, Prettier, and diff checks
+  pass on the milestone-A implementation head.
+- Review state: two round-two reviews found only bounded P2s; their route,
+  detail-feedback, responsive-proof, and evidence-ledger dispositions are now
+  implemented for replacement-head review.
 - Remaining risks: batch I/O budgets, workspace syntax, source races, artifact
   identity changes, live auto-start behavior.
 
@@ -27,12 +34,13 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 
 - Prompt checked: 3,994/4,000 characters; no placeholders; passed.
 - Goal/prompt alignment checked: passed after one delegated repair round.
-- Review blockers: none yet.
-- Verification blockers: none for preparation.
+- Review blockers: replacement-head standing and targeted review remain for
+  the milestone-A fixes and final stacked catalog head.
+- Verification blockers: hosted checks must rerun on the replacement heads.
 - Tracker blockers: none; #82 owns the slice and #21 lists it.
 - Authority blockers: merge and release intentionally excluded.
-- Next action: validate the packet, complete preparation, isolate milestone A,
-  and start delegated execution.
+- Next action: push and re-review the milestone-A replacement, then restore the
+  complete bb-scoped catalog checkpoint above it and run package/live proofs.
 
 ## Goal Amendments
 
@@ -60,13 +68,30 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
   unsupported declarations are honest partial root-only scans.
 - Next: Validate prompt/doctor and isolate milestone A.
 - Blockers: None.
+
+2026-08-11 - Native project-browser milestone isolated and hardened
+- Changed: Created draft PR #83 on `feat/plugin-workbench/native-project-browser`,
+  adopted the pinned bb 0.36 component registry, simplified runtime status,
+  added Settings-style reload, plugin detail/task actions, and responsive visual
+  coverage; closed both review rounds' milestone-local findings.
+- Verified: Implementation head `af7b4dd1a712fbe015bd93a249e2d156a382fa44`
+  passes 80 Mate tests / 378 assertions, plugin check/build, and 15 Chromium
+  screenshot/axe cases including a 420px viewport.
+- Result: Milestone A is independently coherent; automatic redirects replace
+  history, detail reload failures remain visible, and stale task states are
+  distinct. The all-project catalog remains only in stacked PR #84.
+- Next: Push/review the replacement head, then restore and finish PR #84.
+- Blockers: Hosted and replacement-head review are pending by design.
 ```
 
 ## Review Log
 
-| Round   | Scope                      | Report  | Score   | State   | Open P0-P2 | Notes                                                        |
-| ------- | -------------------------- | ------- | ------- | ------- | ---------- | ------------------------------------------------------------ |
-| Pending | Preparation/implementation | Pending | Pending | Pending | Pending    | Standing and targeted lanes start after the first milestone. |
+| Round | Scope                 | Report                            | Score | State             | Open P0-P2 | Notes                              |
+| ----- | --------------------- | --------------------------------- | ----- | ----------------- | ---------- | ---------------------------------- |
+| 1     | Milestone A standing  | `standing/round-1.json`           | 3/5   | Changes requested | 8 P2       | Superseded by focused fixes.       |
+| 1     | Milestone A native UI | `targeted-native-ui/round-1.json` | 3/5   | Changes requested | 5 P2       | Superseded by focused fixes.       |
+| 2     | Milestone A standing  | `standing/round-2.json`           | 4/5   | Changes requested | 2 P2       | Redirect/evidence fixes applied.   |
+| 2     | Milestone A native UI | `targeted-native-ui/round-2.json` | 3/5   | Changes requested | 2 P2       | Detail/narrow-proof fixes applied. |
 
 ## Verification Log
 
@@ -76,6 +101,10 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 | `goal-loop-doctor`                    | Packet | Pass   | Packet OK; zero reports at execution start. |
 | `prettier --check`                    | Packet | Pass   | All five Markdown files formatted.          |
 | `git diff --check`                    | Packet | Pass   | No whitespace errors.                       |
+| `bun --filter bb-plugin-mate test`    | PR #83 | Pass   | 80 tests; 378 assertions.                   |
+| `bun --filter bb-plugin-mate check`   | PR #83 | Pass   | Native plugin contracts type-check.         |
+| `bun --filter bb-plugin-mate build`   | PR #83 | Pass   | Released bb plugin build succeeds.          |
+| Mate Chromium visual/axe              | PR #83 | Pass   | 15 cases; wide, 420px, light, and dark.     |
 
 ## Prompt / Goal Alignment
 
@@ -88,12 +117,13 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 
 ## Tracker / PR Log
 
-| Item         | State   | Notes                                                  |
-| ------------ | ------- | ------------------------------------------------------ |
-| GitHub #21   | Open    | Parent roadmap; #82 added, #62 checked, #70/#77 open.  |
-| GitHub #82   | Open    | Focused all-project bb-scoped inventory sub-issue.     |
-| GitHub #73   | Open    | Unrelated Biner setup lane; preserve without mutation. |
-| Inventory PR | Pending | Open draft after coherent commits and focused gates.   |
+| Item       | State | Notes                                                  |
+| ---------- | ----- | ------------------------------------------------------ |
+| GitHub #21 | Open  | Parent roadmap; #82 added, #62 checked, #70/#77 open.  |
+| GitHub #82 | Open  | Focused all-project bb-scoped inventory sub-issue.     |
+| GitHub #73 | Open  | Unrelated Biner setup lane; preserve without mutation. |
+| PR #83     | Draft | Native project browser; replacement review/CI pending. |
+| PR #84     | Draft | Stacked bb-scoped catalog; final restoration pending.  |
 
 ## Follow-Ups
 
