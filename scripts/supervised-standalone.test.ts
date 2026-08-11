@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { EventEmitter } from "node:events";
 import {
+  observeChildClose,
   type StandaloneRuntimeDescriptor,
   validateStandaloneDescriptor,
   within,
@@ -66,5 +68,24 @@ describe("standalone supervision proof", () => {
     await expect(
       within(new Promise(() => undefined), 1, "bounded timeout"),
     ).rejects.toThrow("bounded timeout");
+  });
+
+  test("waits for stdio close so output arriving after exit is observable", async () => {
+    const child = new EventEmitter();
+    const chunks = ["descriptor\n"];
+    let closed = false;
+    const completed = observeChildClose(child).then(() => {
+      closed = true;
+    });
+
+    child.emit("exit", 0, null);
+    chunks.push("late secret output");
+    await Promise.resolve();
+    expect(closed).toBe(false);
+
+    child.emit("close", 0, null);
+    await completed;
+    expect(closed).toBe(true);
+    expect(chunks.join("")).toContain("late secret output");
   });
 });

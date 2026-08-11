@@ -28,6 +28,12 @@ const inspectionManifest = path.join(
   "inspection",
   "package.json",
 );
+const runtimeManifest = path.join(
+  repositoryRoot,
+  "packages",
+  "runtime",
+  "package.json",
+);
 
 async function packageManifest(
   packageName: string,
@@ -136,6 +142,7 @@ export async function generateThirdPartyLicenses(): Promise<string> {
   for (const name of ["saxes", "semver"]) {
     await addPackageTree(name, inspectionManifest, records);
   }
+  await addPackageTree("zod", runtimeManifest, records);
 
   const sections = [
     "# Third-party licenses and copyright notices",

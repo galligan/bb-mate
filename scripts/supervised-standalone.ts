@@ -17,11 +17,22 @@ export interface StandaloneRuntimeDescriptor {
 
 export interface SupervisedRuntime {
   child: ChildProcess;
+  closed: Promise<void>;
   descriptor: Promise<Record<string, unknown>>;
   stdout: () => string;
   stderr: () => string;
   supervisor: Writable;
   token: string;
+}
+
+export function observeChildClose(child: {
+  once(event: "close", listener: () => void): unknown;
+  once(event: "error", listener: (error: Error) => void): unknown;
+}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", () => resolve());
+  });
 }
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -102,6 +113,7 @@ export function spawnSupervisedRuntime(options: {
       stdio: ["ignore", "pipe", "pipe", "pipe"],
     },
   );
+  const closed = observeChildClose(child);
   const stdoutStream = requireReadable(child.stdout, "stdout");
   const stderrStream = requireReadable(child.stderr, "stderr");
   const supervisor = child.stdio[3];
@@ -165,6 +177,7 @@ export function spawnSupervisedRuntime(options: {
 
   return {
     child,
+    closed,
     descriptor,
     stdout: () => Buffer.concat(stdoutChunks).toString("utf8"),
     stderr: () => Buffer.concat(stderrChunks).toString("utf8"),
@@ -211,16 +224,6 @@ export function validateStandaloneDescriptor(
     "Supervised descriptor identity is invalid.",
   );
   return descriptor as unknown as StandaloneRuntimeDescriptor;
-}
-
-export function waitForChildExit(child: ChildProcess): Promise<void> {
-  if (child.exitCode !== null || child.signalCode !== null) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve, reject) => {
-    child.once("error", reject);
-    child.once("exit", () => resolve());
-  });
 }
 
 export async function assertListenerUnavailable(

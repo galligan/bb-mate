@@ -3,7 +3,6 @@ import {
   spawnSupervisedRuntime,
   type SupervisedRuntime,
   validateStandaloneDescriptor,
-  waitForChildExit,
   within,
 } from "./supervised-standalone.ts";
 
@@ -75,7 +74,7 @@ export async function verifyStandaloneSupervision(options: {
 
     runtime.supervisor.end();
     await within(
-      waitForChildExit(runtime.child),
+      runtime.closed,
       5_000,
       "Supervised runtime did not exit when FD3 reached EOF.",
     );
@@ -112,7 +111,7 @@ export async function verifyStandaloneSupervision(options: {
     await monitoredParent.exited;
     monitoredParent = null;
     await within(
-      waitForChildExit(runtime.child),
+      runtime.closed,
       5_000,
       "Supervised runtime survived its monitored parent's disappearance.",
     );
@@ -138,7 +137,7 @@ export async function verifyStandaloneSupervision(options: {
     assert(signalHealth.ok, "Signal-cleanup runtime did not become healthy.");
     runtime.child.kill("SIGTERM");
     await within(
-      waitForChildExit(runtime.child),
+      runtime.closed,
       5_000,
       "Supervised runtime did not stop after SIGTERM.",
     );
@@ -154,7 +153,7 @@ export async function verifyStandaloneSupervision(options: {
     if (runtime) {
       runtime.supervisor.destroy();
       runtime.child.kill("SIGKILL");
-      await waitForChildExit(runtime.child).catch(() => undefined);
+      await runtime.closed.catch(() => undefined);
     }
     if (monitoredParent) {
       monitoredParent.kill("SIGKILL");

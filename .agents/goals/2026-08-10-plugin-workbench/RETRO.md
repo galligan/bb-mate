@@ -494,16 +494,19 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
   passed. The unchanged package clean room remained 41 files/13 stories at
   SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
-- Host-shell slice 62A local implementation gate passed `bun run
-format:check`, `bun run check`, `bun run test`, `bun run build`, `bun run
-compatibility:latest`, `bun run package:inspect`, `bun run standalone:inspect`,
-  and `bun run standalone:test`. The aggregate lane passed 506 tests: inspection
-  136, runtime 175, CLI 57, Workbench 66, Linear plugin 21, and scripts 51. The
-  legacy package clean room remained at 41 files and 13 stories with SHA-256
-  `0b8c30cb9a6c68c3e17fd0066ab21b6fef0a26be3d3a1acfa53475948653a1fe`.
+- Host-shell slice 62A remediation gate passed `bun run format:check`, `bun run
+check`, `bun run test`, `bun run build`, `bun run compatibility:latest`, `bun
+run package:inspect`, `bun run package:test`, `bun run standalone:build`, `bun
+run standalone:inspect`, and `bun run standalone:test`. The aggregate lane
+  passed 510 tests: inspection 136, runtime 175, CLI 60, Workbench 66, Linear
+  plugin 21, and scripts 52. One initial aggregate run hit the existing
+  five-second standalone symlink-ancestor test timeout; the focused 6/6 retry
+  and complete aggregate rerun passed. The legacy package clean room contained
+  41 files and 13 stories with SHA-256
+  `f4fe45151ce055fbf305a54c5dddbe179c6d54a727de42e63325cc13ebb2cb72`.
   The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
   64,783,586 bytes, 35 assets, 13 stories, and SHA-256
-  `15fd53ad017c990a9f3e50b27dd320408d47849fbd895371131ad3ab4159c36e`.
+  `f2ec32ddac59a7dedf036b0220c86ef2bebdeb090ed44811cf7494c3130e0897`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -609,8 +612,17 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   Parent disappearance, extra frame bytes, EOF, SIGINT, and SIGTERM converge on
   one awaited listener stop. The moved empty-PATH executable proves EOF,
   parent-loss-with-FD-open, and signal cleanup without a checkout asset or normal
-  profile. PR #76 remains draft while exact-head hosted checks and independent
-  standing/targeted reviews are pending.
+  profile.
+- Targeted host-shell round 1 found three release blockers after the initial
+  implementation review. THS-001 is fixed by including bundled Zod in generated
+  third-party notices and asserting its MIT license in the package clean room.
+  THS-002 is fixed by inspecting raw origin-form request targets before WHATWG
+  normalization, so encoded-dot, absolute, scheme-relative, backslash, and
+  fragment aliases cannot reach either runtime route. THS-003 is fixed by
+  awaiting child stdio `close`, not only process `exit`, before output-purity and
+  secret-nonleak assertions. Focused regressions reproduce each prior gap and
+  pass after remediation. PR #76 remains draft while the replacement exact-head
+  hosted checks and independent reviews are pending.
 
 ## Prompt / Goal Alignment
 

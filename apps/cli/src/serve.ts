@@ -19,6 +19,7 @@ import {
   readSupervisorChannel,
   type SupervisorChannel,
 } from "./supervisor-channel.ts";
+import { listenRuntimeHttp } from "./runtime-http-listener.ts";
 
 interface RuntimeServer {
   readonly port: number;
@@ -32,7 +33,9 @@ export interface SupervisedServePlatform {
   isParentAlive(pid: number): boolean;
   waitForParentExit(pid: number, signal: AbortSignal): Promise<void>;
   waitForSignal(signal: AbortSignal): Promise<NodeJS.Signals>;
-  listen(fetch: (request: Request) => Promise<Response>): RuntimeServer;
+  listen(
+    fetch: (request: Request) => Promise<Response>,
+  ): RuntimeServer | Promise<RuntimeServer>;
   stdout(value: string): void;
   stderr(value: string): void;
 }
@@ -143,14 +146,7 @@ function productionPlatform(): SupervisedServePlatform {
         process.once("SIGTERM", onTerminate);
         signal.addEventListener("abort", cleanup, { once: true });
       }),
-    listen: (fetch) => {
-      const server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch });
-      if (!server.port) {
-        void server.stop(true);
-        throw new Error("Supervised runtime did not receive a listener port.");
-      }
-      return { port: server.port, stop: () => server.stop(true) };
-    },
+    listen: listenRuntimeHttp,
     stdout: (value) => process.stdout.write(value),
     stderr: (value) => process.stderr.write(value),
   };
@@ -186,7 +182,7 @@ export async function runSupervisedServe(
     const token = Buffer.from(channel.frame.token, "base64url");
     expectedToken = token;
     let handler: ((request: Request) => Promise<Response>) | undefined;
-    server = platform.listen((request) => {
+    server = await platform.listen((request) => {
       if (!handler) return Promise.resolve(new Response(null, { status: 503 }));
       return handler(request);
     });
