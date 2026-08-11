@@ -818,8 +818,8 @@ Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
 source-catalog slices 57A, 57B1, and 57B2, and host-shell slice 62A are merged
 and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B's
 installed `bb-plugin-mate` host/status shell is locally complete. Its final
-executable head is hosted-green; the docs-only exact head still requires
-standing/targeted review, hosted proof, ready, merge, and reconciliation. Slice
-62C still owns runtime source admission and opaque target listing. All
-release/upstream/Connect/
+executable head is hosted-green; the docs-only exact head is governed by
+standing/targeted review and hosted proof before ready. Ready, merge, and local
+reconciliation remain. Slice 62C still owns runtime source admission and opaque
+target listing. All release/upstream/Connect/
 normal-profile stop boundaries remain intact.
