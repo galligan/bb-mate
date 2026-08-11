@@ -50,7 +50,7 @@ async function runtimeFixture() {
     size: bytes.byteLength,
     sha256: createHash("sha256").update(bytes).digest("hex"),
     runtimeVersion: "0.1.0-alpha.2",
-    expectedApiVersion: 1,
+    expectedApiVersion: 2,
   } as const;
   const manifestPath = path.join(path.dirname(executablePath), "manifest.json");
   const { expectedApiVersion: _expectedApiVersion, ...manifestStamp } =
@@ -94,7 +94,7 @@ describe("packaged runtime resolver", () => {
       kind: "available",
       executablePath: fixture.executablePath,
       runtimeVersion: "0.1.0-alpha.2",
-      apiVersion: 1,
+      apiVersion: 2,
       size: fixture.stamp.size,
       sha256: fixture.stamp.sha256,
     });

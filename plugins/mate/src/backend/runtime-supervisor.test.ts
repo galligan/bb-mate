@@ -7,7 +7,7 @@ const available: Extract<RuntimeArtifactResolution, { kind: "available" }> = {
   kind: "available",
   executablePath: "/package/runtime/darwin-arm64/bb-mate",
   runtimeVersion: "0.1.0-alpha.2",
-  apiVersion: 1,
+  apiVersion: 2,
   size: 32,
   sha256: "a".repeat(64),
 };
@@ -21,8 +21,17 @@ function controlledRuntime() {
   const runtime: OwnedRuntime = {
     identity: {
       runtimeVersion: available.runtimeVersion,
-      apiVersion: 1,
+      apiVersion: 2,
       instanceId: "i".repeat(32),
+    },
+    targets: {
+      async list() {
+        return { schemaVersion: 1, state: "ready", targets: [] };
+      },
+      async admit() {
+        return { schemaVersion: 1, state: "ready", targets: [] };
+      },
+      dispose() {},
     },
     closed,
     async stop() {
@@ -54,7 +63,7 @@ describe("runtime supervisor", () => {
     }).toThrow();
     expect(supervisor.status().canStart).toBe(true);
 
-    await supervisor.ensure();
+    await supervisor.ensure("/bb-data/plugins/mate/runtime");
     await expect(service).rejects.toMatchObject({
       name: "NeedsConfigurationError",
     });
@@ -77,20 +86,19 @@ describe("runtime supervisor", () => {
     });
 
     expect(supervisor.status()).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       runtimeState: "idle",
       reason: null,
       runtimeVersion: null,
       apiVersion: null,
       canStart: true,
       browserLaunch: "unavailable",
-      targets: "unavailable_pending_runtime_admission",
     });
     expect(resolves).toBe(0);
 
     const [first, second] = await Promise.all([
-      supervisor.ensure(),
-      supervisor.ensure(),
+      supervisor.ensure("/bb-data/plugins/mate/runtime"),
+      supervisor.ensure("/bb-data/plugins/mate/runtime"),
     ]);
     expect(first).toEqual(second);
     expect(first.runtimeState).toBe("ready");
@@ -121,7 +129,9 @@ describe("runtime supervisor", () => {
           throw new Error("must not launch");
         },
       });
-      expect(await supervisor.ensure()).toMatchObject({
+      expect(
+        await supervisor.ensure("/bb-data/plugins/mate/runtime"),
+      ).toMatchObject({
         runtimeState: "unavailable",
         reason: snapshotReason,
         canStart: false,
@@ -153,8 +163,8 @@ describe("runtime supervisor", () => {
       () => new Error("service unexpectedly resolved"),
       (error: unknown) => error,
     );
-    const first = supervisor.ensure();
-    const second = supervisor.ensure();
+    const first = supervisor.ensure("/bb-data/plugins/mate/runtime");
+    const second = supervisor.ensure("/bb-data/plugins/mate/runtime");
     const stopping = supervisor.stop();
     rejectResolve(new Error("private resolver detail"));
 
@@ -186,12 +196,16 @@ describe("runtime supervisor", () => {
       },
     });
 
-    expect(await supervisor.ensure()).toMatchObject({
+    expect(
+      await supervisor.ensure("/bb-data/plugins/mate/runtime"),
+    ).toMatchObject({
       runtimeState: "failed",
       reason: "startup_failed",
       canStart: true,
     });
-    expect(await supervisor.ensure()).toMatchObject({ runtimeState: "ready" });
+    expect(
+      await supervisor.ensure("/bb-data/plugins/mate/runtime"),
+    ).toMatchObject({ runtimeState: "ready" });
     owned.close();
     await owned.runtime.closed;
     await new Promise<void>((resolve) => setImmediate(resolve));
@@ -211,8 +225,17 @@ describe("runtime supervisor", () => {
         return {
           identity: {
             runtimeVersion: available.runtimeVersion,
-            apiVersion: 1,
+            apiVersion: 2,
             instanceId: "i".repeat(32),
+          },
+          targets: {
+            async list() {
+              return { schemaVersion: 1, state: "ready", targets: [] };
+            },
+            async admit() {
+              return { schemaVersion: 1, state: "ready", targets: [] };
+            },
+            dispose() {},
           },
           closed: Promise.resolve(),
           async stop() {},
@@ -220,7 +243,7 @@ describe("runtime supervisor", () => {
       },
     });
 
-    const returned = await supervisor.ensure();
+    const returned = await supervisor.ensure("/bb-data/plugins/mate/runtime");
     expect(returned).toMatchObject({
       runtimeState: "failed",
       reason: "startup_failed",
@@ -244,7 +267,7 @@ describe("runtime supervisor", () => {
     });
     const controller = new AbortController();
     const firstService = supervisor.runService(controller.signal);
-    await supervisor.ensure();
+    await supervisor.ensure("/bb-data/plugins/mate/runtime");
     first.close();
     await expect(firstService).rejects.toThrow("Packaged runtime stopped.");
 
