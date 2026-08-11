@@ -2,10 +2,14 @@ import { describe, expect, test } from "bun:test";
 
 import { createRequestContext } from "../auth/context.ts";
 import type { PrincipalKind } from "../auth/principals.ts";
-import { createRuntimeHttpHandler } from "./handler.ts";
+import { OpaqueIdSchema } from "../contracts/ids.ts";
+import { RUNTIME_CAPABILITIES } from "../supervision/protocol.ts";
+import { createRuntimeHttpHandler } from "./handler.test-support.ts";
+import { createRuntimeHttpHandler as createRawRuntimeHttpHandler } from "./handler.ts";
 
 const principalId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const bbContextId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+const instanceId = OpaqueIdSchema.parse("d".repeat(32));
 
 function runtimeReader(kind: PrincipalKind) {
   return createRequestContext({
@@ -92,6 +96,11 @@ describe("runtime loopback HTTP routes", () => {
     const context = runtimeReader("browser-session");
     const handle = createRuntimeHttpHandler({
       port: 41_721,
+      identity: {
+        runtimeVersion: "0.1.0",
+        instanceId,
+        capabilities: RUNTIME_CAPABILITIES,
+      },
       authenticate: async () => context,
     });
     const response = await handle(
@@ -103,7 +112,9 @@ describe("runtime loopback HTTP routes", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       schemaVersion: 1,
+      runtimeVersion: "0.1.0",
       apiVersion: 1,
+      instanceId: "dddddddddddddddddddddddddddddddd",
       capabilities: {
         browserBootstrap: false,
         targets: false,
@@ -118,6 +129,32 @@ describe("runtime loopback HTTP routes", () => {
         mcp: false,
       },
     });
+  });
+
+  test("rejects malformed or secret-bearing runtime identity metadata", () => {
+    for (const identity of [
+      undefined,
+      {
+        runtimeVersion: "latest",
+        instanceId: "dddddddddddddddddddddddddddddddd",
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+      {
+        runtimeVersion: "0.1.0",
+        instanceId: "not-an-opaque-id",
+        capabilities: RUNTIME_CAPABILITIES,
+      },
+      {
+        runtimeVersion: "0.1.0",
+        instanceId: "dddddddddddddddddddddddddddddddd",
+        capabilities: RUNTIME_CAPABILITIES,
+        token: "must-not-enter-public-identity",
+      },
+    ]) {
+      expect(() =>
+        createRawRuntimeHttpHandler({ port: 41_721, identity } as never),
+      ).toThrow(new TypeError("Invalid runtime HTTP identity"));
+    }
   });
 
   test("returns redacted errors for missing or insufficient authentication", async () => {

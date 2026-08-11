@@ -1,6 +1,12 @@
 import { authorize } from "../auth/authorize.ts";
 import type { RequestContext } from "../auth/context.ts";
+import type { OpaqueId } from "../contracts/ids.ts";
 import { RuntimeError, type RuntimeErrorCode } from "../errors.ts";
+import {
+  RUNTIME_API_VERSION,
+  RuntimeCapabilityDocumentSchema,
+  type RuntimeCapabilitiesV1,
+} from "../supervision/protocol.ts";
 
 export type RuntimeHttpAuthenticator = (
   request: Request,
@@ -8,7 +14,14 @@ export type RuntimeHttpAuthenticator = (
 
 export interface RuntimeHttpHandlerOptions {
   port: number;
+  identity: RuntimeHttpIdentity;
   authenticate?: RuntimeHttpAuthenticator;
+}
+
+export interface RuntimeHttpIdentity {
+  runtimeVersion: string;
+  instanceId: OpaqueId;
+  capabilities: RuntimeCapabilitiesV1;
 }
 
 export type RuntimeHttpHandler = (request: Request) => Promise<Response>;
@@ -23,22 +36,10 @@ const SECURITY_HEADERS = {
 } as const;
 const MAX_REQUEST_BODY_BYTES = 256 * 1024;
 const MAX_CONCURRENT_REQUESTS = 32;
-const CAPABILITIES_DOCUMENT = Object.freeze({
-  schemaVersion: 1,
-  apiVersion: 1,
-  capabilities: Object.freeze({
-    browserBootstrap: false,
-    targets: false,
-    sessions: false,
-    annotations: false,
-    captures: false,
-    comparisons: false,
-    pluginBriefs: false,
-    reviews: false,
-    events: false,
-    artifacts: false,
-    mcp: false,
-  }),
+const RuntimeHttpIdentitySchema = RuntimeCapabilityDocumentSchema.pick({
+  runtimeVersion: true,
+  instanceId: true,
+  capabilities: true,
 });
 
 interface JsonResponseInit {
@@ -140,6 +141,7 @@ function statusForRuntimeError(error: RuntimeError): number {
 
 export function createRuntimeHttpHandler({
   port,
+  identity,
   authenticate = async () => undefined,
 }: RuntimeHttpHandlerOptions): RuntimeHttpHandler {
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -147,6 +149,20 @@ export function createRuntimeHttpHandler({
       "Runtime HTTP port must be an integer from 1 through 65535",
     );
   }
+
+  let parsedIdentity: RuntimeHttpIdentity;
+  try {
+    parsedIdentity = RuntimeHttpIdentitySchema.parse(identity);
+  } catch {
+    throw new TypeError("Invalid runtime HTTP identity");
+  }
+  const capabilitiesDocument = Object.freeze({
+    schemaVersion: 1 as const,
+    runtimeVersion: parsedIdentity.runtimeVersion,
+    apiVersion: RUNTIME_API_VERSION,
+    instanceId: parsedIdentity.instanceId,
+    capabilities: Object.freeze(parsedIdentity.capabilities),
+  });
 
   const origin = `http://127.0.0.1:${port}`;
   const authority = `127.0.0.1:${port}`;
@@ -264,7 +280,7 @@ export function createRuntimeHttpHandler({
           }
           return forRequestMethod(
             request,
-            json(CAPABILITIES_DOCUMENT, undefined, requestOrigin),
+            json(capabilitiesDocument, undefined, requestOrigin),
           );
         } catch (error) {
           const runtimeError =

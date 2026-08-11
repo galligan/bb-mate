@@ -1,7 +1,7 @@
 # Plugin Workbench host shell and supervised runtime
 
 Date: 2026-08-10
-Status: Active — slice 62A implementation pending
+Status: Slice 62A implementation complete; exact-head review pending
 Issue: #62
 Parent: #21
 Depends on: #54, #55, #56, and #57 (all merged)
@@ -31,10 +31,11 @@ Issue #62 closes only after both slices merge and reconcile.
 
 ## 62A protocol contract
 
-- `bb-mate serve --host 127.0.0.1 --port 0 --json --parent-pid <pid>
---supervisor-fd 3` is the only supervised entrypoint. It bypasses passive
-  target inspection and rejects non-numerical loopback, missing JSON mode,
-  invalid FDs, and unexpected positional targets.
+- `bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd 3` is the
+  only supervised entrypoint. The host is fixed internally to numerical
+  `127.0.0.1`; supervised mode exposes no caller-selected host option. It
+  bypasses passive target inspection and rejects host overrides, missing JSON
+  mode, invalid FDs, and unexpected positional targets.
 - FD 3 carries one strict, bounded JSON line with schema/runtime/API
   expectations, a 32-byte base64url credential, principal ID, and bb-context
   ID. The writer keeps that same pipe open; extra bytes are a protocol error and
@@ -89,15 +90,15 @@ Issue #62 closes only after both slices merge and reconcile.
 
 ## TDD execution
 
-1. [ ] Add strict supervisor-frame and launch-descriptor contracts with bounds,
+1. [x] Add strict supervisor-frame and launch-descriptor contracts with bounds,
        unknown-field rejection, secret redaction, and version/capability
        equality tests.
-2. [ ] Add `serve` argument handling and ensure it bypasses inspection, binds
+2. [x] Add `serve` argument handling and ensure it bypasses inspection, binds
        only numerical loopback/port zero, prints one descriptor line, and keeps
        logs on stderr.
-3. [ ] Add bearer authentication, FD liveness, parent/signal shutdown, bounded
+3. [x] Add bearer authentication, FD liveness, parent/signal shutdown, bounded
        request handling, and idempotent listener cleanup tests.
-4. [ ] Extend the moved empty-PATH standalone clean room to prove the private
+4. [x] Extend the moved empty-PATH standalone clean room to prove the private
        channel, descriptor/capability handshake, EOF/orphan cleanup, no checkout
        assets, and no leaked secret.
 5. [ ] Run focused, aggregate, package, standalone, hosted, and two independent

@@ -12,6 +12,7 @@ import {
   runCapturedCommand,
   runInheritedCommand,
 } from "./native.ts";
+import { runSupervisedServe } from "./serve.ts";
 import { runSurfaceLab } from "./surface-lab-server.ts";
 
 export type BbMateEntrypointOptions =
@@ -19,10 +20,12 @@ export type BbMateEntrypointOptions =
       mode: "source-or-package";
       moduleUrl: string;
       bunExecutable: string;
+      runtimeVersion: string;
     }
   | {
       mode: "standalone";
       assets: EmbeddedLabAssetMap;
+      runtimeVersion: string;
     };
 
 interface EntrypointEnvironment {
@@ -110,6 +113,10 @@ export async function createBbMateCliRuntime(
         env: nativeCommandEnv(current.env),
       }),
     runInherited: runInheritedCommand,
+    runServe: (serveOptions) =>
+      runSupervisedServe(serveOptions, {
+        runtimeVersion: options.runtimeVersion,
+      }),
   };
 }
 

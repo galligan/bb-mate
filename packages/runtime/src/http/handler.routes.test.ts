@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { createRequestContext } from "../auth/context.ts";
-import { createRuntimeHttpHandler } from "./handler.ts";
+import { createRuntimeHttpHandler } from "./handler.test-support.ts";
 
 const principal = createRequestContext({
   id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

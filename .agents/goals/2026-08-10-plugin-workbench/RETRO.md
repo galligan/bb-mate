@@ -494,6 +494,16 @@ standalone:inspect`. The remediation aggregate test lane passed 483 tests:
   passed. The unchanged package clean room remained 41 files/13 stories at
   SHA-256
   `e4e726bb0209adb43673942f9a33cc7243f5c82064eddea1231ff8bb82c73e6d`.
+- Host-shell slice 62A local implementation gate passed `bun run
+format:check`, `bun run check`, `bun run test`, `bun run build`, `bun run
+compatibility:latest`, `bun run package:inspect`, `bun run standalone:inspect`,
+  and `bun run standalone:test`. The aggregate lane passed 506 tests: inspection
+  136, runtime 175, CLI 57, Workbench 66, Linear plugin 21, and scripts 51. The
+  legacy package clean room remained at 41 files and 13 stories with SHA-256
+  `0b8c30cb9a6c68c3e17fd0066ab21b6fef0a26be3d3a1acfa53475948653a1fe`.
+  The twice-built moved standalone was deterministic, Mach-O arm64, mode 0755,
+  64,783,586 bytes, 35 assets, 13 stories, and SHA-256
+  `15fd53ad017c990a9f3e50b27dd320408d47849fbd895371131ad3ab4159c36e`.
 - PR #52 final local gate: `bun run format:check && bun run check && bun run
 test && bun run build && bun run compatibility:latest` passed; package clean
   room produced 41 files, 13 stories, SHA-256
@@ -591,6 +601,16 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   #21 now records source-first development-target discovery as merged. The
   unrelated #73 lane remains isolated in its pre-existing force-push-required
   state.
+- Slice 62A now supplies the prerequisite protocol that #62 previously lacked.
+  The strict inherited FD carries one bounded credential frame and remains the
+  primary liveness signal; port-zero `serve` binds only numerical loopback,
+  emits one bounded descriptor line, and exposes only constant health plus an
+  authenticated capability document with exact runtime/API/instance identity.
+  Parent disappearance, extra frame bytes, EOF, SIGINT, and SIGTERM converge on
+  one awaited listener stop. The moved empty-PATH executable proves EOF,
+  parent-loss-with-FD-open, and signal cleanup without a checkout asset or normal
+  profile. PR #76 remains draft while exact-head hosted checks and independent
+  standing/targeted reviews are pending.
 
 ## Prompt / Goal Alignment
 
@@ -610,7 +630,8 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
 source-catalog slices 57A, 57B1, and 57B2 are merged and reconciled; #57 is
-closed. Host-shell #62 is active with an explicit merge-first split: 62A adds
-the supervised runtime protocol, then 62B packages and supervises that exact
-runtime from `bb-plugin-mate`. All release/upstream/Connect/normal-profile stop
-boundaries remain intact.
+closed. Host-shell #62 is active with an explicit merge-first split: 62A's
+implementation and local verification are complete in draft PR #76, with
+exact-head review and hosted readiness pending; 62B then packages and
+supervises that exact runtime from `bb-plugin-mate`. All
+release/upstream/Connect/normal-profile stop boundaries remain intact.

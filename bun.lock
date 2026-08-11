@@ -19,6 +19,7 @@
       },
       "dependencies": {
         "@bb-mate/inspection": "workspace:*",
+        "@bb-mate/runtime": "workspace:*",
       },
       "devDependencies": {
         "@types/bun": "^1.3.4",

@@ -126,6 +126,7 @@ export async function inspectStandaloneAssets(
 export function generateStandaloneEntry(options: {
   assets: readonly StandaloneAsset[];
   entrypointPath: string;
+  runtimeVersion: string;
 }): string {
   const assets = [...options.assets].sort((left, right) =>
     compareText(left.route, right.route),
@@ -145,6 +146,7 @@ export function generateStandaloneEntry(options: {
     "",
     "const result = await runBbMateEntrypoint({",
     '  mode: "standalone",',
+    `  runtimeVersion: ${JSON.stringify(options.runtimeVersion)},`,
     "  assets: {",
     ...manifest,
     "  },",

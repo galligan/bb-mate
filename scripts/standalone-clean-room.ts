@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildStandalone } from "./build-standalone.ts";
 import { inspectStandalone } from "./inspect-standalone.ts";
+import { verifyStandaloneSupervision } from "./standalone-supervision-clean-room.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const labRoot = path.join(repositoryRoot, "apps", "workbench", "dist", "ladle");
@@ -310,6 +311,14 @@ try {
     `Standalone output did not identify its embedded lab.\n${stderr}`,
   );
   server = null;
+
+  await verifyStandaloneSupervision({
+    executable: movedExecutable,
+    cwd: workspaceRoot,
+    env: runtimeEnv,
+    runtimeVersion: inspected.manifest.runtimeVersion,
+    temporaryRoot,
+  });
 
   console.log(
     `Standalone clean room passed: ${inspected.manifest.target}, mode ${inspected.manifest.mode}, ${inspected.manifest.size} bytes, sha256 ${inspected.manifest.sha256}, ${inspected.manifest.assets.length} assets, 13 stories.`,
