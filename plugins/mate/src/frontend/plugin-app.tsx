@@ -193,10 +193,10 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       : undefined;
   useEffect(() => {
     const malformedRoute = subPath !== "" && route === null;
-    const missingProject =
+    const invalidProject =
       route !== null &&
       snapshot?.projects.state === "ready" &&
-      project === undefined;
+      project?.admission !== "available";
     const missingTerminalTarget =
       route !== null &&
       openedProjectId === route.projectId &&
@@ -210,7 +210,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       selectionMessage === projectOpenFailedMessage;
     if (
       !malformedRoute &&
-      !missingProject &&
+      !invalidProject &&
       !missingTerminalTarget &&
       !routeOpenFailed
     ) {

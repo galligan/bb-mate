@@ -225,6 +225,25 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
+  test("recovers a detail route for a project that is no longer eligible", async () => {
+    const ineligibleSnapshot = snapshot();
+    ineligibleSnapshot.projects.items[0] = {
+      id: "project_01",
+      label: "BB Mate",
+      admission: "no_source",
+    };
+    rpcImplementation = () => Promise.resolve(ineligibleSnapshot);
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
   test("recovers when a requested plugin is absent after project discovery", async () => {
     rpcImplementation = () =>
       Promise.resolve(snapshot({ state: "ready", items: [] }));
