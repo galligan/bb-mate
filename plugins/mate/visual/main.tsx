@@ -174,7 +174,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       },
     }),
     selectedProjectId: project.id,
-    selectedTargetId: targetB,
+    selectedTargetId: null,
     selectionMessage: "The target list changed. Choose a target.",
   },
   hostile: {
@@ -186,7 +186,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       },
       targets: {
         state: "ready",
-        items: [{ ...target, label: '<script>alert("x")</script>' }],
+        items: [{ ...target, label: '<script>alert("x")' }],
       },
     }),
     selectedProjectId: project.id,

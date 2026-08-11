@@ -13,14 +13,19 @@ const safeLabel = (maximum: number) =>
     .min(1)
     .refine(
       (value) =>
-        value === value.trim() && !/[\u0000-\u001f\u007f]/u.test(value),
+        value === value.trim() &&
+        !/[\u0000-\u001f\u007f\\/]/u.test(value) &&
+        value !== "." &&
+        value !== ".." &&
+        value !== "~" &&
+        !/^[A-Za-z]:/u.test(value),
     );
 
 export const projectIdSchema = utf8Bytes(128)
   .min(1)
   .regex(/^[A-Za-z0-9_-]+$/u);
 
-const projectOptionSchema = z
+export const projectOptionSchema = z
   .object({
     id: projectIdSchema,
     label: safeLabel(256),

@@ -134,6 +134,19 @@ describe("Plugin Workbench frontend snapshot", () => {
         projects: {
           state: "ready",
           items: [
+            {
+              id: projectId,
+              label: "/Users/private/project",
+              admission: "available",
+            },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        projects: {
+          state: "ready",
+          items: [
             readySnapshot.projects.items[0],
             readySnapshot.projects.items[0],
           ],
@@ -152,6 +165,18 @@ describe("Plugin Workbench frontend snapshot", () => {
           state: "ready",
           items: [
             { ...readySnapshot.targets.items[0], label: "x".repeat(129) },
+          ],
+        },
+      },
+      {
+        ...readySnapshot,
+        targets: {
+          state: "ready",
+          items: [
+            {
+              ...readySnapshot.targets.items[0],
+              label: String.raw`C:\private\plugin`,
+            },
           ],
         },
       },
@@ -208,6 +233,38 @@ describe("Plugin Workbench frontend snapshot", () => {
     }
   });
 
+  test("rejects path-shaped project and target labels", () => {
+    for (const label of [
+      "/Users/test/plugin",
+      "folder/plugin",
+      String.raw`C:\Users\test\plugin`,
+      String.raw`folder\plugin`,
+      "C:plugin",
+      ".",
+      "..",
+      "~",
+    ]) {
+      expect(() =>
+        parsePluginWorkbenchSnapshot({
+          ...readySnapshot,
+          projects: {
+            state: "ready",
+            items: [{ id: projectId, label, admission: "available" }],
+          },
+        }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+      expect(() =>
+        parsePluginWorkbenchSnapshot({
+          ...readySnapshot,
+          targets: {
+            state: "ready",
+            items: [{ ...readySnapshot.targets.items[0], label }],
+          },
+        }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+    }
+  });
+
   test("rejects every half-present or state-incoherent runtime identity", () => {
     const states = [
       ["idle", null, true],
@@ -236,6 +293,78 @@ describe("Plugin Workbench frontend snapshot", () => {
         parsePluginWorkbenchSnapshot({ ...base, ...wrongIdentity }),
       ).toThrow("Plugin Workbench returned an invalid snapshot.");
     }
+  });
+
+  test("requires target catalog state to match runtime readiness", () => {
+    const nonReadyStates = [
+      ["idle", null, true, null],
+      ["starting", null, false, null],
+      ["stopping", null, false, "0.7.0"],
+      ["unavailable", "artifact_missing", false, null],
+      ["failed", "startup_failed", true, null],
+    ] as const;
+    for (const [
+      runtimeState,
+      reason,
+      canStart,
+      runtimeVersion,
+    ] of nonReadyStates) {
+      const base = {
+        ...readySnapshot,
+        runtimeState,
+        reason,
+        canStart,
+        runtimeVersion,
+        apiVersion: runtimeVersion === null ? null : 2,
+      };
+      for (const targets of [
+        readySnapshot.targets,
+        { state: "partial", items: readySnapshot.targets.items },
+        { state: "project_not_selected", items: [] },
+        { state: "unavailable", reason: "catalog_unavailable", items: [] },
+      ] as const) {
+        expect(() =>
+          parsePluginWorkbenchSnapshot({ ...base, targets }),
+        ).toThrow("Plugin Workbench returned an invalid snapshot.");
+      }
+      for (const targetReason of [
+        "runtime_not_ready",
+        "runtime_incompatible",
+      ] as const) {
+        expect(
+          parsePluginWorkbenchSnapshot({
+            ...base,
+            targets: { state: "unavailable", reason: targetReason, items: [] },
+          }).targets,
+        ).toEqual({ state: "unavailable", reason: targetReason, items: [] });
+      }
+    }
+
+    for (const targetReason of [
+      "runtime_not_ready",
+      "runtime_incompatible",
+    ] as const) {
+      expect(() =>
+        parsePluginWorkbenchSnapshot({
+          ...readySnapshot,
+          targets: { state: "unavailable", reason: targetReason, items: [] },
+        }),
+      ).toThrow("Plugin Workbench returned an invalid snapshot.");
+    }
+    expect(
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        targets: {
+          state: "unavailable",
+          reason: "catalog_unavailable",
+          items: [],
+        },
+      }).targets,
+    ).toEqual({
+      state: "unavailable",
+      reason: "catalog_unavailable",
+      items: [],
+    });
   });
 
   test("accepts only strict status and admit inputs", () => {

@@ -33,9 +33,7 @@ for (const fixture of fixtures) {
 
     if (fixture.state === "hostile") {
       await expect(panel.locator("img, script")).toHaveCount(0);
-      await expect(
-        panel.getByText('<script>alert("x")</script>'),
-      ).toBeVisible();
+      await expect(panel.getByText('<script>alert("x")')).toBeVisible();
     }
     if (fixture.state === "multiple") {
       const radios = panel.getByRole("radio");

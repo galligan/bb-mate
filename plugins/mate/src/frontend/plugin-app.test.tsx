@@ -262,11 +262,13 @@ describe("Plugin Workbench app registration", () => {
     const next = document.querySelector(
       'input[type="radio"]',
     ) as HTMLInputElement;
-    expect(next.checked).toBe(true);
+    expect(next.checked).toBe(false);
     expect(document.body.textContent).toContain(
       "The target list changed. Choose a target.",
     );
     expect(document.body.textContent).not.toContain(targetA);
+    await act(async () => next.click());
+    expect(next.checked).toBe(true);
   });
 
   test("ignores superseded status responses and never polls", async () => {

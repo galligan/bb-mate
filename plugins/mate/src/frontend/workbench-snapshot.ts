@@ -102,7 +102,11 @@ function isDisplayLabel(value: unknown, maximumBytes: number): value is string {
   return (
     isBoundedString(value, 1, maximumBytes) &&
     value.trim() === value &&
-    !/[\u0000-\u001f\u007f]/u.test(value)
+    !/[\u0000-\u001f\u007f\\/]/u.test(value) &&
+    value !== "." &&
+    value !== ".." &&
+    value !== "~" &&
+    !/^[A-Za-z]:/u.test(value)
   );
 }
 
@@ -226,6 +230,19 @@ function hasCoherentState(snapshot: PluginWorkbenchSnapshot): boolean {
   if (
     (snapshot.runtimeState === "ready" ||
       snapshot.runtimeState === "stopping") !== hasRuntimeIdentity
+  ) {
+    return false;
+  }
+  if (snapshot.runtimeState === "ready") {
+    if (
+      snapshot.targets.state === "unavailable" &&
+      snapshot.targets.reason !== "catalog_unavailable"
+    ) {
+      return false;
+    }
+  } else if (
+    snapshot.targets.state !== "unavailable" ||
+    snapshot.targets.reason === "catalog_unavailable"
   ) {
     return false;
   }

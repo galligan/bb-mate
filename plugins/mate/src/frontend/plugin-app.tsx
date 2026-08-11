@@ -56,11 +56,14 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
         const currentRemains =
           currentTarget !== null &&
           next.targets.items.some(({ id }) => id === currentTarget);
-        nextTarget = currentRemains
-          ? currentTarget
-          : next.targets.items.length === 1
-            ? (next.targets.items[0]?.id ?? null)
-            : null;
+        nextTarget =
+          currentTarget !== null
+            ? currentRemains
+              ? currentTarget
+              : null
+            : next.targets.items.length === 1
+              ? (next.targets.items[0]?.id ?? null)
+              : null;
         nextMessage =
           currentTarget !== null && !currentRemains ? listChangedMessage : null;
       }

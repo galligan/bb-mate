@@ -5,6 +5,7 @@ import { CurrentProjectTargetAdmissionRequestSchema } from "@bb-mate/runtime/sup
 import {
   projectCatalogSchema,
   projectIdSchema,
+  projectOptionSchema,
   type ProjectCatalog,
 } from "./workbench-contract.ts";
 
@@ -84,21 +85,16 @@ export async function listProjectOptions(
       sdk.projects.list(),
     ]);
     const items = projects
-      .filter(
-        (project) =>
-          projectIdSchema.safeParse(project.id).success &&
-          project.name === project.name.trim() &&
-          project.name.length > 0 &&
-          !/[\u0000-\u001f\u007f]/u.test(project.name) &&
-          new TextEncoder().encode(project.name).byteLength <= 256,
-      )
-      .map((project) => ({
-        id: project.id,
-        label: project.name,
-        admission: sourceFor(project, primaryHostId)
-          ? ("available" as const)
-          : ("no_source" as const),
-      }))
+      .flatMap((project) => {
+        if (!projectIdSchema.safeParse(project.id).success) return [];
+        if (!sourceFor(project, primaryHostId)) return [];
+        const option = projectOptionSchema.safeParse({
+          id: project.id,
+          label: project.name,
+          admission: "available",
+        });
+        return option.success ? [option.data] : [];
+      })
       .sort(
         (left, right) =>
           left.label.localeCompare(right.label) ||

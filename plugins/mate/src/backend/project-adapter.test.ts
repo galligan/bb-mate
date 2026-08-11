@@ -71,9 +71,10 @@ describe("released bb project adapter", () => {
     ];
     for (const sources of variants) {
       const api = sdk([project({ sources })]);
-      expect((await listProjectOptions(api)).items[0]?.admission).toBe(
-        "no_source",
-      );
+      expect(await listProjectOptions(api)).toEqual({
+        state: "ready",
+        items: [],
+      });
       await expect(resolveProjectSource(api, "project-1")).rejects.toThrow(
         "Project source unavailable",
       );
@@ -85,14 +86,60 @@ describe("released bb project adapter", () => {
       project({ id: "project-b", name: "Zulu", sources: [] }),
       project({ id: "project-a", name: "Alpha", sources: [] }),
       project({ id: "../private", name: "Leaky", sources: [] }),
+      project({ id: "project-path", name: "folder/project", sources: [] }),
     ]);
     expect(await listProjectOptions(api)).toEqual({
       state: "ready",
-      items: [
-        { id: "project-a", label: "Alpha", admission: "no_source" },
-        { id: "project-b", label: "Zulu", admission: "no_source" },
+      items: [],
+    });
+  });
+
+  test("omits 128 ineligible projects without crowding out an eligible Zulu project", async () => {
+    const ineligible = Array.from({ length: 128 }, (_, index) =>
+      project({
+        id: `project-${String(index).padStart(3, "0")}`,
+        name: `Alpha ${String(index).padStart(3, "0")}`,
+        sources: [],
+      }),
+    );
+    const eligible = project({
+      id: "project-zulu",
+      name: "Zulu",
+      sources: [
+        source({
+          id: "source-zulu",
+          projectId: "project-zulu",
+          path: "/Users/test/zulu",
+        }),
       ],
     });
+    const result = await listProjectOptions(sdk([...ineligible, eligible]));
+    expect(result).toEqual({
+      state: "ready",
+      items: [{ id: "project-zulu", label: "Zulu", admission: "available" }],
+    });
+  });
+
+  test("sorts and bounds eligible projects at the exact 128-item boundary", async () => {
+    const projects = Array.from({ length: 129 }, (_, index) =>
+      project({
+        id: `project-${String(index).padStart(3, "0")}`,
+        name: `Project ${String(index).padStart(3, "0")}`,
+        sources: [
+          source({
+            id: `source-${index}`,
+            projectId: `project-${String(index).padStart(3, "0")}`,
+            path: `/Users/test/project-${index}`,
+          }),
+        ],
+      }),
+    );
+    const result = await listProjectOptions(sdk(projects));
+    expect(result.items).toHaveLength(128);
+    expect(result.items[0]?.id).toBe("project-000");
+    expect(result.items.at(-1)?.id).toBe("project-127");
+    expect(result.items.some(({ id }) => id === "project-128")).toBe(false);
+    expect(new Set(result.items.map(({ id }) => id)).size).toBe(128);
   });
 
   test("derives only the fixed runtime leaf from a canonical bb data directory", async () => {

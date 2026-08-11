@@ -48,6 +48,47 @@ describe("Plugin Workbench v2 contract", () => {
         },
       }).success,
     ).toBe(false);
+
+    for (const label of [
+      "/Users/test/plugin",
+      "folder/plugin",
+      String.raw`C:\Users\test\plugin`,
+      String.raw`folder\plugin`,
+      "C:plugin",
+      ".",
+      "..",
+      "~",
+    ]) {
+      expect(
+        workbenchSnapshotSchema.safeParse({
+          ...idle,
+          projects: {
+            state: "ready",
+            items: [{ id: "project-1", label, admission: "available" }],
+          },
+        }).success,
+      ).toBe(false);
+      expect(
+        workbenchSnapshotSchema.safeParse({
+          ...idle,
+          runtimeState: "ready",
+          runtimeVersion: "0.1.0",
+          apiVersion: 2,
+          canStart: false,
+          targets: {
+            state: "ready",
+            items: [
+              {
+                id: "t".repeat(32),
+                label,
+                pluginId: "example",
+                revision: 1,
+              },
+            ],
+          },
+        }).success,
+      ).toBe(false);
+    }
   });
 
   test("requires coherent runtime identity and unique bounded items", () => {
