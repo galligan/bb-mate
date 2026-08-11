@@ -14,9 +14,6 @@ const boundedUtf8 = (maximumBytes: number) =>
       (value) => new TextEncoder().encode(value).byteLength <= maximumBytes,
       `Must be at most ${maximumBytes} UTF-8 bytes.`,
     );
-const projectIdSchema = boundedUtf8(128)
-  .min(1)
-  .regex(/^[A-Za-z0-9_-]+$/u);
 const runtimeVersionSchema = boundedUtf8(64)
   .min(1)
   .regex(/^[0-9A-Za-z][0-9A-Za-z._+-]*$/u);
@@ -71,11 +68,11 @@ const snapshotSchema = z
 
 export const rpcContract = defineRpcContract({
   status: {
-    input: z.object({ projectId: projectIdSchema.nullable() }).strict(),
+    input: z.object({}).strict(),
     output: snapshotSchema,
   },
   ensure: {
-    input: z.object({ projectId: projectIdSchema }).strict(),
+    input: z.object({}).strict(),
     output: snapshotSchema,
   },
 });
@@ -91,14 +88,7 @@ export function createMatePlugin(supervisor: MateRuntimeSupervisor) {
   return function matePlugin(bb: BbPluginApi): void {
     bb.rpc.register(rpcContract, {
       status: () => supervisor.status(),
-      async ensure({ projectId }) {
-        try {
-          await bb.sdk.projects.get({ projectId });
-        } catch {
-          throw new Error("Project is unavailable.");
-        }
-        return supervisor.ensure();
-      },
+      ensure: () => supervisor.ensure(),
     });
     bb.background.service("runtime", {
       start: (signal) => supervisor.runService(signal),

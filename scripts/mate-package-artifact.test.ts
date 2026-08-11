@@ -33,7 +33,8 @@ function standaloneManifest(): StandaloneManifest {
 
 describe("Mate package runtime artifact", () => {
   test("derives one deterministic embedded runtime stamp", () => {
-    const stamp = createMateRuntimeStamp(standaloneManifest());
+    const manifestBytes = Buffer.from('{"schemaVersion":1}\n');
+    const stamp = createMateRuntimeStamp(standaloneManifest(), manifestBytes);
 
     expect(stamp).toEqual({
       schemaVersion: 1,
@@ -45,6 +46,9 @@ describe("Mate package runtime artifact", () => {
       size: 64_783_586,
       sha256: "a".repeat(64),
       runtimeVersion: "0.1.0-alpha.2",
+      manifestSize: 20,
+      manifestSha256:
+        "80f3d90666804a9335821cdb40782458835ffedaef33088bd1dc5eb3ef85ce61",
       expectedApiVersion: 1,
     });
     expect(serializeMateRuntimeStamp(stamp)).toBe(`${JSON.stringify(stamp)}\n`);
@@ -61,11 +65,34 @@ describe("Mate package runtime artifact", () => {
         "  size: 64783586,",
         `  sha256: "${"a".repeat(64)}",`,
         '  runtimeVersion: "0.1.0-alpha.2",',
+        "  manifestSize: 20,",
+        '  manifestSha256: "80f3d90666804a9335821cdb40782458835ffedaef33088bd1dc5eb3ef85ce61",',
         "  expectedApiVersion: 1,",
         "} as const);",
         "",
       ].join("\n"),
     );
+  });
+
+  test("attests exact bounded manifest bytes including the trailing newline", () => {
+    const manifest = standaloneManifest();
+    const withNewline = createMateRuntimeStamp(
+      manifest,
+      Buffer.from('{"schemaVersion":1}\n'),
+    );
+    const withoutNewline = createMateRuntimeStamp(
+      manifest,
+      Buffer.from('{"schemaVersion":1}'),
+    );
+
+    expect(withNewline.manifestSize).toBe(withoutNewline.manifestSize + 1);
+    expect(withNewline.manifestSha256).not.toBe(withoutNewline.manifestSha256);
+    expect(() => createMateRuntimeStamp(manifest, Buffer.alloc(1))).toThrow(
+      "outside the stamp bound",
+    );
+    expect(() =>
+      createMateRuntimeStamp(manifest, Buffer.alloc(1024 * 1024 + 1)),
+    ).toThrow("outside the stamp bound");
   });
 
   test("accepts only the exact 14-file local-verification payload", () => {
@@ -131,12 +158,17 @@ describe("Mate package runtime artifact", () => {
   });
 
   test("requires the exact runtime identity in the compiled backend", () => {
-    const stamp = createMateRuntimeStamp(standaloneManifest());
+    const stamp = createMateRuntimeStamp(
+      standaloneManifest(),
+      Buffer.from('{"schemaVersion":1}\n'),
+    );
     const compiled = [
       stamp.sha256,
       stamp.runtimeVersion,
       stamp.target,
       String(stamp.size),
+      String(stamp.manifestSize),
+      stamp.manifestSha256,
       "expectedApiVersion:1",
     ].join(";");
 
@@ -150,6 +182,12 @@ describe("Mate package runtime artifact", () => {
     expect(() =>
       assertMateRuntimeStampEmbedded(
         compiled.replace("expectedApiVersion:1", "expectedApiVersion:2"),
+        stamp,
+      ),
+    ).toThrow("does not embed the exact runtime stamp");
+    expect(() =>
+      assertMateRuntimeStampEmbedded(
+        compiled.replace(stamp.manifestSha256, "b".repeat(64)),
         stamp,
       ),
     ).toThrow("does not embed the exact runtime stamp");

@@ -43,11 +43,12 @@
     "types": "bb plugin types .",
     "types:check": "bb plugin types . --check",
     "visual:test": "playwright test --config visual/playwright.config.ts",
-    "visual:update": "playwright test --config visual/playwright.config.ts --update-snapshots"
+    "visual:update": "playwright test --config visual/playwright.config.ts --update-snapshots=all"
   },
   "devDependencies": {
     "@bb-mate/runtime": "workspace:*",
     "@axe-core/playwright": "4.12.1",
+    "@happy-dom/global-registrator": "^18.0.1",
     "@playwright/test": "1.62.1",
     "@types/better-sqlite3": "^7.6.12",
     "@types/bun": "^1.3.4",

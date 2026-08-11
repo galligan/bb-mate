@@ -251,7 +251,10 @@ export async function inspectMatePackageDirectory(
   );
   assertMateRuntimeStampEmbedded(
     serverBundle,
-    createMateRuntimeStamp(packagedRuntime.manifest),
+    createMateRuntimeStamp(
+      packagedRuntime.manifest,
+      packagedRuntime.manifestBytes,
+    ),
   );
   const appBundle = await fs.readFile(
     path.join(resolvedRoot, "dist", "app.js"),

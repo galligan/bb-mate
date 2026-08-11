@@ -22,7 +22,7 @@ const idle: PluginWorkbenchSnapshot = {
   targets: "unavailable_pending_runtime_admission",
 };
 
-function hostFixture(factory = plugin, projectGet = async () => ({})) {
+function hostFixture(factory = plugin) {
   let handlers: Record<string, (input: unknown) => unknown> | undefined;
   let service: { start(signal: AbortSignal): void | Promise<void> } | undefined;
   let dispose: (() => void | Promise<void>) | undefined;
@@ -37,7 +37,6 @@ function hostFixture(factory = plugin, projectGet = async () => ({})) {
         service = value;
       },
     },
-    sdk: { projects: { get: projectGet } },
     onDispose(value: typeof dispose) {
       dispose = value;
     },
@@ -52,21 +51,13 @@ function hostFixture(factory = plugin, projectGet = async () => ({})) {
 
 describe("Plugin Workbench backend", () => {
   test("exports strict separate status and ensure contracts", () => {
+    expect(rpcContract.status.input.safeParse({}).success).toBe(true);
+    expect(rpcContract.ensure.input.safeParse({}).success).toBe(true);
     expect(
       rpcContract.status.input.safeParse({ projectId: null }).success,
-    ).toBe(true);
-    expect(
-      rpcContract.ensure.input.safeParse({ projectId: null }).success,
     ).toBe(false);
     expect(
-      rpcContract.ensure.input.safeParse({ projectId: "p", extra: true })
-        .success,
-    ).toBe(false);
-    expect(
-      rpcContract.ensure.input.safeParse({ projectId: "é".repeat(65) }).success,
-    ).toBe(false);
-    expect(
-      rpcContract.ensure.input.safeParse({ projectId: "../private" }).success,
+      rpcContract.ensure.input.safeParse({ projectId: "project-1" }).success,
     ).toBe(false);
     expect(
       rpcContract.status.output.safeParse({
@@ -113,30 +104,11 @@ describe("Plugin Workbench backend", () => {
       }),
     );
 
-    expect(await host.handlers().status({ projectId: null })).toEqual(idle);
+    expect(await host.handlers().status({})).toEqual(idle);
     expect(ensures).toBe(0);
-    expect(
-      await host.handlers().ensure({ projectId: "project-1" }),
-    ).toMatchObject({ runtimeState: "starting" });
-    expect(ensures).toBe(1);
-
-    const unavailable = hostFixture(
-      createMatePlugin({
-        status: () => idle,
-        async ensure() {
-          ensures += 1;
-          return idle;
-        },
-        async runService() {},
-        async stop() {},
-      }),
-      async () => {
-        throw new Error("private project detail");
-      },
-    );
-    await expect(
-      unavailable.handlers().ensure({ projectId: "stale-project" }),
-    ).rejects.toThrow("Project is unavailable.");
+    expect(await host.handlers().ensure({})).toMatchObject({
+      runtimeState: "starting",
+    });
     expect(ensures).toBe(1);
 
     const controller = new AbortController();

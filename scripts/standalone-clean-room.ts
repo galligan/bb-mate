@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildStandalone } from "./build-standalone.ts";
+import { buildStandaloneFresh } from "./fresh-standalone-build.ts";
 import { inspectStandalone } from "./inspect-standalone.ts";
 import { verifyStandaloneSupervision } from "./standalone-supervision-clean-room.ts";
 
@@ -75,20 +75,25 @@ try {
   const buildRoot = path.join(temporaryRoot, "build");
   const firstCopy = path.join(temporaryRoot, "first-bb-mate");
   const firstManifestCopy = path.join(temporaryRoot, "first-manifest.json");
-  const first = await buildStandalone({ outputRoot: buildRoot });
+  await buildStandaloneFresh({ outputRoot: buildRoot });
+  const first = await inspectStandalone(buildRoot);
   await Promise.all([
     fs.copyFile(first.executablePath, firstCopy),
-    fs.copyFile(first.manifestPath, firstManifestCopy),
+    fs.copyFile(
+      path.join(first.artifactRoot, "manifest.json"),
+      firstManifestCopy,
+    ),
   ]);
 
-  const second = await buildStandalone({ outputRoot: buildRoot });
+  await buildStandaloneFresh({ outputRoot: buildRoot });
+  const second = await inspectStandalone(buildRoot);
   const inspected = await inspectStandalone(buildRoot);
   const [firstExecutable, secondExecutable, firstManifest, secondManifest] =
     await Promise.all([
       fs.readFile(firstCopy),
       fs.readFile(second.executablePath),
       fs.readFile(firstManifestCopy, "utf8"),
-      fs.readFile(second.manifestPath, "utf8"),
+      fs.readFile(path.join(second.artifactRoot, "manifest.json"), "utf8"),
     ]);
   assert(
     firstExecutable.equals(secondExecutable),

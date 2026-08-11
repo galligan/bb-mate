@@ -98,12 +98,18 @@ export interface MateRuntimeStamp {
   size: number;
   sha256: string;
   runtimeVersion: string;
+  manifestSize: number;
+  manifestSha256: string;
   expectedApiVersion: 1;
 }
 
 export function createMateRuntimeStamp(
   manifest: StandaloneManifest,
+  manifestBytes: Uint8Array,
 ): MateRuntimeStamp {
+  if (manifestBytes.byteLength < 2 || manifestBytes.byteLength > 1024 * 1024) {
+    throw new Error("Standalone manifest bytes are outside the stamp bound.");
+  }
   return {
     schemaVersion: 1,
     artifact: manifest.artifact,
@@ -114,6 +120,8 @@ export function createMateRuntimeStamp(
     size: manifest.size,
     sha256: manifest.sha256,
     runtimeVersion: manifest.runtimeVersion,
+    manifestSize: manifestBytes.byteLength,
+    manifestSha256: createHash("sha256").update(manifestBytes).digest("hex"),
     expectedApiVersion: 1,
   };
 }
@@ -137,6 +145,8 @@ export function generateMateRuntimeStampModule(
     `  size: ${stamp.size},`,
     `  sha256: ${JSON.stringify(stamp.sha256)},`,
     `  runtimeVersion: ${JSON.stringify(stamp.runtimeVersion)},`,
+    `  manifestSize: ${stamp.manifestSize},`,
+    `  manifestSha256: ${JSON.stringify(stamp.manifestSha256)},`,
     `  expectedApiVersion: ${stamp.expectedApiVersion},`,
     "} as const);",
     "",
@@ -156,6 +166,8 @@ export function assertMateRuntimeStampEmbedded(
     stamp.runtimeVersion,
     stamp.target,
     String(stamp.size),
+    String(stamp.manifestSize),
+    stamp.manifestSha256,
   ];
   if (
     exactValues.some((value) => !compiledBackend.includes(value)) ||

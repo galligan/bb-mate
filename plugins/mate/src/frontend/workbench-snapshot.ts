@@ -19,13 +19,8 @@ export interface PluginWorkbenchSnapshot {
   targets: "unavailable_pending_runtime_admission";
 }
 
-export interface PluginWorkbenchStatusInput {
-  projectId: string | null;
-}
-
-export interface PluginWorkbenchEnsureInput {
-  projectId: string;
-}
+export type PluginWorkbenchStatusInput = Record<string, never>;
+export type PluginWorkbenchEnsureInput = Record<string, never>;
 
 const runtimeStates = new Set<PluginWorkbenchRuntimeState>([
   "idle",
@@ -65,14 +60,6 @@ function isBoundedString(
   return (
     typeof value === "string" &&
     new TextEncoder().encode(value).byteLength <= maximumBytes
-  );
-}
-
-function isProjectId(value: unknown): value is string {
-  return (
-    isBoundedString(value, 128) &&
-    value.length > 0 &&
-    /^[A-Za-z0-9_-]+$/.test(value)
   );
 }
 
@@ -146,10 +133,7 @@ export function parsePluginWorkbenchSnapshot(
 export function parsePluginWorkbenchStatusInput(
   value: unknown,
 ): PluginWorkbenchStatusInput {
-  if (
-    !isExactRecord(value, ["projectId"]) ||
-    (value.projectId !== null && !isProjectId(value.projectId))
-  ) {
+  if (!isExactRecord(value, [])) {
     throw new Error("Plugin Workbench returned an invalid request.");
   }
   return value as unknown as PluginWorkbenchStatusInput;
@@ -158,7 +142,7 @@ export function parsePluginWorkbenchStatusInput(
 export function parsePluginWorkbenchEnsureInput(
   value: unknown,
 ): PluginWorkbenchEnsureInput {
-  if (!isExactRecord(value, ["projectId"]) || !isProjectId(value.projectId)) {
+  if (!isExactRecord(value, [])) {
     throw new Error("Plugin Workbench returned an invalid request.");
   }
   return value as unknown as PluginWorkbenchEnsureInput;

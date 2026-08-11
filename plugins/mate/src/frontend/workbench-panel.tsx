@@ -98,17 +98,17 @@ export function PluginWorkbenchView({
             <p className="pw-eyebrow">Source-first</p>
             <h2 id="pw-targets-heading">Development targets</h2>
           </div>
-          <span className="pw-stage-badge">Next stage</span>
+          <span className="pw-stage-badge">Unavailable</span>
         </div>
         <div className="pw-empty-state">
           <span className="pw-empty-mark" aria-hidden="true">
             +
           </span>
           <div>
-            <h3>Target discovery is not connected yet</h3>
+            <h3>Target discovery is unavailable in this build</h3>
             <p>
-              Source-first admission lands next. Installed plugins will not be
-              treated as development targets.
+              Development target admission is unavailable in this build.
+              Installed plugins are not treated as development targets.
             </p>
           </div>
         </div>
@@ -119,8 +119,7 @@ export function PluginWorkbenchView({
           <p className="pw-eyebrow">Browser handoff</p>
           <h2 id="pw-browser-heading">Workbench preview</h2>
           <p id="pw-browser-detail">
-            Browser launch needs an authorization handshake that is not
-            available in this build.
+            Browser launch is unavailable in this build.
           </p>
         </div>
         <button type="button" disabled aria-describedby="pw-browser-detail">

@@ -111,40 +111,18 @@ describe("Plugin Workbench frontend snapshot", () => {
     }
   });
 
-  test("accepts only a bounded project context as RPC input", () => {
-    expect(parsePluginWorkbenchStatusInput({ projectId: null })).toEqual({
-      projectId: null,
-    });
-    expect(
-      parsePluginWorkbenchStatusInput({ projectId: "project-123" }),
-    ).toEqual({ projectId: "project-123" });
-    expect(() =>
-      parsePluginWorkbenchStatusInput({
-        projectId: "project-123",
-        sourcePath: "/private/plugin",
-      }),
-    ).toThrow("Plugin Workbench returned an invalid request.");
-    for (const projectId of [
-      "/private/plugin",
-      "http://127.0.0.1",
-      "C:\\plugin",
-      "project id",
+  test("accepts only strict empty RPC inputs", () => {
+    expect(parsePluginWorkbenchStatusInput({})).toEqual({});
+    expect(parsePluginWorkbenchEnsureInput({})).toEqual({});
+    for (const value of [
+      { projectId: "project-123" },
+      { projectId: null },
+      { sourcePath: "/private/plugin" },
+      { token: "secret" },
     ]) {
-      expect(() => parsePluginWorkbenchStatusInput({ projectId })).toThrow(
+      expect(() => parsePluginWorkbenchStatusInput(value)).toThrow(
         "Plugin Workbench returned an invalid request.",
       );
-    }
-  });
-
-  test("requires an explicit project for runtime demand", () => {
-    expect(
-      parsePluginWorkbenchEnsureInput({ projectId: "project-123" }),
-    ).toEqual({ projectId: "project-123" });
-    for (const value of [
-      { projectId: null },
-      { projectId: "" },
-      { projectId: "project-123", sourcePath: "/private/plugin" },
-    ]) {
       expect(() => parsePluginWorkbenchEnsureInput(value)).toThrow(
         "Plugin Workbench returned an invalid request.",
       );

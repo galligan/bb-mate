@@ -1,6 +1,5 @@
 import {
   definePluginApp,
-  useBbContext,
   useRpc,
   type PluginNavPanelProps,
 } from "@bb/plugin-sdk/app";
@@ -10,10 +9,6 @@ import type { rpcContract } from "../../server";
 import "./workbench-panel.css";
 import { PluginWorkbenchBoundary } from "./workbench-boundary";
 import { PluginWorkbenchView } from "./workbench-panel";
-import {
-  applyProjectDemandPolicy,
-  createProjectDemandInput,
-} from "./workbench-project-policy";
 import {
   parsePluginWorkbenchSnapshot,
   type PluginWorkbenchSnapshot,
@@ -31,7 +26,6 @@ const startingSnapshot: PluginWorkbenchSnapshot = {
 };
 
 export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
-  const { projectId } = useBbContext();
   const rpc = useRpc<typeof rpcContract>();
   const generation = useRef(0);
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
@@ -43,7 +37,7 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
     const request = ++generation.current;
     setSnapshot(null);
     setStatusFailed(false);
-    void rpc.call("status", { projectId }).then(
+    void rpc.call("status", {}).then(
       (value) => {
         if (request !== generation.current) return;
         try {
@@ -56,7 +50,7 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
         if (request === generation.current) setStatusFailed(true);
       },
     );
-  }, [projectId, rpc]);
+  }, [rpc]);
 
   useEffect(() => {
     requestStatus();
@@ -66,12 +60,10 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
   }, [requestStatus]);
 
   const demandRuntime = useCallback(() => {
-    const input = createProjectDemandInput(projectId);
-    if (input === null) return;
     const request = ++generation.current;
     setSnapshot(startingSnapshot);
     setStatusFailed(false);
-    void rpc.call("ensure", input).then(
+    void rpc.call("ensure", {}).then(
       (value) => {
         if (request !== generation.current) return;
         try {
@@ -84,7 +76,7 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
         if (request === generation.current) setStatusFailed(true);
       },
     );
-  }, [projectId, rpc]);
+  }, [rpc]);
 
   if (statusFailed) {
     return <PluginWorkbenchBoundary state="failed" onRetry={requestStatus} />;
@@ -92,12 +84,7 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
   if (snapshot === null) {
     return <PluginWorkbenchBoundary state="pending" onRetry={requestStatus} />;
   }
-  return (
-    <PluginWorkbenchView
-      snapshot={applyProjectDemandPolicy(snapshot, projectId)}
-      onDemand={demandRuntime}
-    />
-  );
+  return <PluginWorkbenchView snapshot={snapshot} onDemand={demandRuntime} />;
 }
 
 export default definePluginApp((app) => {

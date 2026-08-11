@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   prepareStandaloneOutputRoot,
   promoteStandaloneOutputRoot,
+  standaloneOutputRootFromArgs,
 } from "./build-standalone.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -26,6 +27,19 @@ afterEach(async () => {
 });
 
 describe("standalone output ownership", () => {
+  test("accepts only one bounded absolute CLI output root", () => {
+    expect(standaloneOutputRootFromArgs([])).toBeUndefined();
+    expect(standaloneOutputRootFromArgs(["/tmp/standalone"])).toBe(
+      "/tmp/standalone",
+    );
+    expect(() => standaloneOutputRootFromArgs(["relative"])).toThrow(
+      "bounded absolute path",
+    );
+    expect(() => standaloneOutputRootFromArgs(["/one", "/two"])).toThrow(
+      "at most one",
+    );
+  });
+
   test("preserves the previous artifact until complete staged output is promoted", async () => {
     const parent = await temporaryRoot();
     const root = path.join(parent, "output");

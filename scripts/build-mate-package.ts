@@ -101,7 +101,10 @@ export async function buildMatePackage(options: {
   const sourceManifest = JSON.parse(sourceManifestText) as Parameters<
     typeof createMateStagedManifest
   >[0];
-  const stamp = createMateRuntimeStamp(standalone.manifest);
+  const stamp = createMateRuntimeStamp(
+    standalone.manifest,
+    standalone.manifestBytes,
+  );
   const thirdPartyNotices = await fs.readFile(
     path.join(repositoryRoot, "apps", "cli", "THIRD_PARTY_NOTICES.md"),
     "utf8",

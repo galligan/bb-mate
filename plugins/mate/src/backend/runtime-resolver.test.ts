@@ -40,7 +40,7 @@ async function runtimeFixture() {
   bytes.writeUInt32LE(2, 12);
   await writeFile(executablePath, bytes, { mode: 0o755 });
   await chmod(executablePath, 0o755);
-  const stamp: RuntimeArtifactStamp = {
+  const artifactStamp = {
     schemaVersion: 1,
     artifact: "bb-mate",
     target: "bun-darwin-arm64",
@@ -51,9 +51,10 @@ async function runtimeFixture() {
     sha256: createHash("sha256").update(bytes).digest("hex"),
     runtimeVersion: "0.1.0-alpha.2",
     expectedApiVersion: 1,
-  };
+  } as const;
   const manifestPath = path.join(path.dirname(executablePath), "manifest.json");
-  const { expectedApiVersion: _expectedApiVersion, ...manifestStamp } = stamp;
+  const { expectedApiVersion: _expectedApiVersion, ...manifestStamp } =
+    artifactStamp;
   const manifest = {
     ...manifestStamp,
     bunVersion: "1.3.4",
@@ -63,7 +64,13 @@ async function runtimeFixture() {
       { route: "index.html", size: 12, sha256: "b".repeat(64) },
     ],
   };
-  await writeFile(manifestPath, JSON.stringify(manifest));
+  const manifestBytes = Buffer.from(JSON.stringify(manifest));
+  const stamp: RuntimeArtifactStamp = {
+    ...artifactStamp,
+    manifestSize: manifestBytes.byteLength,
+    manifestSha256: createHash("sha256").update(manifestBytes).digest("hex"),
+  };
+  await writeFile(manifestPath, manifestBytes);
   return {
     executablePath,
     manifestPath,
@@ -151,6 +158,45 @@ describe("packaged runtime resolver", () => {
       kind: "unavailable",
       reason: "artifact-invalid",
     });
+  });
+
+  test("binds every valid standalone manifest field to the embedded byte hash", async () => {
+    const mutate = [
+      (manifest: Record<string, unknown>) => {
+        manifest.bunVersion = "1.3.5";
+      },
+      (manifest: Record<string, unknown>) => {
+        manifest.storyCount = 14;
+      },
+      (manifest: Record<string, unknown>) => {
+        const assets = manifest.assets as Array<Record<string, unknown>>;
+        assets[0]!.route = "assets/app2.js";
+      },
+      (manifest: Record<string, unknown>) => {
+        const assets = manifest.assets as Array<Record<string, unknown>>;
+        assets[0]!.size = 25;
+      },
+      (manifest: Record<string, unknown>) => {
+        const assets = manifest.assets as Array<Record<string, unknown>>;
+        assets[0]!.sha256 = "d".repeat(64);
+      },
+    ];
+    for (const change of mutate) {
+      const fixture = await runtimeFixture();
+      const manifest = JSON.parse(
+        await readFile(fixture.manifestPath, "utf8"),
+      ) as Record<string, unknown>;
+      change(manifest);
+      await writeFile(fixture.manifestPath, JSON.stringify(manifest));
+      await expect(
+        resolvePackagedRuntime({
+          moduleUrl: fixture.moduleUrl,
+          stamp: fixture.stamp,
+          platform: "darwin",
+          architecture: "arm64",
+        }),
+      ).resolves.toEqual({ kind: "unavailable", reason: "artifact-invalid" });
+    }
   });
 
   test("accepts only canonical safe relative standalone asset routes", async () => {

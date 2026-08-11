@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildMatePackage } from "./build-mate-package.ts";
-import { buildStandalone } from "./build-standalone.ts";
+import { buildStandaloneFresh } from "./fresh-standalone-build.ts";
 import { inspectMatePackageArchive } from "./inspect-mate-package.ts";
 import { verifyManagedMatePackage } from "./mate-package-managed-clean-room.ts";
 
@@ -84,7 +84,7 @@ export async function runMatePackageCleanRoom(): Promise<void> {
   const originalCwd = process.cwd();
   try {
     const standaloneRoot = path.join(temporaryRoot, "standalone");
-    await buildStandalone({ outputRoot: standaloneRoot });
+    await buildStandaloneFresh({ outputRoot: standaloneRoot });
     const hostileCwd = path.join(temporaryRoot, "hostile-cwd");
     const toolRoot = path.join(temporaryRoot, "bin");
     const homeRoot = path.join(temporaryRoot, "home");
@@ -210,6 +210,7 @@ export async function runMatePackageCleanRoom(): Promise<void> {
       env,
       bbExecutable,
       bbAppExecutable,
+      canonicalStandaloneRoot: standaloneRoot,
     });
 
     const extractionRoot = path.join(temporaryRoot, "runtime-proof");

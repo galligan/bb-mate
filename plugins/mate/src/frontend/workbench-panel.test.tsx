@@ -90,8 +90,10 @@ describe("Plugin Workbench nav panel", () => {
 
     expect(html).toContain("Open Workbench");
     expect(html).toContain("disabled");
-    expect(html).toContain("Target discovery is not connected yet");
-    expect(html).toContain("Source-first admission lands next");
+    expect(html).toContain("Target discovery is unavailable in this build");
+    expect(html).toContain("Browser launch is unavailable in this build");
+    expect(html.toLowerCase()).not.toContain("next");
+    expect(html.toLowerCase()).not.toContain("lands");
   });
 
   test("renders hostile version text inertly", () => {

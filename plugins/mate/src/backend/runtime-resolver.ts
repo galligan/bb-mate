@@ -14,6 +14,8 @@ export interface RuntimeArtifactStamp {
   readonly mode: "0755";
   readonly size: number;
   readonly sha256: string;
+  readonly manifestSize: number;
+  readonly manifestSha256: string;
   readonly runtimeVersion: string;
   readonly expectedApiVersion: 1;
 }
@@ -42,6 +44,8 @@ const STAMP_KEYS = [
   "architecture",
   "artifact",
   "expectedApiVersion",
+  "manifestSha256",
+  "manifestSize",
   "mode",
   "platform",
   "runtimeVersion",
@@ -97,6 +101,10 @@ function validStamp(value: RuntimeArtifactStamp): boolean {
     value.size >= 16 &&
     value.size <= MAX_RUNTIME_BYTES &&
     /^[a-f0-9]{64}$/u.test(value.sha256) &&
+    Number.isSafeInteger(value.manifestSize) &&
+    value.manifestSize >= 2 &&
+    value.manifestSize <= MAX_MANIFEST_BYTES &&
+    /^[a-f0-9]{64}$/u.test(value.manifestSha256) &&
     SEMVER.test(value.runtimeVersion) &&
     value.expectedApiVersion === 1
   );
@@ -139,6 +147,7 @@ function validManifest(value: Record<string, unknown>): boolean {
 
 function manifestStamp(
   manifest: Record<string, unknown>,
+  binding: Pick<RuntimeArtifactStamp, "manifestSize" | "manifestSha256">,
 ): RuntimeArtifactStamp {
   return {
     schemaVersion: manifest.schemaVersion as 1,
@@ -149,6 +158,7 @@ function manifestStamp(
     mode: manifest.mode as "0755",
     size: manifest.size as number,
     sha256: manifest.sha256 as string,
+    ...binding,
     runtimeVersion: manifest.runtimeVersion as string,
     expectedApiVersion: 1,
   };
@@ -192,13 +202,17 @@ async function verifyManifest(
       !stat.isFile() ||
       stat.nlink !== 1 ||
       (stat.mode & 0o7777) !== 0o644 ||
-      stat.size < 2 ||
-      stat.size > MAX_MANIFEST_BYTES
+      stat.size !== stamp.manifestSize
     ) {
       return "invalid";
     }
     bytes = await file.readFile();
-    if (bytes.byteLength !== stat.size) return "invalid";
+    if (
+      bytes.byteLength !== stamp.manifestSize ||
+      createHash("sha256").update(bytes).digest("hex") !== stamp.manifestSha256
+    ) {
+      return "invalid";
+    }
   } catch {
     return "unavailable";
   } finally {
@@ -209,7 +223,10 @@ async function verifyManifest(
     const manifest = JSON.parse(
       new TextDecoder("utf-8", { fatal: true }).decode(bytes),
     ) as Record<string, unknown>;
-    const candidate = manifestStamp(manifest);
+    const candidate = manifestStamp(manifest, {
+      manifestSize: stamp.manifestSize,
+      manifestSha256: stamp.manifestSha256,
+    });
     return validManifest(manifest) &&
       validStamp(candidate) &&
       isDeepStrictEqual(candidate, stamp)

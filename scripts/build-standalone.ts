@@ -22,6 +22,26 @@ const defaultOutputRoot = path.join(
   "darwin-arm64",
 );
 const outputAllowlist = new Set(["bb-mate", "manifest.json"]);
+const MAX_OUTPUT_ROOT_BYTES = 4096;
+
+export function standaloneOutputRootFromArgs(
+  args: string[],
+): string | undefined {
+  if (args.length > 1) {
+    throw new Error("Standalone build accepts at most one output root.");
+  }
+  const [outputRoot] = args;
+  if (
+    outputRoot !== undefined &&
+    (!path.isAbsolute(outputRoot) ||
+      Buffer.byteLength(outputRoot, "utf8") > MAX_OUTPUT_ROOT_BYTES)
+  ) {
+    throw new Error(
+      "Standalone build output root must be one bounded absolute path.",
+    );
+  }
+  return outputRoot;
+}
 
 function containsPath(parent: string, candidate: string): boolean {
   return candidate === parent || candidate.startsWith(`${parent}${path.sep}`);
@@ -231,26 +251,32 @@ export async function buildStandalone(
   const sourceManifest = JSON.parse(
     await fs.readFile(path.join(cliRoot, "package.json"), "utf8"),
   ) as { version: string };
-  const temporaryRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), "bb-mate-standalone-build-"),
-  );
   const stagedRoot = await fs.mkdtemp(
     path.join(path.dirname(outputRoot), ".bb-mate-standalone-stage-"),
   );
   try {
-    const generatedEntry = path.join(temporaryRoot, "standalone-entry.ts");
-    await fs.writeFile(
-      generatedEntry,
-      generateStandaloneEntry({
-        assets: graph.assets,
-        entrypointPath: path.join(cliRoot, "src", "entrypoint.ts"),
-        runtimeVersion: sourceManifest.version,
-      }),
-    );
+    const generatedEntry = ".bb-mate-build/standalone-entry.ts";
+    const importPath = (sourcePath: string): string => {
+      const relative = path
+        .relative(repositoryRoot, sourcePath)
+        .split(path.sep)
+        .join("/");
+      return relative.startsWith(".") ? relative : `./${relative}`;
+    };
+    const generatedSource = generateStandaloneEntry({
+      assets: graph.assets.map((asset) => ({
+        ...asset,
+        sourcePath: importPath(asset.sourcePath),
+      })),
+      entrypointPath: importPath(path.join(cliRoot, "src", "entrypoint.ts")),
+      runtimeVersion: sourceManifest.version,
+    });
 
     const stagedExecutablePath = path.join(stagedRoot, "bb-mate");
     const result = await Bun.build({
       entrypoints: [generatedEntry],
+      files: { [generatedEntry]: generatedSource },
+      root: repositoryRoot,
       compile: {
         target: "bun-darwin-arm64",
         outfile: stagedExecutablePath,
@@ -283,13 +309,14 @@ export async function buildStandalone(
     const manifestPath = path.join(outputRoot, "manifest.json");
     return { executablePath, manifestPath, manifest };
   } finally {
-    await fs.rm(temporaryRoot, { recursive: true, force: true });
     await fs.rm(stagedRoot, { recursive: true, force: true });
   }
 }
 
 if (import.meta.main) {
-  const result = await buildStandalone();
+  const result = await buildStandalone({
+    outputRoot: standaloneOutputRootFromArgs(process.argv.slice(2)),
+  });
   console.log(
     JSON.stringify(
       {

@@ -316,6 +316,7 @@ export async function verifyManagedMatePackage(args: {
   env: NodeJS.ProcessEnv;
   bbExecutable: string;
   bbAppExecutable: string;
+  canonicalStandaloneRoot: string;
 }): Promise<void> {
   const registry = startMatePackageRegistry({
     artifactPath: args.artifactPath,
@@ -392,7 +393,10 @@ export async function verifyManagedMatePackage(args: {
       "node_modules",
       MATE_PACKAGE_NAME,
     );
-    await inspectMatePackageDirectory(installedPackageRoot);
+    await inspectMatePackageDirectory(
+      installedPackageRoot,
+      args.canonicalStandaloneRoot,
+    );
     const machineId = await waitFor(async () => {
       const output = await run(
         args.bbExecutable,
@@ -432,7 +436,7 @@ export async function verifyManagedMatePackage(args: {
       typeof project.id === "string",
       "Disposable bb did not create a project.",
     );
-    const idle = await rpc(serverUrl, "status", { projectId: project.id });
+    const idle = await rpc(serverUrl, "status", {});
     assert(
       idle.runtimeState === "idle" &&
         idle.runtimeVersion === null &&
@@ -449,9 +453,7 @@ export async function verifyManagedMatePackage(args: {
       "Mate runtime started before demand.",
     );
     const ensured = await Promise.all(
-      Array.from({ length: 100 }, () =>
-        rpc(serverUrl, "ensure", { projectId: project.id }),
-      ),
+      Array.from({ length: 100 }, () => rpc(serverUrl, "ensure", {})),
     );
     assert(
       ensured.every(
@@ -476,7 +478,7 @@ export async function verifyManagedMatePackage(args: {
     process.kill(-firstRuntimePid, "SIGKILL");
     const restartedRuntimePid = await waitFor(async () => {
       const processes = await runtimeProcesses(runtimeExecutable);
-      const status = await rpc(serverUrl, "status", { projectId: project.id });
+      const status = await rpc(serverUrl, "status", {});
       return processes.length === 1 &&
         processes[0] !== firstRuntimePid &&
         status.runtimeState === "ready"
@@ -504,11 +506,10 @@ export async function verifyManagedMatePackage(args: {
     );
     await assertPortClosed(restartedRuntimePort);
     assert(
-      (await rpc(serverUrl, "status", { projectId: project.id }))
-        .runtimeState === "idle",
+      (await rpc(serverUrl, "status", {})).runtimeState === "idle",
       "Reloaded Mate was not idle.",
     );
-    await rpc(serverUrl, "ensure", { projectId: project.id });
+    await rpc(serverUrl, "ensure", {});
     const beforeDisablePid = await waitFor(async () => {
       const processes = await runtimeProcesses(runtimeExecutable);
       return processes.length === 1 ? processes[0] : undefined;
@@ -533,7 +534,7 @@ export async function verifyManagedMatePackage(args: {
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ projectId: project.id }),
+        body: JSON.stringify({}),
       },
     );
     assert(disabledRpc.status === 503, "Disabled Mate RPC remained available.");
@@ -544,11 +545,10 @@ export async function verifyManagedMatePackage(args: {
       env,
     );
     assert(
-      (await rpc(serverUrl, "status", { projectId: project.id }))
-        .runtimeState === "idle",
+      (await rpc(serverUrl, "status", {})).runtimeState === "idle",
       "Enabled Mate was not idle before redemand.",
     );
-    await rpc(serverUrl, "ensure", { projectId: project.id });
+    await rpc(serverUrl, "ensure", {});
     const beforeRemovePid = await waitFor(async () => {
       const processes = await runtimeProcesses(runtimeExecutable);
       return processes.length === 1 ? processes[0] : undefined;
@@ -575,7 +575,10 @@ export async function verifyManagedMatePackage(args: {
         .catch(() => false),
       "Released bb unexpectedly removed its immutable managed artifact cache.",
     );
-    await inspectMatePackageDirectory(installedPackageRoot);
+    await inspectMatePackageDirectory(
+      installedPackageRoot,
+      args.canonicalStandaloneRoot,
+    );
     await run(
       args.bbExecutable,
       [
@@ -588,7 +591,7 @@ export async function verifyManagedMatePackage(args: {
       args.hostileCwd,
       env,
     );
-    await rpc(serverUrl, "ensure", { projectId: project.id });
+    await rpc(serverUrl, "ensure", {});
     const beforeGracefulPid = await waitFor(async () => {
       const processes = await runtimeProcesses(runtimeExecutable);
       return processes.length === 1 ? processes[0] : undefined;
@@ -619,17 +622,14 @@ export async function verifyManagedMatePackage(args: {
     try {
       await waitForServer(serverUrl, forcedServer.exited);
       const restartedIdle = await waitFor(
-        () =>
-          rpc(serverUrl, "status", { projectId: project.id }).catch(
-            () => undefined,
-          ),
+        () => rpc(serverUrl, "status", {}).catch(() => undefined),
         "Mate activation after fresh server start",
       );
       assert(
         restartedIdle.runtimeState === "idle",
         "Fresh forced-parent server did not begin idle.",
       );
-      await rpc(serverUrl, "ensure", { projectId: project.id });
+      await rpc(serverUrl, "ensure", {});
       const beforeForcedPid = await waitFor(async () => {
         const processes = await runtimeProcesses(runtimeExecutable);
         return processes.length === 1 ? processes[0] : undefined;
