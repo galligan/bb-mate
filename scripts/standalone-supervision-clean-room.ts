@@ -1,4 +1,8 @@
 import {
+  spawn as spawnChildProcess,
+  type ChildProcess,
+} from "node:child_process";
+import {
   assertListenerUnavailable,
   spawnSupervisedRuntime,
   type SupervisedRuntime,
@@ -41,7 +45,8 @@ export async function verifyStandaloneSupervision(options: {
   temporaryRoot: string;
 }): Promise<void> {
   let runtime: SupervisedRuntime | null = null;
-  let monitoredParent: ReturnType<typeof Bun.spawn> | null = null;
+  let monitoredParent: ChildProcess | null = null;
+  let monitoredParentClosed: Promise<void> | null = null;
   try {
     runtime = spawnSupervisedRuntime(options);
     const descriptor = validateStandaloneDescriptor(
@@ -80,7 +85,11 @@ export async function verifyStandaloneSupervision(options: {
       "Descriptor and authenticated capability identity differ.",
     );
 
-    runtime.supervisor.end();
+    await within(
+      runtime.supervisor.end(),
+      5_000,
+      "Supervised runtime FD3 writer did not close after EOF.",
+    );
     await within(
       runtime.closed,
       5_000,
@@ -94,20 +103,27 @@ export async function verifyStandaloneSupervision(options: {
     );
     runtime = null;
 
-    monitoredParent = Bun.spawn(["/bin/cat"], {
+    monitoredParent = spawnChildProcess("/bin/cat", [], {
       cwd: options.temporaryRoot,
       env: options.env,
-      stdin: "pipe",
-      stdout: "ignore",
-      stderr: "ignore",
+      stdio: ["pipe", "ignore", "ignore"],
     });
+    monitoredParentClosed = new Promise<void>((resolve, reject) => {
+      monitoredParent!.once("error", reject);
+      monitoredParent!.once("close", () => resolve());
+    });
+    const monitoredParentPid = monitoredParent.pid;
+    assert(
+      monitoredParentPid !== undefined,
+      "Orphan-cleanup sentinel did not receive a PID.",
+    );
     assertProcessAlive(
-      monitoredParent.pid,
+      monitoredParentPid,
       "Orphan-cleanup sentinel exited before runtime launch.",
     );
     runtime = spawnSupervisedRuntime({
       ...options,
-      parentPid: monitoredParent.pid,
+      parentPid: monitoredParentPid,
     });
     const orphanDescriptor = validateStandaloneDescriptor(
       await within(
@@ -118,17 +134,21 @@ export async function verifyStandaloneSupervision(options: {
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
     assertProcessAlive(
-      monitoredParent.pid,
+      monitoredParentPid,
       "Orphan-cleanup sentinel exited before descriptor validation.",
     );
-    await waitForRuntimeHealth(orphanDescriptor.baseUrl, { runtime });
+    await waitForRuntimeHealth(orphanDescriptor.baseUrl, {
+      runtime,
+      context: "Orphan-cleanup runtime",
+    });
     assertProcessAlive(
-      monitoredParent.pid,
+      monitoredParentPid,
       "Orphan-cleanup sentinel exited before forced parent loss.",
     );
     monitoredParent.kill("SIGKILL");
-    await monitoredParent.exited;
+    await monitoredParentClosed;
     monitoredParent = null;
+    monitoredParentClosed = null;
     await within(
       runtime.closed,
       5_000,
@@ -140,7 +160,11 @@ export async function verifyStandaloneSupervision(options: {
       orphanDescriptor,
       "Orphan-cleanup runtime emitted unexpected or secret output.",
     );
-    runtime.supervisor.destroy();
+    await within(
+      runtime.supervisor.destroy(),
+      5_000,
+      "Orphan-cleanup FD3 writer did not close.",
+    );
     runtime = null;
 
     runtime = spawnSupervisedRuntime(options);
@@ -152,7 +176,10 @@ export async function verifyStandaloneSupervision(options: {
       ),
       { runtimeVersion: options.runtimeVersion, pid: runtime.child.pid },
     );
-    await waitForRuntimeHealth(signalDescriptor.baseUrl, { runtime });
+    await waitForRuntimeHealth(signalDescriptor.baseUrl, {
+      runtime,
+      context: "Signal-cleanup runtime",
+    });
     runtime.child.kill("SIGTERM");
     await within(
       runtime.closed,
@@ -165,17 +192,25 @@ export async function verifyStandaloneSupervision(options: {
       signalDescriptor,
       "Signal-cleanup runtime emitted unexpected or secret output.",
     );
-    runtime.supervisor.destroy();
+    await within(
+      runtime.supervisor.destroy(),
+      5_000,
+      "Signal-cleanup FD3 writer did not close.",
+    );
     runtime = null;
   } finally {
     if (runtime) {
-      runtime.supervisor.destroy();
+      await within(
+        runtime.supervisor.destroy(),
+        5_000,
+        "Supervision cleanup FD3 writer did not close.",
+      ).catch(() => undefined);
       runtime.child.kill("SIGKILL");
       await runtime.closed.catch(() => undefined);
     }
     if (monitoredParent) {
       monitoredParent.kill("SIGKILL");
-      await monitoredParent.exited.catch(() => undefined);
+      await monitoredParentClosed?.catch(() => undefined);
     }
   }
 }

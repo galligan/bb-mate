@@ -6,10 +6,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildStandaloneFresh } from "./fresh-standalone-build.ts";
 import { inspectStandalone } from "./inspect-standalone.ts";
-import { verifyStandaloneSupervision } from "./standalone-supervision-clean-room.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const labRoot = path.join(repositoryRoot, "apps", "workbench", "dist", "ladle");
+const supervisionRunner = path.join(
+  repositoryRoot,
+  "scripts",
+  "run-standalone-supervision.ts",
+);
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -70,6 +74,11 @@ try {
   assert(
     process.platform === "darwin" && process.arch === "arm64",
     "The standalone clean-room lane requires a native macOS arm64 host.",
+  );
+  const nodeExecutable = Bun.which("node");
+  assert(
+    nodeExecutable && path.isAbsolute(nodeExecutable),
+    "The standalone clean room requires an absolute Node executable.",
   );
 
   const buildRoot = path.join(temporaryRoot, "build");
@@ -317,13 +326,24 @@ try {
   );
   server = null;
 
-  await verifyStandaloneSupervision({
-    executable: movedExecutable,
-    cwd: workspaceRoot,
-    env: runtimeEnv,
-    runtimeVersion: inspected.manifest.runtimeVersion,
-    temporaryRoot,
-  });
+  const supervision = await run(
+    [
+      nodeExecutable,
+      supervisionRunner,
+      movedExecutable,
+      workspaceRoot,
+      inspected.manifest.runtimeVersion,
+      temporaryRoot,
+    ],
+    {
+      cwd: workspaceRoot,
+      env: runtimeEnv,
+    },
+  );
+  assert(
+    supervision.stdout === "" && supervision.stderr === "",
+    "Node-hosted standalone supervision emitted unexpected output.",
+  );
 
   console.log(
     `Standalone clean room passed: ${inspected.manifest.target}, mode ${inspected.manifest.mode}, ${inspected.manifest.size} bytes, sha256 ${inspected.manifest.sha256}, ${inspected.manifest.assets.length} assets, 13 stories.`,

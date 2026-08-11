@@ -23,6 +23,39 @@ describe("supervisor channel", () => {
     await expect(channel.closed).resolves.toBeUndefined();
   });
 
+  test("rejects close-only destruction instead of treating it as liveness EOF", async () => {
+    const stream = new PassThrough();
+    const opened = readSupervisorChannel(stream, (value) => JSON.parse(value), {
+      timeoutMs: 100,
+    });
+
+    stream.write('{"schemaVersion":1}\n');
+    const channel = await opened;
+    stream.destroy();
+
+    await expect(channel.closed).rejects.toThrow(
+      "Supervisor channel closed unexpectedly.",
+    );
+    expect(stream.readableEnded).toBe(false);
+
+    const duringParse = new PassThrough();
+    const parsed = readSupervisorChannel(
+      duringParse,
+      (value) => {
+        duringParse.destroy();
+        return JSON.parse(value);
+      },
+      { timeoutMs: 100 },
+    );
+    duringParse.write('{"schemaVersion":1}\n');
+    const destroyedChannel = await parsed;
+
+    await expect(destroyedChannel.closed).rejects.toThrow(
+      "Supervisor channel closed unexpectedly.",
+    );
+    expect(duringParse.readableEnded).toBe(false);
+  });
+
   test("rejects queued and later bytes after the single frame", async () => {
     const queued = new PassThrough();
     const queuedRead = readSupervisorChannel(
