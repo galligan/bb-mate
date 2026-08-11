@@ -8,9 +8,10 @@ Status: Active
 The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
-and reconciled. Source-first development-target discovery #57 is the active
-milestone. Slices 57A and 57B1 are merged and reconciled. Slice 57B2, the
-catalog-backed opaque-target Workbench adapter, is now active.
+and reconciled. Source-first development-target discovery #57 is merged,
+reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A's
+supervised runtime implementation and review are complete in PR #76; merge and
+reconciliation remain before the packaged plugin slice 62B begins.
 
 ## Readiness
 
@@ -21,15 +22,16 @@ evidence and is reconciled. The transport-neutral runtime foundation #55 has
 passed focused/aggregate verification, two independent exact-head reviews, and
 hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
 and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
-GitButler reconciliation gates. Slice 57B2 is active; browser
-bootstrap/topology remains isolated in #70.
+GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
+has passed local, hosted, and implementation-head review gates; its final
+docs-only exact-head review, ready transition, merge, and reconciliation remain.
+Browser bootstrap/topology remains isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/workbench/opaque-target-adapter`; issue #57; draft PR
-  #75.
-- Current merge base: `73e6865e2a135dfd02dc2429ebc3debaa179d79d`.
+- Active branch: `feat/plugin-workbench/host-shell`; issue #62; draft PR #76.
+- Current merge base: `6ed0c33ddbe8b971eadb36d170fc705dbf9550b3`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -621,8 +623,8 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   fragment aliases cannot reach either runtime route. THS-003 is fixed by
   awaiting child stdio `close`, not only process `exit`, before output-purity and
   secret-nonleak assertions. Focused regressions reproduce each prior gap and
-  pass after remediation. PR #76 remains draft while the replacement exact-head
-  hosted checks and independent reviews are pending.
+  pass after remediation. At that point PR #76 remained draft while replacement
+  exact-head hosted checks and independent reviews were pending.
 - Targeted host-shell round 2 then found THS-004: raw GET/HEAD body framing was
   omitted while constructing the Fetch request, so an incomplete chunked health
   request could receive 200 before its body ended and escape the runtime body and
@@ -649,6 +651,15 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   unread request. Focused slow-body tests cover 400/401/403/413/415/503, 33-way
   concurrent rejection, the 32-request capacity boundary, handler header
   override, and successful keep-alive reuse after a completely consumed body.
+- Exact implementation head `2897369eaad4fedfc202b1a08fd23bac14f5f88f`
+  passed the 525-test aggregate, exact package and standalone proofs, hosted
+  verify/visual/standalone rerun, GitGuardian, zero-thread, and clean GitButler
+  gates. Standing round five awarded 5/5 with zero P0-P3. Targeted round five
+  found only THS-005: this ledger's current-state header still described merged
+  57B2 as active and hosted readiness as pending. Those current-state fields are
+  now corrected; executable and build-input bytes are unchanged. Slice 62A is
+  implementation-and-review complete, while final docs-only review, ready,
+  merge, and reconciliation remain.
 
 ## Prompt / Goal Alignment
 
@@ -669,7 +680,7 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55, and
 source-catalog slices 57A, 57B1, and 57B2 are merged and reconciled; #57 is
 closed. Host-shell #62 is active with an explicit merge-first split: 62A's
-implementation and local verification are complete in draft PR #76, with
-exact-head review and hosted readiness pending; 62B then packages and
-supervises that exact runtime from `bb-plugin-mate`. All
+implementation and review are complete in draft PR #76, with final docs-only
+review, ready transition, merge, and reconciliation pending; 62B then packages
+and supervises that exact runtime from `bb-plugin-mate`. All
 release/upstream/Connect/normal-profile stop boundaries remain intact.
