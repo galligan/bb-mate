@@ -8,9 +8,9 @@ Depends on: PR #78 / 62B merged as `4b6253e4eabd34d437a0d8907c05a87018ddd35c`
 ## Outcome
 
 Let the private installed `bb-plugin-mate` nav panel explicitly choose one
-released-bb project, admit only that project's default source on the primary
-host into the supervised runtime, persist source-first development targets in
-the runtime catalog, and render only authorized opaque target projections.
+released-bb project, admit only that project's local source on the primary host
+into the supervised runtime, persist source-first development targets in the
+runtime catalog, and render only authorized opaque target projections.
 
 The plugin remains a thin full-trust server adapter. Browser callers submit a
 project ID, never a filesystem path. The plugin resolves the authoritative path
@@ -27,25 +27,27 @@ credential runtime channel. The runtime remains the sole owner of target state.
   the full-trust plugin backend but must never enter an RPC response.
 - The merged runtime API is capability-v1, opens no catalog, and uses random
   principal/context identities on every launch. Persistent authorized targets
-  require a runtime data root and stable security subject.
-- Plugin KV may persist only stable runtime identity metadata. Canonical target
-  envelopes and private source rows live only in the runtime database.
+  require a runtime data root and a runtime-owned stable security subject.
+- Canonical target envelopes, private source rows, and the strict stable runtime
+  identity live only beneath the runtime data root. The plugin persists no
+  target or runtime-identity state.
 
 ## Contract
 
-- Advance the supervision protocol/API to v2. The strict FD3 frame adds one
-  bounded absolute runtime data root and carries stable principal/context IDs;
-  the bearer remains fresh per child. Descriptor and capability documents
-  advertise `targets: true` only when the target controller is composed.
+- Advance the supervision protocol/API and route namespace to v2. The strict
+  FD3 frame adds one bounded absolute runtime data root; the runtime loads or
+  creates its stable principal/context identity there. The bearer remains fresh
+  per child. Descriptor and capability documents advertise `targets: true`
+  only when the target controller is composed.
 - Derive the runtime data root server-side beneath the released bb data
-  directory and plugin namespace. Persist a strict stable principal/context
-  identity in plugin KV. Reject malformed, missing, symlinked, incorrectly
-  owned, or incorrectly permissioned runtime state; never repair unsafe state.
+  directory and plugin namespace. Reject malformed, symlinked, incorrectly
+  owned, hard-linked, or incorrectly permissioned runtime state; never repair
+  unsafe state.
 - Add private absent-Origin supervisor routes:
-  - `POST /v1/targets/admit` with a strict bounded JSON body containing only the
-    backend-resolved source path.
-  - `GET /v1/targets` returning a strict bounded document of public
-    `DevelopmentTargetProjection` values.
+  - `POST /v2/targets/admit` with a strict bounded JSON body containing only the
+    backend-resolved source path. The runtime mints the one-use root key.
+  - `GET /v2/targets` returning a strict bounded document of public
+    `DevelopmentTargetProjection` values for authorized server composition.
     All other methods, queries, origins, principals, scopes, bodies, and unknown
     keys fail closed with the existing redacted runtime problem shape.
 - At runtime startup, open one catalog and close it once on shutdown. Admission
@@ -56,14 +58,15 @@ credential runtime channel. The runtime remains the sole owner of target state.
 - The plugin backend exposes only eligible project options `{id, label}`. An
   explicit `admit({projectId})` is the sole combined runtime-start and
   source-admission edge. It re-resolves the project and primary host at action
-  time, requires exactly one default local source on that host, and hands only
-  its server-private path to the owned runtime client.
+  time, requires exactly one `local_path` source on that host (matching the
+  released host workspace resolver), and hands only its server-private path to
+  the owned runtime client.
 - The frontend snapshot advances to a strict schema with finite lifecycle,
   project options, target-state, and bounded target rows. A target row contains
-  only opaque ID/revision, display name/path, source kind, package/version, and
-  native status. No source path, host ID, project source metadata, PID, command,
-  environment, credential, token, base URL, or browser/Connect topology may
-  appear.
+  only opaque ID/revision, display label, and plugin ID. No path-shaped value,
+  source kind or identity, native status, package path, host ID, project source
+  metadata, PID, command, environment, credential, token, base URL, or
+  browser/Connect topology may appear.
 - Browser launch remains unavailable under #70. The package remains
   `private: true`; #77 remains the external-distribution blocker.
 
@@ -74,13 +77,15 @@ credential runtime channel. The runtime remains the sole owner of target state.
 2. [ ] Compose the CLI runtime data root, catalog, trusted source bridge,
        admission controller, authorized list route, persistence/reopen, and
        shutdown cleanup.
-3. [ ] Add plugin stable-identity/data-root composition and an owned runtime
-       client whose token/base URL/path facts never enter public snapshots.
+3. [ ] Add plugin data-root composition and an owned runtime client whose
+       token/base URL/path facts never enter public snapshots.
 4. [ ] Add released-SDK project filtering and exact project-ID revalidation;
        make `admit({projectId})` the sole demand/admission edge.
 5. [ ] Add strict frontend schema/UI for no-project, idle, admitting, empty,
-       one, many, unavailable, stale/error, hostile-text, keyboard, axe, and
-       deterministic visual states.
+       one, many, partial/unavailable/error, hostile-text, keyboard, axe, and
+       deterministic visual states. Do not claim source freshness from a
+       catalog read; only a vanished client selection gets a generic list-
+       changed message.
 6. [ ] Extend the moved standalone and extracted private-package bb 0.36 clean
        rooms to prove idle/no DB mutation before demand, admission, opaque list,
        persistence after runtime restart, no target execution, and complete
