@@ -34,6 +34,12 @@ const runtimeManifest = path.join(
   "runtime",
   "package.json",
 );
+const mateManifest = path.join(
+  repositoryRoot,
+  "plugins",
+  "mate",
+  "package.json",
+);
 
 async function packageManifest(
   packageName: string,
@@ -143,11 +149,14 @@ export async function generateThirdPartyLicenses(): Promise<string> {
     await addPackageTree(name, inspectionManifest, records);
   }
   await addPackageTree("zod", runtimeManifest, records);
+  for (const name of ["@radix-ui/react-slot", "@radix-ui/react-tooltip"]) {
+    await addPackageTree(name, mateManifest, records);
+  }
 
   const sections = [
     "# Third-party licenses and copyright notices",
     "",
-    "This generated file accompanies the flattened BB Mate CLI and surface-lab output. It reproduces the complete license and copyright files shipped by the exact installed runtime packages, followed by notices for code embedded in Ladle's distributed client. It does not license BB Mate itself.",
+    "This generated file accompanies the flattened BB Mate CLI, surface-lab, and Plugin Workbench output. It reproduces the complete license and copyright files shipped by the exact installed runtime packages, followed by notices for code embedded in Ladle's distributed client. It does not license BB Mate itself.",
     "",
   ];
   const sorted = [...records.values()].sort((left, right) =>

@@ -107,15 +107,24 @@ export function assertMatePackageMetadata(
   );
   assert(
     manifest.bb?.server === "./dist/server.js" &&
-      manifest.bb?.app === "./dist/app.js" &&
-      manifest.bb?.name === "Plugin Workbench" &&
-      manifest.bb?.description ===
-        "Develop source plugins with the supervised bb-mate runtime." &&
-      JSON.stringify(manifest.bb?.branding) ===
-        JSON.stringify({ icon: "Toolbox" }) &&
-      JSON.stringify(manifest.bb?.skills) ===
-        JSON.stringify(["./skills/plugin-workbench"]),
+      manifest.bb?.app === "./dist/app.js",
     "Mate package entrypoints must reference built dist files.",
+  );
+  assert(
+    manifest.bb?.name === "Plugin Workbench" &&
+      manifest.bb?.description ===
+        "Develop source plugins with the supervised bb-mate runtime.",
+    "Mate package plugin identity differs from the approved metadata.",
+  );
+  assert(
+    JSON.stringify(manifest.bb?.branding) ===
+      JSON.stringify({ icon: "Toolbox" }),
+    "Mate package branding differs from the approved Toolbox icon.",
+  );
+  assert(
+    JSON.stringify(manifest.bb?.skills) ===
+      JSON.stringify(["./skills/plugin-workbench"]),
+    "Mate package skill paths differ from the approved payload.",
   );
   assert(
     manifest.scripts === undefined && manifest.devDependencies === undefined,
@@ -141,7 +150,9 @@ export function assertMateThirdPartyCoverage(
   bunVersion: string,
 ): void {
   assert(
-    notices.includes("bundled Zod protocol implementation") &&
+    notices.includes("Radix Slot") &&
+      notices.includes("Radix Tooltip") &&
+      notices.includes("bundled Zod protocol implementation") &&
       notices.includes(
         `compiled with and embeds the Bun ${bunVersion} runtime`,
       ) &&
@@ -149,8 +160,10 @@ export function assertMateThirdPartyCoverage(
       notices.includes("JavaScriptCore and WebKit under LGPL-2") &&
       notices.includes("local verification only") &&
       notices.includes("BUN_LICENSE.md") &&
+      /^## @radix-ui\/react-slot@/mu.test(licenses) &&
+      /^## @radix-ui\/react-tooltip@/mu.test(licenses) &&
       /^## zod@/mu.test(licenses),
-    "Mate third-party notices do not cover bundled Zod and the compiled runtime.",
+    "Mate third-party notices do not cover the native component dependencies, bundled Zod, and the compiled runtime.",
   );
 }
 
