@@ -857,6 +857,11 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   Summary, Readiness, Baseline, and Final State sections now describe 62C and
   PR #79. Both round-one reports remain active until replacement-head reviews
   independently verify these fixes.
+- Replacement review then caught one adjacent remediation-copy gap: after the
+  adapter became eligible-only, an empty project list no longer proved that bb
+  had no projects. The panel now says no eligible local projects and directs
+  the user to open a project with a local source on this machine; its component
+  assertion and deterministic browser snapshot cover the distinction.
 
 ## Prompt / Goal Alignment
 
@@ -879,8 +884,8 @@ source-catalog slices 57A, 57B1, and 57B2, and host-shell slices 62A and 62B are
 merged and reconciled; #57 is closed. Host-shell #62 remains open for active
 slice 62C. Its runtime-owned target-admission implementation and extracted
 released-bb lifecycle proof, initial aggregate, and initial hosted matrix are
-complete. The seven first-round review findings are remediated locally; the
-replacement exact artifact/aggregate gates, standing and targeted exact-head
-reviews, hosted proof, ready, merge, and local reconciliation remain. All
+complete. The seven first-round review findings and one adjacent replacement-
+review copy gap are remediated locally; the replacement standing and targeted
+exact-head reviews, hosted proof, ready, merge, and local reconciliation remain. All
 release/upstream/Connect/normal-profile stop boundaries remain intact, and #77
 remains the independent external-distribution blocker.
