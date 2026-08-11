@@ -828,7 +828,7 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   child loss, listener/process cleanup, hostile-PATH nonexecution, log nonleak,
   inert retained cache bytes, and normal-profile preservation. Its exact local
   verification artifact contains 14 files with SHA-256
-  `ec5e681a201be35adb9d565232c7b9fd3ccdb694146c61fc0261bec5a0a08e0d`;
+  `9a77913f260bad66dac42f64a5aee6c5e4903b182afda6d1c1fda34554677013`;
   the embedded arm64 runtime is 64,849,634 bytes with SHA-256
   `99630242d4888a5142343ed3e200b81da411b7264531a6e4ee2c51007f537509`
   and runtime version `0.1.0-alpha.3`.
