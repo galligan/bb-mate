@@ -4,14 +4,12 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { RUNTIME_ARTIFACT_STAMP } from "../plugins/mate/src/generated/runtime-artifact-stamp.ts";
 import { buildMatePackage } from "./build-mate-package.ts";
 import { buildStandaloneFresh } from "./fresh-standalone-build.ts";
 import { inspectMatePackageArchive } from "./inspect-mate-package.ts";
 import { inspectStandalone } from "./inspect-standalone.ts";
-import {
-  createMateRuntimeStamp,
-  generateMateRuntimeStampModule,
-} from "./mate-package-artifact.ts";
+import { createMateRuntimeStamp } from "./mate-package-artifact.ts";
 import { verifyManagedMatePackage } from "./mate-package-managed-clean-room.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -91,11 +89,12 @@ export async function runMatePackageCleanRoom(): Promise<void> {
     const standaloneRoot = path.join(temporaryRoot, "standalone");
     await buildStandaloneFresh({ outputRoot: standaloneRoot });
     const standalone = await inspectStandalone(standaloneRoot);
-    const expectedStamp = generateMateRuntimeStampModule(
-      createMateRuntimeStamp(standalone.manifest, standalone.manifestBytes),
+    const expectedStamp = createMateRuntimeStamp(
+      standalone.manifest,
+      standalone.manifestBytes,
     );
     assert(
-      originalStamp.equals(Buffer.from(expectedStamp)),
+      JSON.stringify(RUNTIME_ARTIFACT_STAMP) === JSON.stringify(expectedStamp),
       "The committed Mate runtime stamp does not match a fresh deterministic standalone build.",
     );
     const hostileCwd = path.join(temporaryRoot, "hostile-cwd");
