@@ -1,7 +1,7 @@
 # Plugin Workbench host shell and supervised runtime
 
 Date: 2026-08-10
-Status: Slice 62A merged and reconciled; slice 62B active
+Status: Slice 62A merged and reconciled; slice 62B active; slice 62C planned
 Issue: #62
 Parent: #21
 Depends on: #54, #55, #56, and #57 (all merged)
@@ -16,7 +16,7 @@ actionable unavailable states and spawn nothing.
 
 ## Delivery shape
 
-Deliver #62 as two merge-first slices:
+Deliver #62 as three merge-first slices:
 
 1. **62A — supervised runtime protocol.** Add a standalone-safe `serve`
    command, one private inherited supervisor/liveness channel, a bounded public
@@ -24,10 +24,17 @@ Deliver #62 as two merge-first slices:
    shutdown/orphan proof.
 2. **62B — installed Plugin Workbench host.** Add `plugins/mate`, exact runtime
    package/stamp verification, installed-root resolution, lazy serialized
-   supervision, released `navPanel`, skill, and isolated bb 0.36 lifecycle
-   proof.
+   supervision, released `navPanel`, skill, isolated bb 0.36 lifecycle proof,
+   and an explicit target-admission-unavailable state.
+3. **62C — runtime-owned target admission.** Admit only the current project's
+   released-bb source through a private authenticated composition path, persist
+   canonical source-first targets in the runtime catalog, and return only
+   authorized opaque target projections to the plugin.
 
-Issue #62 closes only after both slices merge and reconcile.
+Issue #62 closes only after all three slices merge and reconcile. The third
+slice is required because 62A intentionally exposes `targets: false`, opens no
+catalog, and admits no trusted source path; 62B must not fill that gap with a
+parallel inspection command or plugin-owned state.
 
 ## 62A protocol contract
 
@@ -69,6 +76,12 @@ Issue #62 closes only after both slices merge and reconcile.
   inspection proves stamped frontend/backend artifacts, skill/docs, executable
   mode 0755, Mach-O arm64, size, version, API, SHA-256, and absence of source,
   node_modules, symlinks, traversal, or extra entries.
+- The staged manifest remains `private: true`, includes the exact pinned Bun
+  1.3.14 `LICENSE.md` bytes as `BUN_LICENSE.md`, and describes Bun's embedded
+  LGPL-linked components accurately. The tgz is a local verification artifact,
+  not approved for upload, registry publication, release, or external
+  redistribution until issue #77's LGPL relink-material and complete
+  third-party-license gate passes.
 - The backend embeds the expected runtime SHA/size/arch/version/API. It resolves
   only the literal runtime path relative to built `import.meta.url`, verifies
   containment and identity immediately before spawn, and never consults cwd,
@@ -82,11 +95,16 @@ Issue #62 closes only after both slices merge and reconcile.
   limits, then perform the authenticated capability handshake. Abort,
   `onDispose`, reload, disable, remove, server shutdown, crash, and orphan paths
   terminate the owned group and listener within a bounded grace/force window.
-- Frontend/RPC projections contain only finite status enums, public target
-  projections, versions, and non-secret opaque context facts. They contain no
+- Frontend/RPC projections contain only finite status enums, versions, and
+  non-secret opaque context facts. Target discovery is explicitly unavailable
+  pending 62C. Projections contain no
   paths, PID, hostname, command, environment, secret, bearer, base URL, browser
   URL, Connect fact, or topology conclusion. Browser launch stays visibly
   unavailable until #70.
+- The panel status is an on-mount and post-action snapshot for 62B, not a
+  realtime monitor; a later crash is observed on remount or the next explicit
+  action until a released host subscription or bounded refresh is deliberately
+  added.
 
 ## TDD execution
 
@@ -103,16 +121,19 @@ Issue #62 closes only after both slices merge and reconcile.
        assets, and no leaked secret.
 5. [x] Run focused, aggregate, package, standalone, hosted, and two independent
        5/5 review lanes; merge and reconcile 62A.
-6. [ ] Scaffold `plugins/mate` only from released 0.36 artifacts; add the exact
+6. [x] Scaffold `plugins/mate` only from released 0.36 artifacts; add the exact
        package stamp/allowlist/resolver and adversarial pack/extract tests.
-7. [ ] Add the lazy supervisor, status RPC, released nav panel, and skill with
+7. [x] Add the lazy supervisor, status RPC, released nav panel, and skill with
        race/crash/dispose/unavailable tests and no browser-launch claim.
-8. [ ] Prove the extracted package in a disposable bb 0.36 profile: install,
+8. [x] Prove the extracted package in a disposable bb 0.36 profile: install,
        idle-before-demand, one child, reload, disable, enable/redemand, crash,
        remove, graceful shutdown, forced parent loss, no orphan/listener, and
        no normal-profile mutation.
-9. [ ] Run full local/hosted gates and two 5/5 review lanes; merge 62B, close
-       #62, reconcile GitButler, and update #21.
+9. [ ] Run full local/hosted gates and two 5/5 review lanes; merge and reconcile
+       62B while keeping #62 open.
+10. [ ] Add, review, merge, and reconcile 62C runtime-owned current-project
+        source admission and authorized opaque target listing; then close #62
+        and update #21.
 
 ## Verification
 
@@ -124,7 +145,11 @@ Issue #62 closes only after both slices merge and reconcile.
 - `bun run package:inspect && bun run package:test`
 - `bun run standalone:inspect && bun run standalone:test`
 - Native `bb plugin types --check`, `bb plugin build`, exact tar inspection, and
-  disposable-profile path install from an extracted package.
+  a disposable local-registry `npm:` install of the extracted managed package.
+  Released bb intentionally retains immutable managed artifact bytes for later
+  garbage collection after removal, so the proof requires those bytes to stay
+  inert and hash-identical while registration, runtime, listener, and
+  credentials are removed.
 - Exact-head hosted checks, zero review threads, 5/5 standing and targeted
   reports, immutable merge SHA, and clean GitButler reconciliation per slice.
 
@@ -140,7 +165,7 @@ proof fails.
 
 ## Done
 
-Both slices are merged to `main`; #62 and #21 are current; exact local, hosted,
+All three slices are merged to `main`; #62 and #21 are current; exact local, hosted,
 package, standalone, and isolated lifecycle gates pass; two independent review
 lanes score 5/5 with zero P0-P3 per slice; GitButler is clean/reconciled; and
 the goal retrospective records exact proof without crossing release or browser

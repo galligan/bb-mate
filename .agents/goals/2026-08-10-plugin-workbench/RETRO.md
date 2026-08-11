@@ -9,9 +9,11 @@ The execution goal is active. Compatibility baseline #52, spec/goal PR #53,
 released-capability Gate 0 PR #68, and standalone-runtime PR #69 are merged.
 The narrowed runtime domain/security foundation #55 is merged through PR #71
 and reconciled. Source-first development-target discovery #57 is merged,
-reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A's
-supervised runtime implementation and review are complete in PR #76; merge and
-reconciliation remain before the packaged plugin slice 62B begins.
+reconciled, and closed. Host-shell #62 is the active milestone. Slice 62A is
+merged and reconciled through PR #76. Slice 62B's installed host/status shell,
+exact packaged-runtime adapter, and disposable released-bb lifecycle proof are
+locally complete; independent pre-commit audit, PR review, hosted verification,
+merge, and reconciliation remain.
 
 ## Readiness
 
@@ -23,15 +25,18 @@ passed focused/aggregate verification, two independent exact-head reviews, and
 hosted CI, then merged and reconciled. Source-catalog slice 57A is also merged
 and reconciled. Slice 57B1 passed its full local, review, hosted, merge, and
 GitButler reconciliation gates. Slice 57B2 is merged and reconciled. Slice 62A
-has passed local, hosted, and implementation-head review gates; its final
-exact-head review, ready transition, merge, and reconciliation remain.
+passed local, hosted, two-lane exact-head review, merge, and reconciliation
+gates. Slice 62B passes its focused, aggregate, build, visual, package, and
+managed-lifecycle gates and is undergoing the required independent audit before
+a draft PR is opened.
 Browser bootstrap/topology remains isolated in #70.
 
 ## Baseline
 
 - Repository: `/Users/mg/Developer/bb/bb-mate`
-- Active branch: `feat/plugin-workbench/host-shell`; issue #62; draft PR #76.
-- Current merge base: `6ed0c33ddbe8b971eadb36d170fc705dbf9550b3`.
+- Active branch: `feat/plugin-workbench/mate-host-package`; issue #62; no 62B PR
+  yet.
+- Current merge base: `09f27471ae3bb768272c9103278425bcb03e27b4`.
 - Compatibility PR #52 merged from exact head
   `1b047598b52f49ed8e6e0f7dd88387ff02c10445` to baseline merge commit
   `fa02c6d0d7c4ffb2f8855029def1589ed7ce7824`; issue #51 is closed.
@@ -689,6 +694,73 @@ test && bun run build && bun run compatibility:latest` passed; package clean
   `09f27471ae3bb768272c9103278425bcb03e27b4`. `but pull` removed the integrated
   62A branch and reconciled the workspace. The unrelated #73 lane remains
   isolated in its pre-existing force-push-required state and was not pushed.
+- Slice 62B preparation found a real contract gap before implementation could
+  hide it. Released bb 0.36 can provide the full-trust plugin backend with the
+  current project's source, but merged 62A deliberately exposes
+  `capabilities.targets = false`, opens no runtime catalog, and has no trusted
+  source-admission or target-list route. Calling a parallel `bb-mate inspect`,
+  importing workspace internals into the installed plugin, or keeping
+  plugin-owned target state would contradict the thin-adapter boundary. Issue
+  #62 and the host-shell plan now record three merge-first slices: 62B ships the
+  exact installed host/status shell with target discovery explicitly
+  unavailable; 62C later adds private authenticated current-project source
+  admission and authorized opaque target listing in the canonical runtime.
+- Slice 62B implements `bb-plugin-mate` as a released 0.36 native nav-panel and
+  server package. Status is read-only; only an explicit project-bound `ensure`
+  demand starts the runtime. The strict public snapshot exposes finite lifecycle
+  states and version identity while keeping paths, process IDs, credentials,
+  commands, listener URLs, host facts, browser launch, and target discovery out
+  of the frontend contract. The installed-root resolver admits only the exact
+  package-relative `darwin-arm64` executable and manifest, validates containment,
+  regular/single-link `0755` mode, Mach-O architecture, size, SHA-256, version,
+  API, and asset identity, then reattests immediately before an absolute-path
+  spawn. FD3 startup, descriptor/capability equality, lazy concurrency, crash,
+  service restart, abort, and process-group cleanup are bounded and tested.
+- The exact 14-file npm artifact contains no source map or workspace source
+  names. Raw bounded tar inspection rejects links, devices, PAX/GNU extensions,
+  traversal, control characters, duplicates, extra entries, oversized gzip,
+  excessive expansion, truncated terminators, appended gzip members, and every
+  byte beyond the canonical two-block tar end. Public manifest, bb build
+  metadata, README, skill, MIT license, generated notices, embedded stamp,
+  executable mode, runtime manifest, runtime bytes, and the exact pinned Bun
+  1.3.14 license are independently checked. The artifact SHA-256 is
+  `3de936d2aeac6034b3a94b449abb627ecd5dd5027252fe372058c44bf993b210`;
+  its runtime remains 64,783,586 bytes at
+  `df2218e931e2c048ed0c2896a4448313169af324eca9595cc72717364a1ca16f`,
+  runtime `0.1.0-alpha.2`, API 1.
+- Bun's pinned license records statically linked JavaScriptCore/WebKit and other
+  separately licensed components, but available release materials do not prove
+  the full corresponding/relink bundle needed for external redistribution. The
+  source and staged plugin manifests therefore enforce `private: true`; the
+  README, notice, plan, inspector, and issue #77 make the tgz local-verification
+  only and block upload, publication, release, or external redistribution until
+  that separate compliance gate is complete.
+- The final disposable clean room uses a strict loopback registry, full released
+  `bb-app@0.36.0` server and host daemon, and a real temporary project. It proves
+  idle-before-demand, 100 concurrent ensures yielding one child, crash with
+  host-owned restart, reload, disable, enable and redemand, remove, graceful
+  whole-server shutdown, and forced actual server-child loss. Fresh loopback
+  probes confirm the owned listener closes at every transition; hostile PATH and
+  target-code sentinels remain unused. Released bb intentionally retains an
+  immutable managed artifact cache after removal; the proof verifies it is inert
+  and hash-identical before deleting only the disposable profile.
+- The actual plugin panel is browser-tested inside a host `main` without nesting
+  its own main landmark. Five deterministic Chromium screenshot and axe cases
+  cover idle, ready, unavailable, hostile text, and dark appearance. Panel
+  status is explicitly an on-mount/post-action snapshot for 62B, not realtime
+  monitoring.
+- Local 62B gates pass with 590 tests: inspection 136, runtime 175, CLI 75,
+  Workbench 66, Linear plugin 21, Mate plugin 43, and scripts 74. Formatting,
+  checks, released compatibility, builds, 19 visual/accessibility tests, the
+  legacy 41-file package clean room, native declaration regeneration check,
+  exact package inspection, and `git diff --check` also pass.
+- A fresh independent pre-commit attack audit first found incomplete compiled-
+  Bun distribution claims, a hidden post-tar gzip payload, a nested main
+  landmark without browser coverage, manifest control-path drift, and two P3
+  diagnostic/status wording gaps. The private/license/#77 boundary, canonical
+  tar end, real browser gate, route hardening, CI artifact upload, and explicit
+  snapshot semantics resolved every finding. The final exact-tree audit reports
+  zero P0-P3 and a clean pre-commit verdict.
 
 ## Prompt / Goal Alignment
 
@@ -708,6 +780,8 @@ ports. The normal profile was inspected read-only for unique-plugin absence.
 
 Execution active. Gate 0, standalone-runtime #56, runtime foundation #55,
 source-catalog slices 57A, 57B1, and 57B2, and host-shell slice 62A are merged
-and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B now
-packages and supervises the exact merged runtime from `bb-plugin-mate`. All
-release/upstream/Connect/normal-profile stop boundaries remain intact.
+and reconciled; #57 is closed. Host-shell #62 remains open while slice 62B's
+installed `bb-plugin-mate` host/status shell is locally complete and awaits its
+PR review, hosted, merge, and reconciliation gates. Slice 62C still owns runtime
+source admission and opaque target listing. All release/upstream/Connect/
+normal-profile stop boundaries remain intact.

@@ -1,0 +1,46 @@
+:root {
+  color-scheme: light;
+  --background: #ffffff;
+  --foreground: #202224;
+  --muted-foreground: #5f6670;
+  background: #f4f5f6;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #17191c;
+  --foreground: #f4f5f6;
+  --muted-foreground: #b8c0ca;
+  background: #0e1012;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--foreground);
+  background: inherit;
+}
+
+.fixture-host {
+  width: 70rem;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.fixture-host > h1 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+#panel-fixture {
+  overflow: hidden;
+  min-height: 34rem;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 0.75rem;
+}

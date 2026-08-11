@@ -1,0 +1,226 @@
+.pw-shell {
+  --pw-ink: #202224;
+  --pw-muted: var(--muted-foreground, #6a6f75);
+  --pw-line: color-mix(in srgb, currentColor 12%, transparent);
+  --pw-surface: color-mix(in srgb, currentColor 4%, transparent);
+  --pw-ready: #22845a;
+  --pw-warn: #b66a19;
+  --pw-failed: #b4493f;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.8fr) minmax(20rem, 1.2fr);
+  gap: 1px;
+  min-height: 100%;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  color: var(--foreground, var(--pw-ink));
+  background: var(--pw-line);
+  font: inherit;
+}
+
+.pw-shell section {
+  min-width: 0;
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  background: var(--background, #fff);
+}
+
+.pw-runtime {
+  position: relative;
+  display: grid;
+  grid-row: span 2;
+  grid-template-columns: 0.3rem 1fr;
+  gap: 1.25rem;
+}
+
+.pw-status-rail {
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--pw-surface);
+}
+
+.pw-status-rail span {
+  display: block;
+  width: 100%;
+  height: 3.75rem;
+  border-radius: inherit;
+  background: var(--pw-muted);
+}
+
+.pw-runtime[data-runtime-state="ready"] .pw-status-rail span {
+  background: var(--pw-ready);
+}
+
+.pw-runtime[data-runtime-state="starting"] .pw-status-rail span,
+.pw-runtime[data-runtime-state="stopping"] .pw-status-rail span {
+  background: var(--pw-warn);
+  animation: pw-machine-breath 1.4s ease-in-out infinite alternate;
+}
+
+.pw-runtime[data-runtime-state="failed"] .pw-status-rail span,
+.pw-runtime[data-runtime-state="unavailable"] .pw-status-rail span {
+  background: var(--pw-failed);
+}
+
+.pw-runtime-copy,
+.pw-browser > div {
+  max-width: 36rem;
+}
+
+.pw-eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--pw-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.pw-shell h2,
+.pw-shell h3,
+.pw-shell p,
+.pw-shell dl {
+  margin-top: 0;
+}
+
+.pw-shell h2 {
+  margin-bottom: 0.55rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+  line-height: 1.15;
+}
+
+.pw-shell h3 {
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.pw-runtime-copy > p:not(.pw-eyebrow),
+.pw-empty-state p,
+.pw-browser p:not(.pw-eyebrow) {
+  color: var(--muted-foreground, var(--pw-muted));
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.pw-version-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.pw-version-row dt {
+  color: var(--pw-muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pw-version-row dd {
+  margin: 0.2rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+}
+
+.pw-shell button {
+  min-height: 2.25rem;
+  border: 1px solid var(--pw-line);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.8rem;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.pw-shell button:not(:disabled) {
+  cursor: pointer;
+}
+
+.pw-shell button:not(:disabled):hover {
+  background: var(--pw-surface);
+}
+
+.pw-shell button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.pw-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pw-primary-action {
+  margin-top: 0.25rem;
+}
+
+.pw-section-heading,
+.pw-browser {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pw-stage-badge {
+  flex: none;
+  border: 1px solid var(--pw-line);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  color: var(--pw-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.pw-empty-state {
+  display: flex;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--pw-line);
+  padding-top: 1.25rem;
+}
+
+.pw-empty-mark {
+  display: grid;
+  flex: 0 0 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px dashed var(--pw-line);
+  border-radius: 50%;
+  color: var(--pw-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.pw-browser {
+  align-items: center;
+}
+
+@keyframes pw-machine-breath {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 44rem) {
+  .pw-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .pw-runtime {
+    grid-row: auto;
+  }
+
+  .pw-browser {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pw-status-rail span {
+    animation: none !important;
+  }
+}
