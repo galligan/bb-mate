@@ -1,7 +1,7 @@
 # Plugin Workbench host shell and supervised runtime
 
 Date: 2026-08-10
-Status: Slice 62A implementation and review complete; merge pending
+Status: Slice 62A merged and reconciled; slice 62B active
 Issue: #62
 Parent: #21
 Depends on: #54, #55, #56, and #57 (all merged)
@@ -101,7 +101,7 @@ Issue #62 closes only after both slices merge and reconcile.
 4. [x] Extend the moved empty-PATH standalone clean room to prove the private
        channel, descriptor/capability handshake, EOF/orphan cleanup, no checkout
        assets, and no leaked secret.
-5. [ ] Run focused, aggregate, package, standalone, hosted, and two independent
+5. [x] Run focused, aggregate, package, standalone, hosted, and two independent
        5/5 review lanes; merge and reconcile 62A.
 6. [ ] Scaffold `plugins/mate` only from released 0.36 artifacts; add the exact
        package stamp/allowlist/resolver and adversarial pack/extract tests.
