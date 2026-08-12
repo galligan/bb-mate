@@ -440,7 +440,15 @@ function consumeEntries(
       current.relative.split(path.sep).join("/"),
       entry.name,
     );
-    if (shouldIgnoreDirectory(entry.name)) continue;
+    if (
+      shouldIgnoreDirectory(entry.name) &&
+      !isExplicitlyIncludedIgnoredDirectory(
+        state.patterns,
+        relative,
+        entry.name,
+      )
+    )
+      continue;
     if (entry.isSymbolicLink()) {
       if (couldContainMatch(state.patterns, relative)) {
         const displayPath = displayPathFor(
@@ -732,6 +740,23 @@ function shouldIgnoreDirectory(name: string): boolean {
   return (
     name.startsWith(".") ||
     ["node_modules", "dist", "cache", "caches"].includes(name)
+  );
+}
+
+function isExplicitlyIncludedIgnoredDirectory(
+  patterns: readonly WorkspacePattern[],
+  relative: string,
+  name: string,
+): boolean {
+  const segments = relative.split("/");
+  return patterns.some(
+    (pattern) =>
+      !pattern.negative &&
+      pattern.segments.some(
+        (segment, index) =>
+          segment === name &&
+          matchesSegments(pattern.segments.slice(0, index + 1), segments),
+      ),
   );
 }
 

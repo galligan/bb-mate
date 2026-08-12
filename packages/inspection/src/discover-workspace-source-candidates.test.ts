@@ -69,6 +69,38 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("traverses ignored directories only when a workspace names them explicitly", async () => {
+    const root = await harness.createRoot();
+    const distPlugin = path.join(root, "dist", "plugins", "dist-plugin");
+    const hiddenPlugin = path.join(root, ".plugins", "hidden-plugin");
+    const implicitPlugin = path.join(root, "node_modules", "implicit-plugin");
+    await fs.mkdir(distPlugin, { recursive: true });
+    await fs.mkdir(hiddenPlugin, { recursive: true });
+    await fs.mkdir(implicitPlugin, { recursive: true });
+    await harness.writePlugin(distPlugin, "dist-plugin");
+    await harness.writePlugin(hiddenPlugin, "hidden-plugin");
+    await harness.writePlugin(implicitPlugin, "implicit-plugin");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["dist/plugins/*", ".plugins/*", "**"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId).sort()).toEqual([
+      "dist-plugin",
+      "hidden-plugin",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("supports pnpm workspace includes and exclusions", async () => {
     const root = await harness.createRoot();
     const included = path.join(root, "plugins", "included");
