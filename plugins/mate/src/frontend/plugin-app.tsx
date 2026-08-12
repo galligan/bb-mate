@@ -208,7 +208,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       route !== null &&
       openedProjectId === route.projectId &&
       snapshot !== null &&
-      snapshot.targets.state !== "project_not_selected" &&
+      snapshot.targets.state === "ready" &&
       target === undefined;
     const routeOpenFailed =
       route !== null &&

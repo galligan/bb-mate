@@ -300,6 +300,33 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
+  test("preserves a detail route while the target catalog is nonterminal", async () => {
+    const catalogs: PluginWorkbenchSnapshot["targets"][] = [
+      { state: "partial", items: [] },
+      {
+        state: "unavailable",
+        reason: "catalog_unavailable",
+        items: [],
+      },
+    ];
+    for (const targets of catalogs) {
+      rpcCall.mockClear();
+      navigateToPluginPanel.mockClear();
+      rpcImplementation = (method) =>
+        Promise.resolve(method === "status" ? snapshot() : snapshot(targets));
+
+      await renderPanel(`projects/project_01/targets/${targetA}`);
+      await flush();
+
+      expect(rpcCall).toHaveBeenCalledTimes(2);
+      expect(navigateToPluginPanel).not.toHaveBeenCalled();
+
+      await act(() => root?.unmount());
+      root = undefined;
+      document.body.innerHTML = '<div id="root"></div>';
+    }
+  });
+
   test("attempts a routed project once and recovers when opening fails", async () => {
     rpcImplementation = (method) =>
       method === "status"
