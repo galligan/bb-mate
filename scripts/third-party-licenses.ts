@@ -156,7 +156,7 @@ export async function generateThirdPartyLicenses(): Promise<string> {
   const sections = [
     "# Third-party licenses and copyright notices",
     "",
-    "This generated file accompanies the flattened BB Mate CLI, surface-lab, and Plugin Workbench output. It reproduces the complete license and copyright files shipped by the exact installed runtime packages, followed by notices for code embedded in Ladle's distributed client. It does not license BB Mate itself.",
+    "This generated file accompanies the flattened bb Plugin Studio CLI, surface-lab, and Plugin Studio output. It reproduces the complete license and copyright files shipped by the exact installed runtime packages, followed by notices for code embedded in Ladle's distributed client. It does not license bb Plugin Studio itself.",
     "",
   ];
   const sorted = [...records.values()].sort((left, right) =>

@@ -80,7 +80,7 @@ function session(selectedTargetId: string) {
       launchCommand: null,
       checkCommand: null,
       liveCommand: null,
-      detail: "Run from the BB Mate repository root.",
+      detail: "Run from the bb Plugin Studio repository root.",
     },
   } as const;
 }

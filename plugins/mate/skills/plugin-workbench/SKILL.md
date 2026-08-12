@@ -1,23 +1,30 @@
 ---
 name: plugin-workbench
-description: Use Plugin Workbench to inspect the packaged bb-mate runtime while developing a source-backed bb plugin.
+description: Use Plugin Studio to inspect source plugins across eligible local bb projects with the packaged bb-mate runtime.
 ---
 
-# Plugin Workbench
+# Plugin Studio
 
-Open **Plugin Workbench** from bb's plugin navigation to inspect the packaged
-runtime's finite status and passively discover source-first development targets
-from an explicitly selected eligible bb project.
+Open **Plugin Studio** from bb's plugin navigation to inspect the packaged
+runtime and its finite schema-v3 catalog.
 
-- Runtime startup and project admission are explicit and lazy. Opening or
-  refreshing the panel alone does not start the runtime, discover a source, run
-  target code, or perform a native plugin lifecycle action.
-- Select one eligible released-bb project in the panel, then admit its
-  primary-host local source. The source path stays private to the backend and
-  runtime; the panel receives only bounded opaque target projections.
-- Browser launch remains unavailable. Do not invent a runtime URL, expose a
+- Opening the panel first requests read-only status. That request does not start
+  the runtime, open its catalog, or inspect source. It may report the current
+  runtime state as idle, starting, ready, stopping, unavailable, or failed
+  without changing it.
+- On mount, Plugin Studio automatically performs one bounded refresh across all
+  eligible bb-registered local projects. The refresh icon repeats that same
+  all-project operation. There is no per-project selector or admit action.
+- Discovery checks each project root and packages inside its declared npm or Bun
+  workspace configuration, including supported bounded `pnpm-workspace.yaml`
+  patterns. All project groups and plugin rows remain expanded; choose a plugin
+  row to open its detail view.
+- The refresh does not execute target code, package scripts, installed-plugin
+  inventory, or native plugin lifecycle actions. Source paths stay private to
+  the backend and runtime; the panel receives only bounded opaque projections.
+- Preview remains unavailable under #70. Do not invent a runtime URL, expose a
   loopback listener, or substitute installed inventory for source discovery.
 - Use native `bb plugin build`, `bb plugin dev`, and `bb plugin reload` for
-  lifecycle work. Plugin Workbench does not replace those commands.
+  lifecycle work. Plugin Studio does not replace those commands.
 - Treat Fixture, Harness, and Live claims separately. Harness remains
   unavailable while the official testing package is not publicly resolvable.

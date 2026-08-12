@@ -46,6 +46,7 @@ export interface RootScanState {
   readonly queue: PendingDirectory[];
   readonly continuations: ScanContinuation[];
   readonly overflowCandidates: SourceCandidate[];
+  readonly candidateByCanonicalRoot: Map<string, SourceCandidate>;
   entryLimitDisplayPath: string | null;
   truncatedEntries: boolean;
 }
@@ -53,6 +54,7 @@ export interface RootScanState {
 export function createRootScanStates(
   roots: readonly TrustedRoot[],
 ): RootScanState[] {
+  const candidateByCanonicalRoot = new Map<string, SourceCandidate>();
   const ordered = roots
     .map((root) => ({
       root,
@@ -72,6 +74,7 @@ export function createRootScanStates(
     queue: [{ directory: state.canonicalRoot, relative: "", depth: 0 }],
     continuations: [],
     overflowCandidates: [],
+    candidateByCanonicalRoot,
     entryLimitDisplayPath: null,
     truncatedEntries: false,
   }));
@@ -140,14 +143,46 @@ export function recordCandidate(
   candidate: SourceCandidate,
   candidates: SourceCandidate[],
 ): void {
+  const existing = state.candidateByCanonicalRoot.get(candidate.canonicalRoot);
+  if (existing !== undefined) {
+    discoveringRoots
+      .get(existing)
+      ?.set(candidate.rootKey, candidate.displayPath);
+    return;
+  }
   if (state.budget.acceptedCandidates < state.budget.maxCandidates) {
+    recordUniqueCandidate(state, candidate);
     candidates.push(candidate);
     state.budget.acceptedCandidates += 1;
     return;
   }
   if (state.overflowCandidates.length < MAX_CANDIDATES) {
+    recordUniqueCandidate(state, candidate);
     state.overflowCandidates.push(candidate);
   }
+}
+
+const discoveringRoots = new WeakMap<object, Map<string, string>>();
+
+export function sourceCandidateDiscoveringRootKeys(
+  candidate: SourceCandidate,
+): readonly string[] {
+  const roots = discoveringRoots.get(candidate);
+  if (roots === undefined) {
+    throw new TypeError("source candidate was not recorded by discovery");
+  }
+  return Object.freeze([...roots.keys()]);
+}
+
+function recordUniqueCandidate(
+  state: RootScanState,
+  candidate: SourceCandidate,
+): void {
+  state.candidateByCanonicalRoot.set(candidate.canonicalRoot, candidate);
+  discoveringRoots.set(
+    candidate,
+    new Map([[candidate.rootKey, candidate.displayPath]]),
+  );
 }
 
 export async function redistributeUnusedEntryCapacity(
@@ -212,15 +247,32 @@ export function reportTrueLimits(
     }
   }
   if (candidateCount >= MAX_CANDIDATES) {
+    const diagnosticsByRootKey = new Map<
+      string,
+      { readonly state: RootScanState; readonly displayPath: string }
+    >();
     for (const state of states) {
-      const overflow = state.overflowCandidates[0];
-      if (!overflow) continue;
+      for (const overflow of state.overflowCandidates) {
+        for (const [rootKey, displayPath] of discoveringRoots.get(overflow) ??
+          []) {
+          const discoveringState = states.find(
+            ({ root }) => root.rootKey === rootKey,
+          );
+          if (discoveringState)
+            diagnosticsByRootKey.set(rootKey, {
+              state: discoveringState,
+              displayPath,
+            });
+        }
+      }
+    }
+    for (const { state, displayPath } of diagnosticsByRootKey.values()) {
       diagnostics.push(
         discoveryDiagnostic(
           "candidate-limit",
           state.root,
-          overflow.displayPath,
-          `Source candidate ${overflow.displayPath} exceeds the global ${MAX_CANDIDATES}-candidate limit.`,
+          displayPath,
+          `Source candidate ${displayPath} exceeds the global ${MAX_CANDIDATES}-candidate limit.`,
         ),
       );
     }

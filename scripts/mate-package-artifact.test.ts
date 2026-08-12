@@ -126,7 +126,7 @@ describe("Mate package runtime artifact", () => {
       license: "MIT",
       engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
       bb: {
-        name: "Plugin Workbench",
+        name: "Plugin Studio",
         description: "Develop source plugins.",
         branding: { icon: "Toolbox" },
         server: "./server.ts",
@@ -146,7 +146,7 @@ describe("Mate package runtime artifact", () => {
       license: "MIT",
       engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
       bb: {
-        name: "Plugin Workbench",
+        name: "Plugin Studio",
         description: "Develop source plugins.",
         branding: { icon: "Toolbox" },
         server: "./dist/server.js",

@@ -207,7 +207,7 @@ function FileOpenerPreview({ state }: { state: FixtureState }) {
         <strong>{stringValue(state.path)}</strong>
         <span>{stringValue(state.mode)}</span>
       </header>
-      <pre>{`# Architecture\n\nBB Mate orchestrates public plugin seams.\nLive bb remains the visual authority.`}</pre>
+      <pre>{`# Architecture\n\nbb Plugin Studio orchestrates public plugin seams.\nLive bb remains the visual authority.`}</pre>
     </section>
   );
 }

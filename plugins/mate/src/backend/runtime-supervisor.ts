@@ -170,12 +170,14 @@ export class RuntimeSupervisor {
     return this.snapshot;
   }
 
-  async admitCurrentProject(sourcePath: string) {
+  async admitProjects(
+    projects: Parameters<OwnedRuntime["targets"]["admitProjects"]>[0],
+  ) {
     const runtime = this.runtime;
     if (!runtime || this.snapshot.runtimeState !== "ready")
       throw new Error("Runtime target admission failed.");
     try {
-      const admitted = await runtime.targets.admit(sourcePath);
+      const admitted = await runtime.targets.admitProjects(projects);
       if (this.runtime !== runtime || this.snapshot.runtimeState !== "ready")
         throw new Error();
       return admitted;

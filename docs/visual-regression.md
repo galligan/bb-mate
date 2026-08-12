@@ -1,6 +1,6 @@
 # Visual regression and accessibility
 
-BB Mate runs a deliberately small Chromium matrix on every pull request. These
+bb Plugin Studio runs a deliberately small Chromium matrix on every pull request. These
 screenshots protect deterministic Fixture output; they do not prove visual
 parity with Live bb.
 
@@ -89,7 +89,7 @@ The intentionally measured sidebar/composer reference asserts:
 | Composer                  | 796 x 128 px         |
 | Composer top offset       | 70 px                |
 
-These measurements are regression targets for BB Mate's approximation, not a
+These measurements are regression targets for bb Plugin Studio's approximation, not a
 claim that bb has promised public CSS tokens.
 
 ## Manual Live bb comparison
@@ -111,6 +111,6 @@ Use Live bb only as a human-controlled visual authority:
    change. If the difference is owned by an unavailable public contract, record
    the upstream dependency instead of copying host internals.
 
-Fixture regression answers “did BB Mate change?” Live comparison answers “does
+Fixture regression answers “did bb Plugin Studio change?” Live comparison answers “does
 this still resemble the current host?” Only the latter can support a parity
 claim.

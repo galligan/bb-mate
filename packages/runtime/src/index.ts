@@ -54,6 +54,7 @@ export type {
   DevelopmentTargetCatalog,
   OpenDevelopmentTargetCatalogOptions,
   PrivateDevelopmentTargetSource,
+  RefreshCompleteDevelopmentTargetSnapshotInput,
   RefreshDevelopmentTargetInput,
 } from "./discovery/catalog.ts";
 export { DevelopmentTargetRootKindSchema } from "./discovery/trusted-candidate.ts";
@@ -92,11 +93,14 @@ export type {
   RuntimeIdentity,
 } from "./supervision/identity.ts";
 export {
-  CurrentProjectTargetAdmissionRequestSchema,
+  BatchProjectTargetAdmissionRequestSchema,
+  BatchProjectTargetAdmissionResponseSchema,
   DevelopmentTargetListResponseSchema,
+  TARGET_ADMISSION_MAX_PROJECTS,
 } from "./supervision/targets.ts";
 export type {
-  CurrentProjectTargetAdmissionRequest,
+  BatchProjectTargetAdmissionRequest,
+  BatchProjectTargetAdmissionResponse,
   DevelopmentTargetListResponse,
 } from "./supervision/targets.ts";
 export { openRuntimeStore } from "./persistence/store.ts";

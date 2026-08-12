@@ -4,7 +4,7 @@ import path from "node:path";
 import { inspectMatePackageDirectory } from "./inspect-mate-package.ts";
 import { fingerprintProfileRoots } from "./profile-fingerprint.ts";
 import {
-  assertTargetRefresh,
+  assertCatalogRefresh,
   callMateRpc,
   type MateSnapshot,
 } from "./mate-managed-rpc.ts";
@@ -232,33 +232,47 @@ function assertProjectOptions(
   for (const [id, label] of expected) {
     const option = snapshot.projects.items.find((item) => item.id === id);
     assert(
-      option?.label === label && option.admission === "available",
+      option?.label === label && option.scan.state === "not_scanned",
       `Mate project option is not available: ${label}.`,
     );
   }
 }
 
-function assertTargets(
+function assertCatalog(
   snapshot: MateSnapshot,
-  pluginIds: readonly string[],
+  expected: ReadonlyMap<
+    string,
+    readonly { readonly label: string; readonly pluginId: string }[]
+  >,
 ): void {
-  const expected = [...pluginIds].sort().map((pluginId) => ({
-    label: pluginId[0]!.toUpperCase() + pluginId.slice(1),
-    pluginId,
-  }));
   assert(
     snapshot.runtimeState === "ready" &&
       snapshot.apiVersion === 2 &&
       snapshot.runtimeVersion === "0.1.0-alpha.3" &&
-      (snapshot.targets.state === "ready" ||
-        snapshot.targets.state === "partial") &&
-      JSON.stringify(
-        snapshot.targets.items
-          .map(({ label, pluginId }) => ({ label, pluginId }))
-          .sort((left, right) => left.pluginId.localeCompare(right.pluginId)),
-      ) === JSON.stringify(expected),
-    `Mate did not return the exact targets: ${pluginIds.join(", ")}.`,
+      snapshot.projects.state === "ready",
+    "Mate did not return a ready all-project catalog.",
   );
+  assert(
+    snapshot.projects.items.length === expected.size,
+    "Mate returned an unexpected project count.",
+  );
+  for (const [projectId, targets] of expected) {
+    const project = snapshot.projects.items.find(({ id }) => id === projectId);
+    const actualTargets =
+      project?.scan.state === "ready"
+        ? project.scan.items
+            .map(({ label, pluginId }) => ({ label, pluginId }))
+            .sort((left, right) => left.pluginId.localeCompare(right.pluginId))
+        : null;
+    const expectedTargets = [...targets].sort((left, right) =>
+      left.pluginId.localeCompare(right.pluginId),
+    );
+    assert(
+      project?.scan.state === "ready" &&
+        JSON.stringify(actualTargets) === JSON.stringify(expectedTargets),
+      `Mate did not return the exact grouped targets for project ${projectId}: expected ${JSON.stringify(expectedTargets)}, received ${JSON.stringify(actualTargets)}.`,
+    );
+  }
 }
 
 async function assertMarkersAbsent(
@@ -303,8 +317,8 @@ export async function verifyManagedMatePackage(args: {
   bbExecutable: string;
   bbAppExecutable: string;
   canonicalStandaloneRoot: string;
-  singleSourceRoot: string;
-  multipleSourceRoot: string;
+  bbMateSourceRoot: string;
+  gridSourceRoot: string;
   targetMarker: string;
   ambientMarker: string;
 }): Promise<void> {
@@ -405,27 +419,37 @@ export async function verifyManagedMatePackage(args: {
       );
       return connected?.id as string | undefined;
     }, "disposable host enrollment");
-    const [singleProjectId, multipleProjectId] = await Promise.all([
+    const [bbMateProjectId, gridProjectId] = await Promise.all([
       createProject({
         bbExecutable: args.bbExecutable,
         cwd: args.hostileCwd,
         env,
         machineId,
-        name: "Mate single target",
-        root: args.singleSourceRoot,
+        name: "bb Plugin Studio",
+        root: args.bbMateSourceRoot,
       }),
       createProject({
         bbExecutable: args.bbExecutable,
         cwd: args.hostileCwd,
         env,
         machineId,
-        name: "Mate multiple targets",
-        root: args.multipleSourceRoot,
+        name: "grid",
+        root: args.gridSourceRoot,
       }),
     ]);
     const expectedProjects = new Map([
-      [singleProjectId, "Mate single target"],
-      [multipleProjectId, "Mate multiple targets"],
+      [bbMateProjectId, "bb Plugin Studio"],
+      [gridProjectId, "grid"],
+    ]);
+    const expectedCatalog = new Map([
+      [
+        bbMateProjectId,
+        [
+          { label: "Linear", pluginId: "linear" },
+          { label: "Plugin Studio", pluginId: "plugin-workbench" },
+        ],
+      ],
+      [gridProjectId, []],
     ]);
     const idle = await callMateRpc(serverUrl, "status", {});
     assert(
@@ -433,8 +457,8 @@ export async function verifyManagedMatePackage(args: {
         idle.runtimeVersion === null &&
         idle.apiVersion === null &&
         idle.canStart &&
-        idle.targets.state === "unavailable" &&
-        idle.targets.reason === "runtime_not_ready",
+        idle.projects.state === "ready" &&
+        idle.projects.items.every(({ scan }) => scan.state === "not_scanned"),
       `Mate runtime was not idle before demand: ${JSON.stringify(idle)}.`,
     );
     assertProjectOptions(idle, expectedProjects);
@@ -446,20 +470,44 @@ export async function verifyManagedMatePackage(args: {
         .catch(() => false)),
       "Mate created its runtime catalog before admission.",
     );
-    const invalidAdmit = await fetch(
-      `${serverUrl}/api/v1/plugins/mate/rpc/admit`,
+    const invalidRefresh = await fetch(
+      `${serverUrl}/api/v1/plugins/mate/rpc/refresh`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          projectId: singleProjectId,
-          path: args.singleSourceRoot,
+          projectId: bbMateProjectId,
+          path: args.bbMateSourceRoot,
         }),
       },
     );
     assert(
-      invalidAdmit.status === 400,
-      "Mate admit accepted a browser-supplied path.",
+      invalidRefresh.status === 400,
+      "Mate refresh accepted browser-supplied project or path selection.",
+    );
+    const invalidStatus = await fetch(
+      `${serverUrl}/api/v1/plugins/mate/rpc/status`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projectId: bbMateProjectId }),
+      },
+    );
+    assert(
+      invalidStatus.status === 400,
+      "Mate status accepted browser-supplied project selection.",
+    );
+    const obsoleteAdmit = await fetch(
+      `${serverUrl}/api/v1/plugins/mate/rpc/admit`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projectId: bbMateProjectId }),
+      },
+    );
+    assert(
+      obsoleteAdmit.status === 404,
+      "Mate exposed the obsolete per-project admit RPC.",
     );
     await assertMarkersAbsent(args.targetMarker, args.ambientMarker);
     assert(
@@ -470,19 +518,21 @@ export async function verifyManagedMatePackage(args: {
       ).length === 0,
       "Mate runtime started before demand.",
     );
-    let singleTargets = await callMateRpc(serverUrl, "admit", {
-      projectId: singleProjectId,
-    });
-    assertTargets(singleTargets, ["alpha"]);
-    let multipleTargets = await callMateRpc(serverUrl, "admit", {
-      projectId: multipleProjectId,
-    });
-    assertTargets(multipleTargets, ["bravo", "charlie"]);
-    const firstSingleRefresh = await callMateRpc(serverUrl, "admit", {
-      projectId: singleProjectId,
-    });
-    assertTargetRefresh(singleTargets, firstSingleRefresh);
-    singleTargets = firstSingleRefresh;
+    const concurrentRefreshes = await Promise.all(
+      Array.from({ length: 100 }, () => callMateRpc(serverUrl, "refresh", {})),
+    );
+    let catalog = concurrentRefreshes[0]!;
+    assertCatalog(catalog, expectedCatalog);
+    assert(
+      concurrentRefreshes.every(
+        (snapshot) => JSON.stringify(snapshot) === JSON.stringify(catalog),
+      ),
+      "Concurrent all-project Mate refresh calls did not converge.",
+    );
+    const firstRepeatedRefresh = await callMateRpc(serverUrl, "refresh", {});
+    assertCatalog(firstRepeatedRefresh, expectedCatalog);
+    assertCatalogRefresh(catalog, firstRepeatedRefresh);
+    catalog = firstRepeatedRefresh;
     await assertMarkersAbsent(args.targetMarker, args.ambientMarker);
     const runtimeExecutable = path.join(
       installedPackageRoot,
@@ -510,11 +560,14 @@ export async function verifyManagedMatePackage(args: {
       "Mate runtime did not restart after crash.",
     );
     await assertPortClosed(firstRuntimePort);
-    const afterCrash = await callMateRpc(serverUrl, "admit", {
-      projectId: singleProjectId,
-    });
-    assertTargetRefresh(singleTargets, afterCrash);
-    singleTargets = afterCrash;
+    assertProjectOptions(
+      await callMateRpc(serverUrl, "status", {}),
+      expectedProjects,
+    );
+    const afterCrash = await callMateRpc(serverUrl, "refresh", {});
+    assertCatalog(afterCrash, expectedCatalog);
+    assertCatalogRefresh(catalog, afterCrash);
+    catalog = afterCrash;
     await assertMarkersAbsent(args.targetMarker, args.ambientMarker);
     const restartedRuntimePort = await runtimeListenerPort(restartedRuntimePid);
     await run(
@@ -531,15 +584,16 @@ export async function verifyManagedMatePackage(args: {
       "runtime cleanup after reload",
     );
     await assertPortClosed(restartedRuntimePort);
+    const afterReloadStatus = await callMateRpc(serverUrl, "status", {});
     assert(
-      (await callMateRpc(serverUrl, "status", {})).runtimeState === "idle",
+      afterReloadStatus.runtimeState === "idle",
       "Reloaded Mate was not idle.",
     );
-    const afterReload = await callMateRpc(serverUrl, "admit", {
-      projectId: multipleProjectId,
-    });
-    assertTargetRefresh(multipleTargets, afterReload);
-    multipleTargets = afterReload;
+    assertProjectOptions(afterReloadStatus, expectedProjects);
+    const afterReload = await callMateRpc(serverUrl, "refresh", {});
+    assertCatalog(afterReload, expectedCatalog);
+    assertCatalogRefresh(catalog, afterReload);
+    catalog = afterReload;
     const beforeDisablePid = await waitFor(async () => {
       const processes = await runtimeProcesses(runtimeExecutable);
       return processes.length === 1 ? processes[0] : undefined;
@@ -575,15 +629,16 @@ export async function verifyManagedMatePackage(args: {
       args.hostileCwd,
       env,
     );
+    const afterEnableStatus = await callMateRpc(serverUrl, "status", {});
     assert(
-      (await callMateRpc(serverUrl, "status", {})).runtimeState === "idle",
+      afterEnableStatus.runtimeState === "idle",
       "Enabled Mate was not idle before redemand.",
     );
-    const afterEnable = await callMateRpc(serverUrl, "admit", {
-      projectId: singleProjectId,
-    });
-    assertTargetRefresh(singleTargets, afterEnable);
-    singleTargets = afterEnable;
+    assertProjectOptions(afterEnableStatus, expectedProjects);
+    const afterEnable = await callMateRpc(serverUrl, "refresh", {});
+    assertCatalog(afterEnable, expectedCatalog);
+    assertCatalogRefresh(catalog, afterEnable);
+    catalog = afterEnable;
     const beforeGracefulPid = await waitFor(async () => {
       const processes = await runtimeProcesses(runtimeExecutable);
       return processes.length === 1 ? processes[0] : undefined;
@@ -622,11 +677,10 @@ export async function verifyManagedMatePackage(args: {
         "Fresh forced-parent server did not begin idle.",
       );
       assertProjectOptions(restartedIdle, expectedProjects);
-      const afterServerReopen = await callMateRpc(serverUrl, "admit", {
-        projectId: singleProjectId,
-      });
-      assertTargetRefresh(singleTargets, afterServerReopen);
-      singleTargets = afterServerReopen;
+      const afterServerReopen = await callMateRpc(serverUrl, "refresh", {});
+      assertCatalog(afterServerReopen, expectedCatalog);
+      assertCatalogRefresh(catalog, afterServerReopen);
+      catalog = afterServerReopen;
       const beforeRemovePid = await waitFor(async () => {
         const processes = await runtimeProcesses(runtimeExecutable);
         return processes.length === 1 ? processes[0] : undefined;
@@ -681,11 +735,10 @@ export async function verifyManagedMatePackage(args: {
         args.hostileCwd,
         env,
       );
-      const afterReinstall = await callMateRpc(serverUrl, "admit", {
-        projectId: multipleProjectId,
-      });
-      assertTargetRefresh(multipleTargets, afterReinstall);
-      multipleTargets = afterReinstall;
+      const afterReinstall = await callMateRpc(serverUrl, "refresh", {});
+      assertCatalog(afterReinstall, expectedCatalog);
+      assertCatalogRefresh(catalog, afterReinstall);
+      catalog = afterReinstall;
       await assertMarkersAbsent(args.targetMarker, args.ambientMarker);
       const beforeForcedPid = await waitFor(async () => {
         const processes = await runtimeProcesses(runtimeExecutable);
@@ -705,12 +758,6 @@ export async function verifyManagedMatePackage(args: {
         "runtime cleanup after forced server-child loss",
       );
       await assertPortClosed(beforeForcedPort);
-      await run(
-        args.bbExecutable,
-        ["project", "delete", singleProjectId, "--yes", "--json"],
-        args.hostileCwd,
-        env,
-      ).catch(() => "server already stopped");
     } finally {
       try {
         process.kill(-forcedServer.pid, "SIGTERM");
@@ -733,14 +780,99 @@ export async function verifyManagedMatePackage(args: {
         forcedStderr,
       ]);
       assertNoPrivateLeak(`${forcedOut}\n${forcedErr}`, [
-        args.singleSourceRoot,
-        args.multipleSourceRoot,
+        args.bbMateSourceRoot,
+        args.gridSourceRoot,
         args.targetMarker,
         args.ambientMarker,
       ]);
       assert(
         forcedExit !== null,
         `Forced-parent bb app did not stop: ${(forcedErr || forcedOut).trim().slice(-2_000)}`,
+      );
+    }
+
+    const recoveredServer = Bun.spawn(serverCommand, { ...serverOptions });
+    const recoveredStdout = new Response(recoveredServer.stdout).text();
+    const recoveredStderr = new Response(recoveredServer.stderr).text();
+    try {
+      await waitForServer(serverUrl, recoveredServer.exited);
+      const recoveredIdle = await waitFor(
+        () => callMateRpc(serverUrl, "status", {}).catch(() => undefined),
+        "Mate activation after forced server-child loss",
+      );
+      assert(
+        recoveredIdle.runtimeState === "idle",
+        "Mate was not idle after forced server-child loss.",
+      );
+      assertProjectOptions(recoveredIdle, expectedProjects);
+      const afterParentLoss = await callMateRpc(serverUrl, "refresh", {});
+      assertCatalog(afterParentLoss, expectedCatalog);
+      assertCatalogRefresh(catalog, afterParentLoss);
+      catalog = afterParentLoss;
+      await assertMarkersAbsent(args.targetMarker, args.ambientMarker);
+      const finalRuntimePid = await waitFor(async () => {
+        const processes = await runtimeProcesses(runtimeExecutable);
+        return processes.length === 1 ? processes[0] : undefined;
+      }, "runtime after forced server-child recovery");
+      const finalRuntimePort = await runtimeListenerPort(finalRuntimePid);
+      await run(
+        args.bbExecutable,
+        ["plugin", "remove", "mate", "--json"],
+        args.hostileCwd,
+        env,
+      );
+      await waitFor(
+        async () =>
+          (await runtimeProcesses(runtimeExecutable)).length === 0
+            ? true
+            : undefined,
+        "runtime cleanup after final remove",
+      );
+      await assertPortClosed(finalRuntimePort);
+      await inspectMatePackageDirectory(
+        installedPackageRoot,
+        args.canonicalStandaloneRoot,
+      );
+      await Promise.all(
+        [bbMateProjectId, gridProjectId].map((projectId) =>
+          run(
+            args.bbExecutable,
+            ["project", "delete", projectId, "--yes", "--json"],
+            args.hostileCwd,
+            env,
+          ),
+        ),
+      );
+    } finally {
+      try {
+        process.kill(-recoveredServer.pid, "SIGTERM");
+      } catch {}
+      let recoveredExit = await Promise.race([
+        recoveredServer.exited,
+        Bun.sleep(5_000).then(() => null),
+      ]);
+      if (recoveredExit === null) {
+        try {
+          process.kill(-recoveredServer.pid, "SIGKILL");
+        } catch {}
+        recoveredExit = await Promise.race([
+          recoveredServer.exited,
+          Bun.sleep(2_000).then(() => null),
+        ]);
+      }
+      const [recoveredOut, recoveredErr] = await Promise.all([
+        recoveredStdout,
+        recoveredStderr,
+      ]);
+      assertNoPrivateLeak(`${recoveredOut}\n${recoveredErr}`, [
+        args.bbMateSourceRoot,
+        args.gridSourceRoot,
+        args.targetMarker,
+        args.ambientMarker,
+      ]);
+      assert(
+        recoveredExit !== null,
+        `Recovered bb app did not stop: ${(recoveredErr || recoveredOut).trim().slice(-2_000)}`,
       );
     }
   } finally {
@@ -764,8 +896,8 @@ export async function verifyManagedMatePackage(args: {
     assert(exitCode !== null, "Disposable bb server did not stop within 7s.");
     const [serverStdout, serverStderr] = await Promise.all([stdout, stderr]);
     assertNoPrivateLeak(`${serverStdout}\n${serverStderr}`, [
-      args.singleSourceRoot,
-      args.multipleSourceRoot,
+      args.bbMateSourceRoot,
+      args.gridSourceRoot,
       args.targetMarker,
       args.ambientMarker,
     ]);

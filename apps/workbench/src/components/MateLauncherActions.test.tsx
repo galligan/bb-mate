@@ -13,7 +13,7 @@ describe("Mate launcher actions", () => {
           launchCommand: "bun run bb-mate dev plugins/notes",
           checkCommand: "bun run bb-mate check plugins/notes",
           liveCommand: "bun run bb-mate live plugins/notes",
-          detail: "Run from the BB Mate repository root.",
+          detail: "Run from the bb Plugin Studio repository root.",
         }}
         liveAvailable
         liveUrl="https://bb.example.test"
@@ -23,7 +23,7 @@ describe("Mate launcher actions", () => {
     expect(html).toContain("Copy launch command");
     expect(html).toContain("Copy build and re-check");
     expect(html).toContain("State-changing");
-    expect(html).toContain("Run from the BB Mate repository root");
+    expect(html).toContain("Run from the bb Plugin Studio repository root");
     expect(html).toContain("bb plugin build .");
     expect(html).toContain("bb plugin dev .");
     expect(html).toContain('target="_blank"');
@@ -37,7 +37,7 @@ describe("Mate launcher actions", () => {
           launchCommand: "bun run bb-mate dev plugins/notes",
           checkCommand: "bun run bb-mate check plugins/notes",
           liveCommand: "bun run bb-mate live plugins/notes",
-          detail: "Run from the BB Mate repository root.",
+          detail: "Run from the bb Plugin Studio repository root.",
         }}
         liveAvailable={false}
         liveUrl={null}

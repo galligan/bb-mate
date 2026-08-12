@@ -3,51 +3,69 @@ import { describe, expect, test } from "bun:test";
 import {
   projectIdSchema,
   workbenchSnapshotSchema,
-  type PluginWorkbenchSnapshotV2,
+  type PluginWorkbenchSnapshotV3,
 } from "./workbench-contract.ts";
 
-const idle: PluginWorkbenchSnapshotV2 = {
-  schemaVersion: 2,
+const idle: PluginWorkbenchSnapshotV3 = {
+  schemaVersion: 3,
   runtimeState: "idle",
   reason: null,
   runtimeVersion: null,
   apiVersion: null,
   canStart: true,
   browserLaunch: "unavailable",
-  projects: { state: "ready", items: [] },
-  targets: {
-    state: "unavailable",
-    reason: "runtime_not_ready",
-    items: [],
-  },
+  projects: { state: "ready", truncated: false, items: [] },
 };
 
-describe("Plugin Workbench v2 contract", () => {
-  test("accepts the exact finite idle projection", () => {
+const project = {
+  id: "project-1",
+  label: "Example",
+  activity: { active: false, lastThreadUpdatedAt: null },
+  scan: { state: "not_scanned" as const, items: [] as [] },
+};
+
+describe("Plugin Studio v3 contract", () => {
+  test("accepts the exact finite path-free idle projection", () => {
     expect(workbenchSnapshotSchema.parse(idle)).toEqual(idle);
+    expect(
+      workbenchSnapshotSchema.parse({
+        ...idle,
+        projects: { state: "ready", truncated: false, items: [project] },
+      }),
+    ).toEqual({
+      ...idle,
+      projects: { state: "ready", truncated: false, items: [project] },
+    });
   });
 
-  test("rejects path-shaped ids and private nested facts", () => {
-    for (const projectId of ["", "../plugin", "/private/plugin", "a b"])
-      expect(projectIdSchema.safeParse(projectId).success).toBe(false);
-
+  test("requires explicit inventory truncation independently of scan completeness", () => {
     expect(
       workbenchSnapshotSchema.safeParse({
         ...idle,
-        targets: {
-          state: "ready",
-          items: [
-            {
-              id: "t".repeat(32),
-              label: "Example",
-              pluginId: "example",
-              revision: 1,
-              sourcePath: "/private/example",
-            },
-          ],
-        },
+        projects: { state: "ready", items: [] },
       }).success,
     ).toBe(false);
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: {
+          state: "partial",
+          truncated: false,
+          items: [{ ...project, scan: { state: "partial", items: [] } }],
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: { state: "partial", truncated: true, items: [project] },
+      }).success,
+    ).toBe(true);
+  });
+
+  test("rejects path-shaped ids, labels, and nested private facts", () => {
+    for (const projectId of ["", "../plugin", "/private/plugin", "a b"])
+      expect(projectIdSchema.safeParse(projectId).success).toBe(false);
 
     for (const label of [
       "/Users/test/plugin",
@@ -64,10 +82,38 @@ describe("Plugin Workbench v2 contract", () => {
           ...idle,
           projects: {
             state: "ready",
-            items: [{ id: "project-1", label, admission: "available" }],
+            items: [{ ...project, label }],
           },
         }).success,
       ).toBe(false);
+    }
+
+    for (const privateFact of [
+      { sourcePath: "/private/example" },
+      { sourceId: "source-1" },
+      { hostId: "host-1" },
+      { detail: "private scanner output" },
+    ]) {
+      expect(
+        workbenchSnapshotSchema.safeParse({
+          ...idle,
+          projects: {
+            state: "ready",
+            items: [{ ...project, ...privateFact }],
+          },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
+  test("accepts grouped scans and only finite generic unavailable reasons", () => {
+    const target = {
+      id: "t".repeat(32),
+      label: "Example plugin",
+      pluginId: "example",
+      revision: 1,
+    };
+    for (const state of ["ready", "partial"] as const) {
       expect(
         workbenchSnapshotSchema.safeParse({
           ...idle,
@@ -75,23 +121,66 @@ describe("Plugin Workbench v2 contract", () => {
           runtimeVersion: "0.1.0",
           apiVersion: 2,
           canStart: false,
-          targets: {
-            state: "ready",
+          projects: {
+            state,
+            truncated: false,
+            items: [{ ...project, scan: { state, items: [target] } }],
+          },
+        }).success,
+      ).toBe(true);
+    }
+    for (const reason of [
+      "source_changed",
+      "scan_failed",
+      "capacity_reached",
+    ] as const) {
+      expect(
+        workbenchSnapshotSchema.safeParse({
+          ...idle,
+          runtimeState: "ready",
+          runtimeVersion: "0.1.0",
+          apiVersion: 2,
+          canStart: false,
+          projects: {
+            state: "partial",
+            truncated: false,
             items: [
               {
-                id: "t".repeat(32),
-                label,
-                pluginId: "example",
-                revision: 1,
+                ...project,
+                scan: { state: "unavailable", reason, items: [] },
               },
             ],
           },
         }).success,
-      ).toBe(false);
+      ).toBe(true);
     }
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: {
+          state: "partial",
+          items: [
+            {
+              ...project,
+              scan: {
+                state: "unavailable",
+                reason: "/private/failure",
+                items: [],
+              },
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: { state: "partial", truncated: false, items: [project] },
+      }).success,
+    ).toBe(false);
   });
 
-  test("requires coherent runtime identity and unique bounded items", () => {
+  test("requires coherent runtime identity, activity, state, and unique bounded items", () => {
     for (const identity of [
       { runtimeVersion: "0.1.0", apiVersion: null },
       { runtimeVersion: null, apiVersion: 2 },
@@ -103,8 +192,10 @@ describe("Plugin Workbench v2 contract", () => {
     expect(
       workbenchSnapshotSchema.safeParse({
         ...idle,
-        runtimeState: "ready",
-        canStart: false,
+        projects: {
+          state: "ready",
+          items: [project, { ...project, label: "Duplicate" }],
+        },
       }).success,
     ).toBe(false);
     expect(
@@ -113,8 +204,10 @@ describe("Plugin Workbench v2 contract", () => {
         projects: {
           state: "ready",
           items: [
-            { id: "same", label: "One", admission: "available" },
-            { id: "same", label: "Two", admission: "no_source" },
+            {
+              ...project,
+              activity: { active: false, lastThreadUpdatedAt: -1 },
+            },
           ],
         },
       }).success,
@@ -122,7 +215,39 @@ describe("Plugin Workbench v2 contract", () => {
     expect(
       workbenchSnapshotSchema.safeParse({
         ...idle,
-        targets: { state: "ready", items: [] },
+        projects: {
+          state: "ready",
+          items: [{ ...project, scan: { state: "partial", items: [] } }],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  test("bounds duplicate-root fan-out by total serialized target entries", () => {
+    const targets = Array.from({ length: 65 }, (_, index) => ({
+      id: String(index).padStart(32, "0"),
+      label: `Plugin ${index}`,
+      pluginId: `plugin-${index}`,
+      revision: 1,
+    }));
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        runtimeState: "ready",
+        runtimeVersion: "0.1.0",
+        apiVersion: 2,
+        canStart: false,
+        projects: {
+          state: "ready",
+          items: [
+            { ...project, scan: { state: "ready", items: targets } },
+            {
+              ...project,
+              id: "project-2",
+              scan: { state: "ready", items: targets },
+            },
+          ],
+        },
       }).success,
     ).toBe(false);
   });

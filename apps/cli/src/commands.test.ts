@@ -171,6 +171,7 @@ describe("bb-mate CLI", () => {
     expect(result).toEqual({ exitCode: 0, signal: null });
     expect(nativeCall).toBe(false);
     expect(testRuntime.stdout.join("")).toContain("Usage: bb-mate [path]");
+    expect(testRuntime.stdout.join("")).toContain("bb Plugin Studio");
     expect(testRuntime.stdout.join("")).toContain(
       "bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>",
     );

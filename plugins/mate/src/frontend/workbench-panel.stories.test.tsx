@@ -11,7 +11,7 @@ import {
   Unavailable,
 } from "./workbench-panel.stories";
 
-describe("Plugin Workbench visual fixtures", () => {
+describe("Plugin Studio visual fixtures", () => {
   test("keeps every finite runtime state deterministic and renderable", () => {
     for (const Story of [
       Idle,
@@ -25,7 +25,8 @@ describe("Plugin Workbench visual fixtures", () => {
       const html = renderToStaticMarkup(<Story />);
       expect(html).toMatch(/runtime/iu);
       expect(html).toContain("Projects");
-      expect(html).not.toContain("Workbench preview");
+      expect(html).not.toContain("Plugin Studio preview");
+      expect(html).not.toContain("Workbench");
     }
   });
 

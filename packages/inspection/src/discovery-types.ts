@@ -13,6 +13,10 @@ export interface TrustedRootInput {
   displayName?: string;
 }
 
+export interface DiscoveryOperationOptions {
+  readonly signal?: AbortSignal;
+}
+
 export interface TrustedRoot {
   readonly rootKey: string;
   readonly kind: TrustedRootKind;
@@ -28,7 +32,13 @@ export interface DiscoveryDiagnostic {
 
 export interface TrustedRootAdmission {
   readonly roots: readonly TrustedRoot[];
+  readonly aliases: readonly TrustedRootAlias[];
   readonly diagnostics: readonly DiscoveryDiagnostic[];
+}
+
+export interface TrustedRootAlias {
+  readonly rootKey: string;
+  readonly admittedRootKey: string;
 }
 
 export interface SourceCandidate {

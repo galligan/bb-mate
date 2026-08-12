@@ -13,40 +13,41 @@ function snapshot(
   const failed = runtimeState === "failed";
   const unavailable = runtimeState === "unavailable";
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     runtimeState,
     reason: failed
       ? "startup_failed"
       : unavailable
         ? "unsupported_platform"
         : null,
-    runtimeVersion: runtimeState === "ready" ? "0.7.0" : null,
-    apiVersion: runtimeState === "ready" ? 2 : null,
+    runtimeVersion:
+      runtimeState === "ready" || runtimeState === "stopping" ? "0.7.0" : null,
+    apiVersion:
+      runtimeState === "ready" || runtimeState === "stopping" ? 2 : null,
     canStart: runtimeState === "idle" || failed,
     browserLaunch: "unavailable",
     projects: {
       state: "ready",
-      items: [{ id: "project_01", label: "BB Mate", admission: "available" }],
+      truncated: false,
+      items: [
+        {
+          id: "project_01",
+          label: "bb Plugin Studio",
+          activity: { active: false, lastThreadUpdatedAt: null },
+          scan: { state: "not_scanned", items: [] },
+        },
+      ],
     },
-    targets: { state: "project_not_selected", items: [] },
     ...overrides,
   };
 }
 
-function Fixture({
-  value,
-  openedProjectId = null,
-}: {
-  value: PluginWorkbenchSnapshot;
-  openedProjectId?: string | null;
-}) {
+function Fixture({ value }: { value: PluginWorkbenchSnapshot }) {
   return (
     <PluginWorkbenchView
       snapshot={value}
-      openedProjectId={openedProjectId}
-      admittingProjectId={null}
-      selectionMessage={null}
-      onOpenProject={() => {}}
+      refreshing={false}
+      catalogMessage={null}
       onOpenTarget={() => {}}
       onRefresh={() => {}}
     />
@@ -79,16 +80,27 @@ export function HostileVersion() {
       value={snapshot("ready", {
         projects: {
           state: "ready",
-          items: [{ id: "project_01", label: hostile, admission: "available" }],
-        },
-        targets: {
-          state: "ready",
+          truncated: false,
           items: [
-            { id: targetId, label: hostile, pluginId: "mate", revision: 1 },
+            {
+              id: "project_01",
+              label: hostile,
+              activity: { active: true, lastThreadUpdatedAt: 42 },
+              scan: {
+                state: "ready",
+                items: [
+                  {
+                    id: targetId,
+                    label: hostile,
+                    pluginId: "mate",
+                    revision: 1,
+                  },
+                ],
+              },
+            },
           ],
         },
       })}
-      openedProjectId="project_01"
     />
   );
 }

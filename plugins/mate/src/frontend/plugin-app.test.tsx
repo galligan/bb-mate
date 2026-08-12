@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-import type { PluginWorkbenchSnapshot } from "./workbench-snapshot";
+import type {
+  PluginWorkbenchSnapshot,
+  ProjectOption,
+} from "./workbench-snapshot";
 
 GlobalRegistrator.register();
 (
@@ -13,30 +16,48 @@ GlobalRegistrator.register();
 const targetA = "abcdefghijklmnopqrstuvwxzy012345";
 const targetB = "0123456789abcdefghijklmnopqrstuv";
 
+function project(
+  id: string,
+  label: string,
+  scan: ProjectOption["scan"] = { state: "not_scanned", items: [] },
+): ProjectOption {
+  return {
+    id,
+    label,
+    activity: { active: false, lastThreadUpdatedAt: null },
+    scan,
+  };
+}
+
 function snapshot(
-  targets: PluginWorkbenchSnapshot["targets"] = {
-    state: "project_not_selected",
-    items: [],
-  },
+  projects: ProjectOption[] = [
+    project("project_01", "bb Plugin Studio"),
+    project("project_02", "Remote"),
+  ],
+  state: "ready" | "partial" = projects.some(
+    ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
+  )
+    ? "partial"
+    : "ready",
 ): PluginWorkbenchSnapshot {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     runtimeState: "ready",
     reason: null,
     runtimeVersion: "0.7.0",
     apiVersion: 2,
     canStart: false,
     browserLaunch: "unavailable",
-    projects: {
-      state: "ready",
-      items: [
-        { id: "project_01", label: "BB Mate", admission: "available" },
-        { id: "project_02", label: "Remote", admission: "available" },
-      ],
-    },
-    targets,
+    projects: { state, truncated: false, items: projects },
   };
 }
+
+const mateTarget = {
+  id: targetA,
+  label: "Mate",
+  pluginId: "mate",
+  revision: 1,
+} as const;
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -92,6 +113,7 @@ async function flush() {
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
   });
 }
 
@@ -128,7 +150,7 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-describe("Plugin Workbench app registration", () => {
+describe("Plugin Studio app registration", () => {
   test("registers one native nav panel with a supported Toolbox icon", async () => {
     const definition = (await import("./plugin-app")).default;
     const registrations: unknown[] = [];
@@ -140,61 +162,49 @@ describe("Plugin Workbench app registration", () => {
     expect(registrations).toHaveLength(1);
     expect(registrations[0]).toMatchObject({
       id: "plugin-workbench",
-      title: "Plugin Workbench",
+      title: "Plugin Studio",
       icon: "Toolbox",
       path: "workbench",
       component: expect.any(Function),
     });
   });
 
-  test("loads read-only status and opens only the chosen project", async () => {
+  test("reads status then performs one automatic batch refresh", async () => {
+    const refreshed = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+      project("project_02", "Remote", { state: "ready", items: [] }),
+    ]);
     rpcImplementation = (method) =>
-      Promise.resolve(
-        method === "status"
-          ? snapshot()
-          : snapshot({
-              state: "ready",
-              items: [
-                { id: targetA, label: "Mate", pluginId: "mate", revision: 1 },
-              ],
-            }),
-      );
+      Promise.resolve(method === "status" ? snapshot() : refreshed);
     await renderPanel();
+
     expect(rpcCall).toHaveBeenNthCalledWith(1, "status", {});
-    expect(rpcCall).toHaveBeenCalledTimes(1);
-
-    await act(async () => button("Open")?.click());
-    await flush();
-
-    expect(rpcCall).toHaveBeenNthCalledWith(2, "admit", {
-      projectId: "project_01",
-    });
-    expect(rpcCall.mock.calls.some(([method]) => method === "ensure")).toBe(
-      false,
-    );
-    expect(document.body.textContent).toContain("Plugins in BB Mate");
-    expect(document.querySelector('[aria-label="Open Mate"]')).toBeInstanceOf(
-      HTMLButtonElement,
-    );
+    expect(rpcCall).toHaveBeenNthCalledWith(2, "refresh", {});
+    expect(rpcCall).toHaveBeenCalledTimes(2);
+    expect(document.body.textContent).toContain("bb Plugin Studio");
+    expect(document.body.textContent).toContain("Remote");
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).toContain("No development plugins found");
+    expect(button("Open")).toBeUndefined();
   });
 
-  test("opens a plugin through panel-internal history", async () => {
+  test("opens a plugin through panel-internal history without a project action", async () => {
+    const refreshed = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
     rpcImplementation = (method) =>
-      Promise.resolve(
-        method === "status"
-          ? snapshot()
-          : snapshot({
-              state: "ready",
-              items: [
-                { id: targetA, label: "Mate", pluginId: "mate", revision: 1 },
-              ],
-            }),
-      );
+      Promise.resolve(method === "status" ? snapshot() : refreshed);
     await renderPanel();
-    await act(async () => button("Open")?.click());
-    await flush();
     await act(async () => {
-      const target = document.querySelector('[aria-label="Open Mate"]');
+      const target = document.querySelector(
+        '[aria-label="Open Mate in bb Plugin Studio"]',
+      );
       if (!(target instanceof HTMLButtonElement))
         throw new Error("Missing target.");
       target.click();
@@ -202,349 +212,33 @@ describe("Plugin Workbench app registration", () => {
     expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
       subPath: `projects/project_01/targets/${targetA}`,
     });
-  });
-
-  test("recovers a malformed detail route back to the project list once", async () => {
-    await renderPanel("not-a-plugin-detail");
-    await flush();
-
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
-      replace: true,
-    });
-  });
-
-  test("recovers a detail route for a project that is no longer available", async () => {
-    await renderPanel(`projects/missing_project/targets/${targetA}`);
-    await flush();
-
-    expect(rpcCall).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
-      replace: true,
-    });
-  });
-
-  test("recovers a detail route for a project that is no longer eligible", async () => {
-    const ineligibleSnapshot = snapshot();
-    ineligibleSnapshot.projects.items[0] = {
-      id: "project_01",
-      label: "BB Mate",
-      admission: "no_source",
-    };
-    rpcImplementation = () => Promise.resolve(ineligibleSnapshot);
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-
-    expect(rpcCall).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
-      replace: true,
-    });
-  });
-
-  test("retries a detail route after the project catalog recovers", async () => {
-    let statusCalls = 0;
-    rpcImplementation = (method) => {
-      if (method === "admit") {
-        return Promise.resolve(
-          snapshot({
-            state: "ready",
-            items: [
-              { id: targetA, label: "Mate", pluginId: "mate", revision: 1 },
-            ],
-          }),
-        );
-      }
-      statusCalls += 1;
-      return Promise.resolve(
-        statusCalls === 1
-          ? snapshot({ state: "project_not_selected", items: [] })
-          : snapshot(),
-      ).then((value) => {
-        if (statusCalls === 1)
-          value.projects = { state: "unavailable", items: [] };
-        return value;
-      });
-    };
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    expect(rpcCall).toHaveBeenCalledTimes(1);
-
-    await act(async () =>
-      document
-        .querySelector('[aria-label="Reload Workbench data"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    expect(rpcCall.mock.calls.some(([method]) => method === "admit")).toBe(
+      false,
     );
-    await flush();
-
-    expect(rpcCall).toHaveBeenNthCalledWith(2, "status", {});
-    expect(rpcCall).toHaveBeenNthCalledWith(3, "admit", {
-      projectId: "project_01",
-    });
-    expect(document.body.textContent).toContain("Mate");
   });
 
-  test("recovers when a requested plugin is absent after project discovery", async () => {
-    rpcImplementation = () =>
-      Promise.resolve(snapshot({ state: "ready", items: [] }));
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-
-    expect(rpcCall).toHaveBeenCalledTimes(2);
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
-      replace: true,
-    });
-  });
-
-  test("preserves a detail route while the target catalog is nonterminal", async () => {
-    const catalogs: PluginWorkbenchSnapshot["targets"][] = [
-      { state: "partial", items: [] },
-      {
-        state: "unavailable",
-        reason: "catalog_unavailable",
-        items: [],
-      },
-    ];
-    for (const targets of catalogs) {
-      rpcCall.mockClear();
-      navigateToPluginPanel.mockClear();
-      rpcImplementation = (method) =>
-        Promise.resolve(method === "status" ? snapshot() : snapshot(targets));
-
-      await renderPanel(`projects/project_01/targets/${targetA}`);
-      await flush();
-
-      expect(rpcCall).toHaveBeenCalledTimes(2);
-      expect(navigateToPluginPanel).not.toHaveBeenCalled();
-
-      await act(() => root?.unmount());
-      root = undefined;
-      document.body.innerHTML = '<div id="root"></div>';
-    }
-  });
-
-  test("supersedes a pending recovery refresh when returning to the project list", async () => {
+  test("preserves a pending root catalog reload when opening a plugin", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
     const pending = deferred<unknown>();
     let calls = 0;
-    rpcImplementation = (method) => {
+    rpcImplementation = () => {
       calls += 1;
-      if (method === "status") return Promise.resolve(snapshot());
-      if (calls === 2) {
-        return Promise.resolve(snapshot({ state: "partial", items: [] }));
-      }
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
       return pending.promise;
     };
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-    await act(async () => button("Refresh")?.click());
-    const { PluginWorkbenchPanel } = await import("./plugin-app");
-    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
-    await flush();
-
-    const projectOpen = button("Open");
-    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
-    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
-
-    pending.resolve(
-      snapshot({
-        state: "ready",
-        items: [
-          {
-            id: targetB,
-            label: "Late plugin",
-            pluginId: "late",
-            revision: 2,
-          },
-        ],
-      }),
-    );
-    await flush();
-
-    expect(document.body.textContent).not.toContain("Late plugin");
-    expect(rpcCall).toHaveBeenCalledTimes(3);
-  });
-
-  test("returns to the root before opening another project from an uncertain detail", async () => {
-    rpcImplementation = (method, input) => {
-      if (method === "status") return Promise.resolve(snapshot());
-      const projectId = (input as { projectId: string }).projectId;
-      return Promise.resolve(
-        snapshot(
-          projectId === "project_01"
-            ? { state: "partial", items: [] }
-            : {
-                state: "ready",
-                items: [
-                  {
-                    id: targetB,
-                    label: "Remote plugin",
-                    pluginId: "remote",
-                    revision: 1,
-                  },
-                ],
-              },
-        ),
-      );
-    };
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-    await act(async () =>
-      Array.from(document.querySelectorAll("button"))
-        .filter((candidate) => candidate.textContent === "Open")
-        .at(-1)
-        ?.click(),
-    );
-    await flush();
-
-    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
-      replace: true,
-    });
-    expect(document.body.textContent).toContain("Remote plugin");
-  });
-
-  test("attempts a routed project once and recovers when opening fails", async () => {
-    rpcImplementation = (method) =>
-      method === "status"
-        ? Promise.resolve(snapshot())
-        : Promise.reject(new Error("open failed"));
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-
-    expect(rpcCall).toHaveBeenCalledTimes(2);
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
-      replace: true,
-    });
-  });
-
-  test("retries a previously failed detail route without redirecting again", async () => {
-    const retry = deferred<unknown>();
-    let admissionAttempts = 0;
-    rpcImplementation = (method) => {
-      if (method === "status") return Promise.resolve(snapshot());
-      admissionAttempts += 1;
-      return admissionAttempts === 1
-        ? Promise.reject(new Error("open failed"))
-        : retry.promise;
-    };
-
-    const detailSubPath = `projects/project_01/targets/${targetA}`;
-    await renderPanel(detailSubPath);
-    await flush();
-    const { PluginWorkbenchPanel } = await import("./plugin-app");
-    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
-    await flush();
-    await act(async () =>
-      root?.render(<PluginWorkbenchPanel subPath={detailSubPath} />),
-    );
-    await flush();
-
-    expect(admissionAttempts).toBe(2);
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-
-    retry.resolve(
-      snapshot({
-        state: "ready",
-        items: [
-          {
-            id: targetA,
-            label: "Plugin Workbench",
-            pluginId: "mate",
-            revision: 1,
-          },
-        ],
-      }),
-    );
-    await flush();
-
-    expect(document.body.textContent).toContain("Plugin Workbench");
-    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
-  });
-
-  test("supersedes a pending project open when the detail route changes", async () => {
-    const first = deferred<unknown>();
-    const second = deferred<unknown>();
-    rpcImplementation = (method, input) => {
-      if (method === "status") return Promise.resolve(snapshot());
-      return (input as { projectId: string }).projectId === "project_01"
-        ? first.promise
-        : second.promise;
-    };
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    const { PluginWorkbenchPanel } = await import("./plugin-app");
-    await act(async () =>
-      root?.render(
-        <PluginWorkbenchPanel
-          subPath={`projects/project_02/targets/${targetB}`}
-        />,
-      ),
-    );
-    await flush();
-
-    expect(rpcCall).toHaveBeenCalledWith("admit", {
-      projectId: "project_02",
+    await renderPanel();
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    first.reject(new Error("first project failed"));
-    await flush();
-
-    expect(navigateToPluginPanel).not.toHaveBeenCalled();
-    second.resolve(
-      snapshot({
-        state: "ready",
-        items: [
-          {
-            id: targetB,
-            label: "Remote plugin",
-            pluginId: "remote",
-            revision: 1,
-          },
-        ],
-      }),
-    );
-    await flush();
-    expect(document.body.textContent).toContain("Remote plugin");
-  });
-
-  test("supersedes a pending foreign project when history returns to the open detail", async () => {
-    const remote = deferred<unknown>();
-    rpcImplementation = (method, input) => {
-      if (method === "status") return Promise.resolve(snapshot());
-      return (input as { projectId: string }).projectId === "project_01"
-        ? Promise.resolve(
-            snapshot({
-              state: "ready",
-              items: [
-                {
-                  id: targetA,
-                  label: "Mate",
-                  pluginId: "mate",
-                  revision: 1,
-                },
-              ],
-            }),
-          )
-        : remote.promise;
-    };
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
     const { PluginWorkbenchPanel } = await import("./plugin-app");
-    await act(async () =>
-      root?.render(
-        <PluginWorkbenchPanel
-          subPath={`projects/project_02/targets/${targetB}`}
-        />,
-      ),
-    );
-    await flush();
     await act(async () =>
       root?.render(
         <PluginWorkbenchPanel
@@ -552,183 +246,60 @@ describe("Plugin Workbench app registration", () => {
         />,
       ),
     );
-    await flush();
-
-    remote.resolve(
-      snapshot({
-        state: "ready",
-        items: [
-          {
-            id: targetB,
-            label: "Remote plugin",
-            pluginId: "remote",
-            revision: 1,
-          },
-        ],
-      }),
-    );
-    await flush();
-
-    expect(document.body.textContent).toContain("Mate");
-    expect(document.body.textContent).not.toContain("Remote plugin");
-    expect(rpcCall).toHaveBeenCalledTimes(3);
-  });
-
-  test("supersedes a pending routed project when history returns to the root", async () => {
-    const pending = deferred<unknown>();
-    rpcImplementation = (method) =>
-      method === "status" ? Promise.resolve(snapshot()) : pending.promise;
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    const { PluginWorkbenchPanel } = await import("./plugin-app");
-    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
-    await flush();
-
-    const projectOpen = button("Open");
-    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
-    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
-
+    const updated = {
+      ...mateTarget,
+      label: "Mate updated",
+    };
     pending.resolve(
-      snapshot({
-        state: "ready",
-        items: [
-          {
-            id: targetA,
-            label: "Late plugin",
-            pluginId: "late",
-            revision: 1,
-          },
-        ],
-      }),
+      snapshot([
+        project("project_01", "bb Plugin Studio", {
+          state: "ready",
+          items: [updated],
+        }),
+      ]),
     );
     await flush();
 
-    expect(document.body.textContent).not.toContain("Late plugin");
-    expect(rpcCall).toHaveBeenCalledTimes(2);
+    expect(document.body.textContent).toContain("Mate updated");
+    expect(
+      document.querySelector('[aria-label="Reloading Plugin Studio data"]'),
+    ).toBeNull();
   });
 
-  test("supersedes a pending detail refresh when returning to the project list", async () => {
-    const pending = deferred<unknown>();
-    const targetSnapshot = snapshot({
-      state: "ready",
-      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
-    });
-    let calls = 0;
-    rpcImplementation = () => {
-      calls += 1;
-      if (calls <= 2) return Promise.resolve(targetSnapshot);
-      return pending.promise;
-    };
+  test("replaces a malformed nonempty route with the Workbench root once", async () => {
+    await renderPanel("not-a-plugin-detail");
 
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-    await act(async () =>
-      document
-        .querySelector('[aria-label="Reload Workbench data"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
-    );
-    await act(async () => button("Back to projects")?.click());
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+
     const { PluginWorkbenchPanel } = await import("./plugin-app");
-    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
-    await flush();
+    await act(async () => {
+      root?.render(<PluginWorkbenchPanel subPath="not-a-plugin-detail" />);
+    });
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+  });
 
-    const projectOpen = button("Open");
-    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
-    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
+  test("replaces an undecodable target route instead of treating it as missing", async () => {
+    await renderPanel(`projects/%E0%A4%A/targets/${targetA}`);
 
-    pending.resolve(
-      snapshot({
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+    expect(document.body.textContent).not.toContain(
+      "Plugin no longer available",
+    );
+  });
+
+  test("shows project tasks on detail and uses host task actions", async () => {
+    const targetSnapshot = snapshot([
+      project("project_01", "bb Plugin Studio", {
         state: "ready",
-        items: [
-          {
-            id: targetB,
-            label: "Late plugin",
-            pluginId: "late",
-            revision: 2,
-          },
-        ],
+        items: [mateTarget],
       }),
-    );
-    await flush();
-
-    expect(document.body.textContent).not.toContain("Late plugin");
-    expect(rpcCall).toHaveBeenCalledTimes(3);
-  });
-
-  test("keeps a detail open and reports a failed refresh in place", async () => {
-    const targetSnapshot = snapshot({
-      state: "ready",
-      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
-    });
-    let calls = 0;
-    rpcImplementation = () => {
-      calls += 1;
-      if (calls < 3 || calls === 5) return Promise.resolve(targetSnapshot);
-      if (calls === 4) return Promise.resolve(snapshot());
-      return Promise.reject(new Error("reload failed"));
-    };
-
-    await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
-    await act(async () =>
-      document
-        .querySelector('[aria-label="Reload Workbench data"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
-    );
-    await flush();
-
-    expect(rpcCall).toHaveBeenCalledTimes(3);
-    expect(document.body.textContent).toContain("Mate");
-    expect(document.body.textContent).toContain(
-      "Project open failed safely. Try again.",
-    );
-    expect(navigateToPluginPanel).not.toHaveBeenCalled();
-
-    await act(async () =>
-      document
-        .querySelector('[aria-label="Reload Workbench data"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
-    );
-    await flush();
-
-    expect(rpcCall).toHaveBeenNthCalledWith(4, "status", {});
-    expect(rpcCall).toHaveBeenNthCalledWith(5, "admit", {
-      projectId: "project_01",
-    });
-    expect(document.body.textContent).toContain("Mate");
-  });
-
-  test("reloads status when an opened project's catalog becomes unavailable", async () => {
-    let calls = 0;
-    rpcImplementation = (method) => {
-      calls += 1;
-      const value = snapshot(
-        method === "admit" ? { state: "ready", items: [] } : undefined,
-      );
-      if (calls === 2) value.projects = { state: "unavailable", items: [] };
-      return Promise.resolve(value);
-    };
-
-    await renderPanel();
-    await act(async () =>
-      button("Open")?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
-    );
-    await flush();
-    await act(async () =>
-      document
-        .querySelector('[aria-label="Reload Workbench data"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
-    );
-    await flush();
-
-    expect(rpcCall).toHaveBeenNthCalledWith(3, "status", {});
-  });
-
-  test("shows active project threads on a target detail and uses host actions", async () => {
-    const targetSnapshot = snapshot({
-      state: "ready",
-      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
-    });
+    ]);
     rpcImplementation = () => Promise.resolve(targetSnapshot);
     sidebarState = {
       status: "ready",
@@ -750,25 +321,15 @@ describe("Plugin Workbench app registration", () => {
           isArchived: true,
           updatedAt: 4,
         },
-        {
-          id: "thread_other",
-          projectId: "project_02",
-          title: "Other project",
-          titleFallback: null,
-          isArchived: false,
-          updatedAt: 5,
-        },
       ],
     };
     await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
 
     expect(document.body.textContent).toContain("Native design pass");
     expect(document.body.textContent).not.toContain("Archived work");
-    expect(document.body.textContent).not.toContain("Other project");
     await act(async () => button("Native design pass")?.click());
     expect(openThread).toHaveBeenCalledWith("thread_active");
-    await act(async () => button("New thread")?.click());
+    await act(async () => button("New task")?.click());
     expect(openNewThread).toHaveBeenCalledWith({
       projectId: "project_01",
       focusPrompt: true,
@@ -777,11 +338,13 @@ describe("Plugin Workbench app registration", () => {
     expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench");
   });
 
-  test("keeps every unarchived project thread reachable from detail", async () => {
-    const targetSnapshot = snapshot({
-      state: "ready",
-      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
-    });
+  test("keeps every unarchived project task reachable from detail", async () => {
+    const targetSnapshot = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
     rpcImplementation = () => Promise.resolve(targetSnapshot);
     sidebarState = {
       status: "ready",
@@ -789,7 +352,7 @@ describe("Plugin Workbench app registration", () => {
       threads: Array.from({ length: 9 }, (_, index) => ({
         id: `thread_${index}`,
         projectId: "project_01",
-        title: `Project thread ${index + 1}`,
+        title: `Project task ${index + 1}`,
         titleFallback: null,
         isArchived: false,
         updatedAt: index,
@@ -797,195 +360,437 @@ describe("Plugin Workbench app registration", () => {
     };
 
     await renderPanel(`projects/project_01/targets/${targetA}`);
-    await flush();
 
-    expect(document.body.textContent).toContain("Project thread 1");
-    expect(document.body.textContent).toContain("Project thread 9");
+    expect(document.body.textContent).toContain("Project task 1");
+    expect(document.body.textContent).toContain("Project task 9");
   });
 
-  test("reports a changed plugin list after a project refresh", async () => {
-    let admission = 0;
-    rpcImplementation = (method) =>
+  test("distinguishes task loading, unavailable, and ready-empty states", async () => {
+    const targetSnapshot = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    rpcImplementation = () => Promise.resolve(targetSnapshot);
+    sidebarState = { status: "loading", projects: [], threads: [] };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Loading project tasks");
+    expect(
+      document.querySelector('[aria-live="polite"][aria-busy="true"]'),
+    ).toBeInstanceOf(HTMLElement);
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => {
+      sidebarState = { status: "error", projects: [], threads: [] };
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_01/targets/${targetA}`}
+        />,
+      );
+    });
+    expect(document.body.textContent).toContain("Project tasks unavailable");
+    expect(
+      document.querySelector('[aria-live="polite"][aria-busy="false"]'),
+    ).toBeInstanceOf(HTMLElement);
+  });
+
+  test("keeps reload failure visible at the root and retains old data", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return Promise.reject(new Error("offline"));
+    };
+    await renderPanel();
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flush();
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).toContain(
+      "Plugin Studio reload failed safely. Try again.",
+    );
+  });
+
+  test("reports catalog changes per batch without cross-project selection state", async () => {
+    const first = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+      project("project_02", "Remote", { state: "ready", items: [] }),
+    ]);
+    const second = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [
+          { id: targetB, label: "Linear", pluginId: "linear", revision: 2 },
+        ],
+      }),
+      project("project_02", "Remote", { state: "ready", items: [] }),
+    ]);
+    let calls = 0;
+    rpcImplementation = () =>
       Promise.resolve(
-        method === "status"
-          ? snapshot()
-          : snapshot({
-              state: "ready",
-              items:
-                admission++ === 0
-                  ? [
-                      {
-                        id: targetA,
-                        label: "Mate",
-                        pluginId: "mate",
-                        revision: 1,
-                      },
-                    ]
-                  : [
-                      {
-                        id: targetB,
-                        label: "Linear",
-                        pluginId: "linear",
-                        revision: 2,
-                      },
-                    ],
-            }),
+        calls++ === 0 ? snapshot() : calls === 2 ? first : second,
       );
     await renderPanel();
-    await act(async () => button("Open")?.click());
-    await flush();
-    await act(async () => button("Refresh")?.click());
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
     await flush();
     expect(document.body.textContent).toContain("The plugin list changed.");
     expect(document.body.textContent).toContain("Linear");
     expect(document.body.textContent).not.toContain("mate · revision 1");
   });
 
-  test("reports plugins added after a recorded empty catalog", async () => {
-    let admission = 0;
-    rpcImplementation = (method) =>
-      Promise.resolve(
-        method === "status"
+  test("does not report a plugin change for activity, scan-state, or revision changes", async () => {
+    const first = snapshot([
+      {
+        ...project("project_01", "bb Plugin Studio", {
+          state: "ready",
+          items: [mateTarget],
+        }),
+        activity: { active: true, lastThreadUpdatedAt: 20 },
+      },
+      project("project_02", "Remote", { state: "ready", items: [] }),
+    ]);
+    const reordered = snapshot([
+      {
+        ...project("project_02", "Remote", { state: "ready", items: [] }),
+        activity: { active: true, lastThreadUpdatedAt: 30 },
+      },
+      {
+        ...project("project_01", "bb Plugin Studio", {
+          state: "ready",
+          items: [mateTarget],
+        }),
+        activity: { active: false, lastThreadUpdatedAt: 20 },
+      },
+    ]);
+    const stateChanged = snapshot(
+      [
+        project("project_01", "bb Plugin Studio", {
+          state: "partial",
+          items: [mateTarget],
+        }),
+        project("project_02", "Remote", { state: "ready", items: [] }),
+      ],
+      "partial",
+    );
+    const revisionChanged = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [{ ...mateTarget, revision: mateTarget.revision + 1 }],
+      }),
+      project("project_02", "Remote", { state: "ready", items: [] }),
+    ]);
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      return Promise.resolve(
+        calls === 1
           ? snapshot()
-          : snapshot({
-              state: "ready",
-              items:
-                admission++ === 0
-                  ? []
-                  : [
-                      {
-                        id: targetA,
-                        label: "Mate",
-                        pluginId: "mate",
-                        revision: 1,
-                      },
-                    ],
-            }),
-      );
-    await renderPanel();
-    await act(async () => button("Open")?.click());
-    await flush();
-    await act(async () => button("Refresh")?.click());
-    await flush();
-
-    expect(document.body.textContent).toContain("The plugin list changed.");
-    expect(document.body.textContent).toContain("Mate");
-  });
-
-  test("preserves the prior plugin list across an unavailable refresh", async () => {
-    let admission = 0;
-    rpcImplementation = (method) => {
-      if (method === "status") return Promise.resolve(snapshot());
-      admission += 1;
-      if (admission === 2) {
-        return Promise.resolve(
-          snapshot({
-            state: "unavailable",
-            reason: "catalog_unavailable",
-            items: [],
-          }),
-        );
-      }
-      return Promise.resolve(
-        snapshot({
-          state: "ready",
-          items: [
-            admission === 1
-              ? {
-                  id: targetA,
-                  label: "Mate",
-                  pluginId: "mate",
-                  revision: 1,
-                }
-              : {
-                  id: targetB,
-                  label: "Linear",
-                  pluginId: "linear",
-                  revision: 2,
-                },
-          ],
-        }),
+          : calls === 2
+            ? first
+            : calls === 3
+              ? reordered
+              : calls === 4
+                ? stateChanged
+                : revisionChanged,
       );
     };
-
     await renderPanel();
-    await act(async () => button("Open")?.click());
-    await flush();
-    await act(async () => button("Refresh")?.click());
+    const reload = () =>
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await act(async () => reload());
     await flush();
     expect(document.body.textContent).not.toContain("The plugin list changed.");
-
-    await act(async () => button("Refresh")?.click());
+    await act(async () => reload());
     await flush();
-    expect(document.body.textContent).toContain("The plugin list changed.");
-    expect(document.body.textContent).toContain("Linear");
-  });
-
-  test("compares plugin-list changes within a project instead of across projects", async () => {
-    rpcImplementation = (method, input) => {
-      if (method === "status") return Promise.resolve(snapshot());
-      const projectId = (input as { projectId: string }).projectId;
-      return Promise.resolve(
-        snapshot({
-          state: "ready",
-          items: [
-            projectId === "project_01"
-              ? {
-                  id: targetA,
-                  label: "Mate",
-                  pluginId: "mate",
-                  revision: 1,
-                }
-              : {
-                  id: targetB,
-                  label: "Remote plugin",
-                  pluginId: "remote",
-                  revision: 1,
-                },
-          ],
-        }),
-      );
-    };
-
-    await renderPanel();
-    await act(async () => button("Open")?.click());
+    expect(document.body.textContent).not.toContain("The plugin list changed.");
+    await act(async () => reload());
     await flush();
-    await act(async () => button("Open")?.click());
-    await flush();
-
-    expect(document.body.textContent).toContain("Remote plugin");
     expect(document.body.textContent).not.toContain("The plugin list changed.");
   });
 
-  test("ignores superseded reload responses and never polls", async () => {
+  test("ignores superseded explicit refreshes while retaining the catalog", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
     const older = deferred<unknown>();
     const newer = deferred<unknown>();
     let calls = 0;
     rpcImplementation = () => {
       calls += 1;
       if (calls === 1) return Promise.resolve(snapshot());
-      return calls === 2 ? older.promise : newer.promise;
+      if (calls === 2) return Promise.resolve(ready);
+      return calls === 3 ? older.promise : newer.promise;
     };
     await renderPanel();
     const reload = document.querySelector(
-      '[aria-label="Reload Workbench data"]',
+      '[aria-label="Reload Plugin Studio data"]',
     );
-    expect(reload).toBeInstanceOf(HTMLButtonElement);
     await act(async () => {
       reload?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       reload?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
+    expect(document.body.textContent).toContain("Mate");
 
-    newer.resolve(snapshot());
+    newer.resolve(ready);
     await flush();
-    older.resolve({
-      ...snapshot(),
-      projects: { state: "ready", items: [] },
-    } satisfies PluginWorkbenchSnapshot);
+    older.resolve(snapshot([]));
     await flush();
-
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(document.body.textContent).toContain("Mate");
     expect(document.body.textContent).not.toContain("No local projects found");
+  });
+
+  test("shows finite stale-route recovery after automatic refresh", async () => {
+    rpcImplementation = () => Promise.resolve(snapshot([]));
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin no longer available");
+    expect(button("Back to projects")).toBeInstanceOf(HTMLButtonElement);
+    expect(button("Reload Plugin Studio data")).toBeInstanceOf(
+      HTMLButtonElement,
+    );
+    expect(navigateToPluginPanel).not.toHaveBeenCalled();
+  });
+
+  test("does not claim removal when a deep-linked project scan is partial", async () => {
+    const partial = snapshot(
+      [
+        project("project_01", "bb Plugin Studio", {
+          state: "partial",
+          items: [],
+        }),
+      ],
+      "partial",
+    );
+    rpcImplementation = () => Promise.resolve(partial);
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin unavailable");
+    expect(document.body.textContent).toContain("project scan was incomplete");
+    expect(document.body.textContent).not.toContain("no longer available");
+  });
+
+  test("claims authoritative removal for an absent project despite unrelated partial scans", async () => {
+    const partial = snapshot(
+      [
+        project("visible_project", "Visible", {
+          state: "partial",
+          items: [],
+        }),
+      ],
+      "partial",
+    );
+    rpcImplementation = () => Promise.resolve(partial);
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin no longer available");
+    expect(document.body.textContent).not.toContain("could not verify");
+  });
+
+  test("does not claim removal when a deep-linked project is omitted from a truncated catalog", async () => {
+    const truncated = {
+      ...snapshot(
+        [
+          project("visible_project", "Visible", {
+            state: "partial",
+            items: [],
+          }),
+        ],
+        "partial",
+      ),
+      projects: {
+        state: "partial" as const,
+        truncated: true,
+        items: [
+          project("visible_project", "Visible", {
+            state: "partial",
+            items: [],
+          }),
+        ],
+      },
+    };
+    rpcImplementation = () => Promise.resolve(truncated);
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin unavailable");
+    expect(document.body.textContent).toContain("could not verify");
+    expect(document.body.textContent).not.toContain("no longer available");
+  });
+
+  test("does not claim removal when a deep-linked project scan is unavailable", async () => {
+    const unavailable = snapshot(
+      [
+        project("project_01", "bb Plugin Studio", {
+          state: "unavailable",
+          reason: "source_changed",
+          items: [],
+        }),
+      ],
+      "partial",
+    );
+    rpcImplementation = () => Promise.resolve(unavailable);
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin unavailable");
+    expect(document.body.textContent).toContain(
+      "project changed during scanning",
+    );
+    expect(document.body.textContent).not.toContain("no longer available");
+  });
+
+  test("does not claim removal when the project catalog is unavailable", async () => {
+    const unavailable: PluginWorkbenchSnapshot = {
+      ...snapshot(),
+      projects: { state: "unavailable", items: [] },
+    };
+    rpcImplementation = () => Promise.resolve(unavailable);
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin unavailable");
+    expect(document.body.textContent).toContain("Project data is unavailable");
+    expect(document.body.textContent).not.toContain("no longer available");
+  });
+
+  test("shows detail refresh as busy while retaining the target", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return pending.promise;
+    };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(
+      document.querySelector('[aria-label="Reloading Plugin Studio data"]'),
+    ).toBeInstanceOf(HTMLButtonElement);
+    expect(document.body.textContent).toContain("Mate");
+    pending.resolve(ready);
+    await flush();
+  });
+
+  test("supersedes a pending detail refresh after returning to projects", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return pending.promise;
+    };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => button("Back to projects")?.click());
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+
+    expect(
+      document.querySelector('[aria-label="Reloading Plugin Studio data"]'),
+    ).toBeNull();
+
+    pending.resolve(
+      snapshot([
+        project("project_late", "Late project", {
+          state: "ready",
+          items: [],
+        }),
+      ]),
+    );
+    await flush();
+
+    expect(document.body.textContent).not.toContain("Late project");
     expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
+  test("does not show a late detail reload failure after returning to projects", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return pending.promise;
+    };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+
+    pending.reject(new Error("offline"));
+    await flush();
+
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).not.toContain(
+      "Plugin Studio reload failed safely",
+    );
+  });
+
+  test("keeps an explicit detail reload failure visible", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return Promise.reject(new Error("offline"));
+    };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flush();
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).toContain(
+      "Plugin Studio reload failed safely. Try again.",
+    );
   });
 });

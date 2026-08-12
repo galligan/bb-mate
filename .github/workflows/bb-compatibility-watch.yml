@@ -56,7 +56,7 @@ jobs:
               "## Compatibility drift detected",
               "",
               `npm's stable \`bb-app\` release is **${report.latestVersion}**;`,
-              `BB Mate currently targets **${report.targetVersion}**.`,
+              `bb Plugin Studio currently targets **${report.targetVersion}**.`,
               "",
               "Use `$update-bb-mate-compatibility` from this repository to audit",
               "the immutable upstream release, run the isolated native and visual",

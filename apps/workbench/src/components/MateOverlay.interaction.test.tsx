@@ -97,7 +97,7 @@ function renderOverlay(
         launchCommand: null,
         checkCommand: null,
         liveCommand: null,
-        detail: "Run from the BB Mate repository root.",
+        detail: "Run from the bb Plugin Studio repository root.",
       }}
       {...callbacks}
       {...overrides}
@@ -113,7 +113,7 @@ describe("MateOverlay interactions", () => {
 
     await user.click(screen.getByRole("button", { name: "Minimize controls" }));
     const trigger = screen.getByRole("button", {
-      name: "Show BB Mate controls",
+      name: "Show bb Plugin Studio controls",
     });
     expect(document.activeElement).toBe(trigger);
     expect(screen.queryByText("Workbench controls")).toBeNull();

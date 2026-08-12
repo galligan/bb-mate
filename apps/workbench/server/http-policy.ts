@@ -13,7 +13,7 @@ export function assertLoopbackConfig(config: ResolvedConfig): void {
       host !== "127.0.0.1" &&
       host !== "::1"
     ) {
-      throw new TypeError("Plugin Workbench catalog must remain loopback-only");
+      throw new TypeError("Plugin Studio catalog must remain loopback-only");
     }
   }
 }

@@ -15,7 +15,7 @@ export interface BrowserPluginCandidate {
 export interface BrowserPluginSession {
   schemaVersion: 2;
   workspace: {
-    label: "Plugin Workbench";
+    label: "Plugin Studio";
     candidates: BrowserPluginCandidate[];
     selectedTargetId: TargetId | null;
     selectionError: string | null;
@@ -43,7 +43,7 @@ export function projectSession(
   return {
     schemaVersion: 2,
     workspace: {
-      label: "Plugin Workbench",
+      label: "Plugin Studio",
       candidates: catalog.targets.map((target) => ({
         id: target.id,
         label: target.displayName,

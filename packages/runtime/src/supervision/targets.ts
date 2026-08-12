@@ -8,6 +8,7 @@ import { TARGET_LIST_MAX_TARGETS } from "../discovery/target-limits.ts";
 export { TARGET_LIST_MAX_TARGETS } from "../discovery/target-limits.ts";
 
 export const TARGET_SOURCE_PATH_MAX_BYTES = 1024;
+export const TARGET_ADMISSION_MAX_PROJECTS = 128;
 const SourcePathSchema = z
   .string()
   .min(1)
@@ -25,13 +26,28 @@ const SourcePathSchema = z
     message: "sourcePath must be lexically normalized",
   });
 
-export const CurrentProjectTargetAdmissionRequestSchema = z.strictObject({
-  schemaVersion: z.literal(1),
+const BatchProjectTargetAdmissionItemSchema = z.strictObject({
+  projectKey: z.string().regex(/^[A-Za-z0-9_-]{32}$/u),
   sourcePath: SourcePathSchema,
 });
 
-export type CurrentProjectTargetAdmissionRequest = z.infer<
-  typeof CurrentProjectTargetAdmissionRequestSchema
+export const BatchProjectTargetAdmissionRequestSchema = z
+  .strictObject({
+    schemaVersion: z.literal(2),
+    inventoryState: z.enum(["complete", "partial"]),
+    projects: z
+      .array(BatchProjectTargetAdmissionItemSchema)
+      .max(TARGET_ADMISSION_MAX_PROJECTS),
+  })
+  .refine(
+    ({ projects }) =>
+      new Set(projects.map(({ projectKey }) => projectKey)).size ===
+      projects.length,
+    { message: "projectKey values must be unique", path: ["projects"] },
+  );
+
+export type BatchProjectTargetAdmissionRequest = z.infer<
+  typeof BatchProjectTargetAdmissionRequestSchema
 >;
 
 export { DevelopmentTargetProjectionSchema };
@@ -46,4 +62,59 @@ export const DevelopmentTargetListResponseSchema = z.strictObject({
 
 export type DevelopmentTargetListResponse = z.infer<
   typeof DevelopmentTargetListResponseSchema
+>;
+
+const BatchProjectTargetAdmissionGroupSchema = z.strictObject({
+  projectKey: z.string().regex(/^[A-Za-z0-9_-]{32}$/u),
+  state: z.enum(["ready", "partial"]),
+  targets: z.array(DevelopmentTargetProjectionSchema),
+});
+
+export const BatchProjectTargetAdmissionResponseSchema = z
+  .strictObject({
+    schemaVersion: z.literal(2),
+    state: z.enum(["ready", "partial"]),
+    projects: z
+      .array(BatchProjectTargetAdmissionGroupSchema)
+      .max(TARGET_ADMISSION_MAX_PROJECTS),
+  })
+  .superRefine(({ projects, state }, context) => {
+    if (
+      new Set(projects.map(({ projectKey }) => projectKey)).size !==
+      projects.length
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "projectKey values must be unique",
+        path: ["projects"],
+      });
+    }
+    const targetCount = projects.reduce(
+      (count, project) => count + project.targets.length,
+      0,
+    );
+    if (targetCount > TARGET_LIST_MAX_TARGETS) {
+      context.addIssue({
+        code: "too_big",
+        origin: "array",
+        maximum: TARGET_LIST_MAX_TARGETS,
+        inclusive: true,
+        path: ["projects"],
+        message: `Admission results may contain at most ${TARGET_LIST_MAX_TARGETS} targets`,
+      });
+    }
+    if (
+      state === "ready" &&
+      projects.some((project) => project.state === "partial")
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "a ready batch cannot contain a partial project",
+        path: ["state"],
+      });
+    }
+  });
+
+export type BatchProjectTargetAdmissionResponse = z.infer<
+  typeof BatchProjectTargetAdmissionResponseSchema
 >;

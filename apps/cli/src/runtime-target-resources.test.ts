@@ -54,10 +54,11 @@ describe("runtime target resources", () => {
       bbContextId: first.identity.bbContextId,
     });
     const admitted = await first.controller.admit(firstContext, {
-      schemaVersion: 1,
-      sourcePath: sourceRoot,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [{ projectKey: "p".repeat(32), sourcePath: sourceRoot }],
     });
-    expect(admitted.targets).toHaveLength(1);
+    expect(admitted.projects[0]?.targets).toHaveLength(1);
     first.close();
 
     const reopened = await openRuntimeTargetResources(dataRoot);
@@ -70,12 +71,12 @@ describe("runtime target resources", () => {
       bbContextId: reopened.identity.bbContextId,
     });
     expect((await reopened.controller.list(reopenedContext)).targets).toEqual(
-      admitted.targets,
+      admitted.projects[0]?.targets,
     );
     reopened.close();
   });
 
-  test("keeps the target endpoint transport-valid after rejecting target 129 and reopening", async () => {
+  test("reclaims complete-snapshot capacity and reopens the replacement catalog", async () => {
     const parent = await fs.mkdtemp(
       path.join(await fs.realpath(os.tmpdir()), "bb-mate-target-limit-"),
     );
@@ -101,6 +102,14 @@ describe("runtime target resources", () => {
         }),
       );
     }
+    await fs.writeFile(
+      path.join(sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "target-limit-workspace",
+        private: true,
+        workspaces: ["plugin-*"],
+      }),
+    );
 
     const first = await openRuntimeTargetResources(dataRoot);
     const firstContext = createRequestContext({
@@ -111,10 +120,11 @@ describe("runtime target resources", () => {
       bbContextId: first.identity.bbContextId,
     });
     const admitted = await first.controller.admit(firstContext, {
-      schemaVersion: 1,
-      sourcePath: sourceRoot,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [{ projectKey: "l".repeat(32), sourcePath: sourceRoot }],
     });
-    expect(admitted.targets).toHaveLength(TARGET_LIST_MAX_TARGETS);
+    expect(admitted.projects[0]?.targets).toHaveLength(TARGET_LIST_MAX_TARGETS);
 
     const overflowRoot = path.join(parent, "overflow");
     await fs.mkdir(overflowRoot);
@@ -133,14 +143,14 @@ describe("runtime target resources", () => {
       }),
     );
     const overflow = await first.controller.admit(firstContext, {
-      schemaVersion: 1,
-      sourcePath: overflowRoot,
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [{ projectKey: "o".repeat(32), sourcePath: overflowRoot }],
     });
-    expect(overflow).toEqual({
-      schemaVersion: 1,
-      state: "partial",
-      targets: [],
-    });
+    expect(overflow.state).toBe("ready");
+    expect(overflow.projects[0]?.targets).toMatchObject([
+      { revision: 1, manifest: { pluginId: "overflow" } },
+    ]);
     first.close();
 
     const reopened = await openRuntimeTargetResources(dataRoot);
@@ -174,10 +184,8 @@ describe("runtime target resources", () => {
       }[];
     };
     expect(body.state).toBe("ready");
-    expect(body.targets).toHaveLength(TARGET_LIST_MAX_TARGETS);
-    expect(
-      body.targets.some((target) => target.manifest.pluginId === "overflow"),
-    ).toBe(false);
+    expect(body.targets).toHaveLength(1);
+    expect(body.targets[0]?.manifest.pluginId).toBe("overflow");
     reopened.close();
   });
 });

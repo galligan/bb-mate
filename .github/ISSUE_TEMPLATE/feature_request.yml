@@ -1,5 +1,5 @@
 name: Feature proposal
-description: Propose a focused improvement to BB Mate
+description: Propose a focused improvement to bb Plugin Studio
 title: "proposal: "
 labels:
   - enhancement
@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        BB Mate complements native bb; it does not replace the bb CLI, plugin SDK, runtime, installer, or host UI. Please describe the authoring problem before prescribing a solution.
+        bb Plugin Studio complements native bb; it does not replace the bb CLI, plugin SDK, runtime, installer, or host UI. Please describe the authoring problem before prescribing a solution.
   - type: textarea
     id: problem
     attributes:
@@ -27,7 +27,7 @@ body:
     attributes:
       label: Best-fit layer
       options:
-        - BB Mate inspection or diagnostics
+        - bb Plugin Studio inspection or diagnostics
         - Fixture lab or visual tooling
         - Native-command orchestration or handoff
         - Documentation or packaging

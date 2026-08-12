@@ -1,17 +1,17 @@
 # Support and compatibility
 
-BB Mate is an MIT-licensed public alpha. It does not yet have a stable API,
+bb Plugin Studio is an MIT-licensed public alpha. It does not yet have a stable API,
 long-term support line, response-time commitment, or compatibility promise
 across every bb release.
 
 ## Where to ask
 
-Open a [GitHub Issue](https://github.com/galligan/bb-mate/issues) for:
+Open a [GitHub Issue](https://github.com/galligan/bb-plugin-studio/issues) for:
 
-- BB Mate discovery or inspection bugs;
+- bb Plugin Studio discovery or inspection bugs;
 - Fixture lab, story, accessibility, or visual-regression problems;
 - incorrect compatibility diagnostics or native-command handoffs;
-- BB Mate documentation and packaging problems.
+- bb Plugin Studio documentation and packaging problems.
 
 Report native bb scaffolding, build/install/dev behavior, plugin runtime, host
 UI, routing, or SDK contract problems to the
@@ -25,7 +25,7 @@ Do not open a public issue for a vulnerability. Follow
 
 Please include:
 
-- the BB Mate version or source commit;
+- the bb Plugin Studio version or source commit;
 - `bun --version`;
 - native `bb --version`, when native behavior is involved;
 - the selected plugin's `engines.bb` and `engines.bbPluginSdk` ranges;
@@ -63,11 +63,11 @@ target and update process.
 
 ## Fidelity boundaries
 
-- **Fixture** support covers BB Mate's deterministic stories and adapters.
+- **Fixture** support covers bb Plugin Studio's deterministic stories and adapters.
 - **Harness** support begins only when the selected plugin resolves the official
-  testing package and BB Mate has an upstream-backed adapter.
+  testing package and bb Plugin Studio has an upstream-backed adapter.
 - **Live bb** is the authority for host rendering and integration behavior.
 
 Fixture screenshots cannot overrule live bb. When upstream adds a native
-capability that replaces a BB Mate seam, BB Mate should adopt it and retire the
+capability that replaces a bb Plugin Studio seam, bb Plugin Studio should adopt it and retire the
 duplicate.

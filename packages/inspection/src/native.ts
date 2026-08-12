@@ -154,7 +154,7 @@ export function defaultRunBb(
 function boundUtf8(value: string): string {
   const trimmed = value.trim();
   const bytes = Buffer.from(trimmed, "utf8");
-  const suffix = "\n[truncated by BB Mate]";
+  const suffix = "\n[truncated by bb Plugin Studio]";
   const maxBytes = 8_192;
   if (bytes.byteLength <= maxBytes) return trimmed;
   let end = maxBytes - Buffer.byteLength(suffix, "utf8");

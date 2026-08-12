@@ -385,7 +385,7 @@ describe("actionable plugin inspection", () => {
     });
 
     const output = formatInspection(report);
-    expect(output).toContain("BB Mate compatibility report v1");
+    expect(output).toContain("bb Plugin Studio compatibility report v1");
     expect(output).toContain("Next:");
     expect(output).toContain("Native error (exit 3): native command failed");
     expect(output).toContain("Provenance:");

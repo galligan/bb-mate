@@ -1,12 +1,12 @@
 ---
 name: update-bb-mate-compatibility
-description: Audit and adopt a newly released stable bb version in BB Mate. Use when npm publishes a newer bb-app release, the scheduled compatibility watch opens or updates an issue, compatibility/bb-target.json is stale, or a maintainer asks to verify BB Mate against a new bb release.
+description: Audit and adopt a newly released stable bb version in bb Plugin Studio. Use when npm publishes a newer bb-app release, the scheduled compatibility watch opens or updates an issue, compatibility/bb-target.json is stale, or a maintainer asks to verify bb Plugin Studio against a new bb release.
 ---
 
-# Update BB Mate Compatibility
+# Update bb Plugin Studio Compatibility
 
 Keep the update evidence-led and reversible. Native bb owns plugin lifecycle and
-public contracts; BB Mate records, tests, and adopts released contracts without
+public contracts; bb Plugin Studio records, tests, and adopts released contracts without
 editing upstream or inventing substitutes.
 
 ## Establish the release
@@ -34,8 +34,8 @@ editing upstream or inventing substitutes.
 3. Confirm the isolated inventory contains only builtins and Connect is
    unpaired before exercising native behavior.
 4. Set `BB_CLI`, `BB_CLI_REEXEC=1`, `BB_SERVER_URL`, and `BB_DATA_DIR` only on
-   BB Mate commands scoped to the disposable profile. Direct calls to the
-   selected `bb` or `bb-app` must remove `BB_CLI` and `BB_CLI_REEXEC`; BB Mate
+   bb Plugin Studio commands scoped to the disposable profile. Direct calls to the
+   selected `bb` or `bb-app` must remove `BB_CLI` and `BB_CLI_REEXEC`; bb Plugin Studio
    must likewise sanitize them before the selected CLI re-executes itself.
 
 ## Review the contract

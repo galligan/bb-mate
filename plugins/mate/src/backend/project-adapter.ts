@@ -1,6 +1,9 @@
 import path from "node:path";
 import { promises as fs } from "node:fs";
-import { CurrentProjectTargetAdmissionRequestSchema } from "@bb-mate/runtime/supervision";
+import {
+  BatchProjectTargetAdmissionRequestSchema,
+  TARGET_ADMISSION_MAX_PROJECTS,
+} from "@bb-mate/runtime/supervision";
 
 import {
   projectCatalogSchema,
@@ -22,6 +25,23 @@ interface ProjectLike {
   readonly id: string;
   readonly name: string;
   readonly sources: readonly ProjectSourceLike[];
+  readonly threads?: readonly ProjectThreadLike[];
+}
+
+interface ProjectThreadLike {
+  readonly visibility?: unknown;
+  readonly deletedAt?: unknown;
+  readonly updatedAt?: unknown;
+  readonly status?: unknown;
+  readonly runtime?: { readonly displayStatus?: unknown } | null;
+  readonly activity?: {
+    readonly activeWorkflowCount?: unknown;
+    readonly activeBackgroundAgentCount?: unknown;
+    readonly activeBackgroundCommandCount?: unknown;
+    readonly activePlanModeCount?: unknown;
+    readonly activeGoalCount?: unknown;
+  } | null;
+  readonly hasPendingInteraction?: unknown;
 }
 
 export interface ReleasedProjectSdk {
@@ -32,7 +52,9 @@ export interface ReleasedProjectSdk {
     }>;
   };
   readonly projects: {
-    list(): Promise<readonly ProjectLike[]>;
+    list(input?: {
+      readonly include?: "threads";
+    }): Promise<readonly ProjectLike[]>;
     get(input: { readonly projectId: string }): Promise<ProjectLike>;
   };
 }
@@ -44,6 +66,21 @@ export interface ResolvedProjectSource {
   readonly hostId: string;
   readonly path: string;
 }
+
+export type ProjectInventory =
+  | {
+      readonly state: "ready";
+      readonly inventoryState: "complete" | "partial";
+      readonly catalog: Extract<ProjectCatalog, { state: "ready" | "partial" }>;
+      readonly sources: readonly ResolvedProjectSource[];
+      readonly primaryHostId: string;
+      readonly dataDir: string;
+    }
+  | {
+      readonly state: "unavailable";
+      readonly catalog: Extract<ProjectCatalog, { state: "unavailable" }>;
+      readonly sources: readonly [];
+    };
 
 function sourceFor(project: ProjectLike, primaryHostId: string | null) {
   if (!primaryHostId) return null;
@@ -62,16 +99,17 @@ function sourceFor(project: ProjectLike, primaryHostId: string | null) {
     typeof source.path === "string"
   ))
     return null;
-  const admission = CurrentProjectTargetAdmissionRequestSchema.safeParse({
-    schemaVersion: 1,
-    sourcePath: source.path,
+  const admission = BatchProjectTargetAdmissionRequestSchema.safeParse({
+    schemaVersion: 2,
+    inventoryState: "complete",
+    projects: [{ projectKey: "p".repeat(32), sourcePath: source.path }],
   });
   return admission.success
     ? {
         id: source.id,
         updatedAt: source.updatedAt,
         hostId: primaryHostId,
-        path: admission.data.sourcePath,
+        path: admission.data.projects[0]!.sourcePath,
       }
     : null;
 }
@@ -79,32 +117,133 @@ function sourceFor(project: ProjectLike, primaryHostId: string | null) {
 export async function listProjectOptions(
   sdk: ReleasedProjectSdk,
 ): Promise<ProjectCatalog> {
+  return (await loadProjectInventory(sdk)).catalog;
+}
+
+export async function loadProjectInventory(
+  sdk: ReleasedProjectSdk,
+): Promise<ProjectInventory> {
   try {
-    const [{ primaryHostId }, projects] = await Promise.all([
+    const [{ primaryHostId, dataDir }, projects] = await Promise.all([
       sdk.system.config(),
-      sdk.projects.list(),
+      sdk.projects.list({ include: "threads" }),
     ]);
-    const items = projects
-      .flatMap((project) => {
+    if (!primaryHostId) throw new Error();
+    const eligible = projects
+      .flatMap((project, nativeOrder) => {
         if (!projectIdSchema.safeParse(project.id).success) return [];
-        if (!sourceFor(project, primaryHostId)) return [];
-        const option = projectOptionSchema.safeParse({
+        const source = sourceFor(project, primaryHostId);
+        if (!source) return [];
+        const input = {
           id: project.id,
           label: project.name,
-          admission: "available",
-        });
-        return option.success ? [option.data] : [];
+          activity: projectActivity(project.threads ?? []),
+          scan: { state: "not_scanned", items: [] },
+        };
+        let option = projectOptionSchema.safeParse(input);
+        if (!option.success) {
+          option = projectOptionSchema.safeParse({
+            ...input,
+            label: `Project ${project.id}`,
+          });
+        }
+        return option.success
+          ? [
+              {
+                option: option.data,
+                nativeOrder,
+                source: Object.freeze({
+                  projectId: project.id,
+                  sourceId: source.id,
+                  updatedAt: source.updatedAt,
+                  hostId: source.hostId,
+                  path: source.path,
+                }),
+              },
+            ]
+          : [];
       })
       .sort(
         (left, right) =>
-          left.label.localeCompare(right.label) ||
-          left.id.localeCompare(right.id),
-      )
-      .slice(0, 128);
-    return projectCatalogSchema.parse({ state: "ready", items });
+          Number(right.option.activity.active) -
+            Number(left.option.activity.active) ||
+          compareRecent(
+            left.option.activity.lastThreadUpdatedAt,
+            right.option.activity.lastThreadUpdatedAt,
+          ) ||
+          left.nativeOrder - right.nativeOrder ||
+          left.option.label.localeCompare(right.option.label) ||
+          left.option.id.localeCompare(right.option.id),
+      );
+    const admitted = eligible.slice(0, TARGET_ADMISSION_MAX_PROJECTS);
+    const truncated = eligible.length > TARGET_ADMISSION_MAX_PROJECTS;
+    const catalog = projectCatalogSchema.parse({
+      state: truncated ? "partial" : "ready",
+      truncated,
+      items: admitted.map(({ option }) => option),
+    });
+    if (catalog.state === "unavailable") throw new Error();
+    return Object.freeze({
+      state: "ready",
+      inventoryState: truncated ? "partial" : "complete",
+      catalog,
+      sources: Object.freeze(admitted.map(({ source }) => source)),
+      primaryHostId,
+      dataDir,
+    });
   } catch {
-    return { state: "unavailable", items: [] };
+    return Object.freeze({
+      state: "unavailable",
+      catalog: { state: "unavailable" as const, items: [] as [] },
+      sources: [] as [],
+    });
   }
+}
+
+function projectActivity(threads: readonly ProjectThreadLike[]) {
+  let active = false;
+  let lastThreadUpdatedAt: number | null = null;
+  for (const thread of threads) {
+    if (thread.visibility !== "visible" || thread.deletedAt !== null) continue;
+    if (
+      typeof thread.updatedAt === "number" &&
+      Number.isSafeInteger(thread.updatedAt) &&
+      thread.updatedAt >= 0
+    ) {
+      lastThreadUpdatedAt = Math.max(
+        lastThreadUpdatedAt ?? thread.updatedAt,
+        thread.updatedAt,
+      );
+    }
+    const counts = thread.activity
+      ? [
+          thread.activity.activeWorkflowCount,
+          thread.activity.activeBackgroundAgentCount,
+          thread.activity.activeBackgroundCommandCount,
+          thread.activity.activePlanModeCount,
+          thread.activity.activeGoalCount,
+        ]
+      : [];
+    active ||=
+      thread.status === "starting" ||
+      thread.status === "active" ||
+      thread.status === "stopping" ||
+      (typeof thread.runtime?.displayStatus === "string" &&
+        !["idle", "error"].includes(thread.runtime.displayStatus)) ||
+      thread.hasPendingInteraction === true ||
+      counts.some(
+        (count) =>
+          typeof count === "number" && Number.isSafeInteger(count) && count > 0,
+      );
+  }
+  return { active, lastThreadUpdatedAt };
+}
+
+function compareRecent(left: number | null, right: number | null): number {
+  if (left === right) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return right - left;
 }
 
 export async function resolveProjectSource(

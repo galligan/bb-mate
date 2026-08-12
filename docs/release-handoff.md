@@ -10,7 +10,7 @@
 The `0.1.0-alpha.0` candidate completed its private local handoff. On 2026-08-08
 the owner approved the next release phase in OS-645: publish the new
 `bb-mate@0.1.0-alpha.1` artifact publicly under npm's `alpha` dist-tag, license
-BB Mate under MIT, and keep the GitHub repository private. That approval does
+bb Plugin Studio under MIT, and keep the GitHub repository private. That approval does
 not intentionally repoint `latest`, create a Git tag or GitHub release, change
 repository visibility, or authorize an announcement. npm's first-package
 bootstrap nevertheless created its mandatory `latest` tag at the same only
@@ -21,7 +21,7 @@ published version; OS-645 records the failed authenticated removal attempt.
 | Field                    | Candidate                                                          |
 | ------------------------ | ------------------------------------------------------------------ |
 | Product source baseline  | `c8363d3e80e54371f62b826a0e808268f2317038`                         |
-| Source PR                | [PR #12](https://github.com/galligan/bb-mate/pull/12)              |
+| Source PR                | [PR #12](https://github.com/galligan/bb-plugin-studio/pull/12)     |
 | Package                  | `bb-mate`                                                          |
 | Version                  | `0.1.0-alpha.0`                                                    |
 | Archive                  | `bb-mate-0.1.0-alpha.0.tgz`                                        |
@@ -94,7 +94,7 @@ surface catalog, Ladle lab, launcher, drift protection, visual/accessibility
 coverage, local packaging, author/security/support documentation, and the
 external-author clean-room trial.
 
-OS-624 is separate plugin-publication work and is not part of this BB Mate
+OS-624 is separate plugin-publication work and is not part of this bb Plugin Studio
 candidate.
 
 ## Compatibility and confidence matrix
@@ -193,7 +193,7 @@ test -e "$prefix/node_modules/$next_package/package.json"
 The values above are placeholders, not a proposed public identity. Replace them
 only with the approved package metadata in the next handoff.
 
-Uninstall only BB Mate from the disposable prefix:
+Uninstall only bb Plugin Studio from the disposable prefix:
 
 ```sh
 npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
@@ -201,7 +201,7 @@ test ! -e "$prefix/node_modules/bb-mate"
 test ! -e "$prefix/node_modules/.bin/bb-mate"
 ```
 
-BB Mate stores no persistent plugin, Connect, or secret state. For rollback,
+bb Plugin Studio stores no persistent plugin, Connect, or secret state. For rollback,
 stop the server, uninstall the current archive, reinstall the previously
 retained and checksummed tarball into the same disposable prefix, and rerun
 `--help` plus the required Fixture check. If recovery is uncertain, discard the
@@ -215,13 +215,13 @@ and the sanitized result is in [alpha-trial-report.md](alpha-trial-report.md).
 
 ## Trust, security, support, and fidelity
 
-- Plugins are full-trust local code; BB Mate is not a sandbox. Review code and
+- Plugins are full-trust local code; bb Plugin Studio is not a sandbox. Review code and
   dependencies before native build/dev execution.
 - Passive inspection does not import a plugin or run native mutations, but it
   can read supported manifest/metadata/native status and query public evidence.
 - `check` executes the selected plugin build toolchain. `live` can execute a
   previously installed plugin through native bb. The printed install command is
-  a handoff and is not executed by BB Mate.
+  a handoff and is not executed by bb Plugin Studio.
 - The packaged lab serves static Fixture assets on loopback and has no source
   inspection endpoint. Fixture approximates plugin-owned UI; Harness validates
   public behavior when available; Live bb is the visual authority.
@@ -254,7 +254,7 @@ not indicate regression in the green Fixture/local-package candidate.
 
 > **Approved for `bb-mate@0.1.0-alpha.1` under npm's `alpha` dist-tag**
 >
-> BB Mate `0.1.0-alpha.1` is a public npm preview for bb plugin authors. It
+> bb Plugin Studio `0.1.0-alpha.1` is a public npm preview for bb plugin authors. It
 > adds actionable compatibility inspection, a thin native-handoff CLI, a
 > deterministic 13-surface Fixture lab, visual/accessibility checks, and a
 > reproducible local archive. Native bb still owns scaffold, build, install,
@@ -267,7 +267,7 @@ not indicate regression in the green Fixture/local-package candidate.
 
 > **Draft — do not send without owner approval**
 >
-> We have a private BB Mate alpha ready for a small, explicitly authorized bb
+> We have a private bb Plugin Studio alpha ready for a small, explicitly authorized bb
 > plugin-author trial. It provides a compatibility report, deterministic public
 > UI-surface stories, and clear handoffs to native bb without replacing bb's
 > lifecycle. The current artifact is for local evaluation only: it is not

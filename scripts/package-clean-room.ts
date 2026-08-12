@@ -332,16 +332,17 @@ try {
     "Artifact must use the approved alpha.3 version.",
   );
   assert(
-    stagedManifest.homepage === "https://github.com/galligan/bb-mate#readme" &&
+    stagedManifest.homepage ===
+      "https://github.com/galligan/bb-plugin-studio#readme" &&
       JSON.stringify(stagedManifest.repository) ===
         JSON.stringify({
           type: "git",
-          url: "git+https://github.com/galligan/bb-mate.git",
+          url: "git+https://github.com/galligan/bb-plugin-studio.git",
           directory: "apps/cli",
         }) &&
       JSON.stringify(stagedManifest.bugs) ===
         JSON.stringify({
-          url: "https://github.com/galligan/bb-mate/issues",
+          url: "https://github.com/galligan/bb-plugin-studio/issues",
         }),
     "Artifact must link to the public source and issue tracker.",
   );

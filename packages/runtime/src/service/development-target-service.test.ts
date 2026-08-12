@@ -17,10 +17,15 @@ import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
 import { DevelopmentTargetCodec } from "../discovery/development-target.ts";
 import { inspectDevelopmentSourceIdentity } from "../discovery/source-identity.ts";
 import {
+  TARGET_EVENT_MAX_EVENTS_PER_TARGET,
+  TARGET_HISTORY_MAX_TARGETS,
+} from "../discovery/target-limits.ts";
+import {
   createInspectionDevelopmentTargetCandidateBridge,
   type InspectionSourceCandidateFacts,
 } from "../discovery/trusted-candidate.ts";
 import { RuntimeError } from "../errors.ts";
+import { createEventFeed } from "../events/feed.ts";
 import { openRuntimeStore } from "../persistence/store.ts";
 import { createWorkbenchService } from "./workbench-service.ts";
 import { createDevelopmentTargetService } from "./development-target-service.ts";
@@ -146,6 +151,21 @@ async function candidateNamed(canonicalRoot: string, displayName: string) {
   });
 }
 
+async function indexedCandidate(canonicalRoot: string, index: number) {
+  return issueInspectionCandidate({
+    rootKey: OpaqueIdSchema.parse(index.toString(36).padStart(32, "r")),
+    rootKind: "current-project",
+    canonicalRoot,
+    displayName: `Plugin ${index}`,
+    displayPath: `plugins/plugin-${index}`,
+    packageName: `bb-plugin-${index}`,
+    version: "1.0.0",
+    pluginId: `plugin-${index}`,
+    hasServer: true,
+    hasApp: false,
+  });
+}
+
 afterEach(async () => {
   await Promise.all(
     temporaryRoots
@@ -155,6 +175,586 @@ afterEach(async () => {
 });
 
 describe("DevelopmentTargetService", () => {
+  test("retires targets absent from a complete snapshot and reopens their stable identity", async () => {
+    const fixture = await makeFixture();
+    let now = 1_000;
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => now,
+    });
+    const service = createDevelopmentTargetService(catalog);
+
+    const [created] = await service.refreshFromCompleteSnapshot(context(), [
+      await candidate(fixture.pluginRoot),
+    ]);
+    expect(created?.id).toBe(targetId);
+
+    now = 2_000;
+    expect(await service.refreshFromCompleteSnapshot(context(), [])).toEqual(
+      [],
+    );
+    expect(service.listTargets(context())).toEqual([]);
+    expect(() => service.getTarget(context(), targetId)).toThrow(
+      new RuntimeError("not_found"),
+    );
+    catalog.close();
+
+    now = 3_000;
+    const reopened = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("u".repeat(32)),
+      clock: () => now,
+    });
+    try {
+      const restored = await createDevelopmentTargetService(
+        reopened,
+      ).refreshFromTrustedCandidate(
+        context(),
+        await candidate(fixture.pluginRoot),
+      );
+      expect(restored?.id).toBe(targetId);
+      expect(restored?.revision).toBe(3);
+      expect(restored?.updatedAt).toBe(3_000);
+
+      const database = new Database(
+        path.join(fixture.dataRoot, "workbench.sqlite3"),
+        { readonly: true },
+      );
+      try {
+        expect(
+          database
+            .query("SELECT event_type FROM runtime_events ORDER BY sequence")
+            .all(),
+        ).toEqual([
+          { event_type: "object.created" },
+          { event_type: "target.retired" },
+          { event_type: "target.reopened" },
+        ]);
+      } finally {
+        database.close();
+      }
+    } finally {
+      reopened.close();
+    }
+  });
+
+  test("does not retire known targets when complete-snapshot validation fails", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => 1_000,
+    });
+    try {
+      const service = createDevelopmentTargetService(catalog);
+      const [created] = await service.refreshFromCompleteSnapshot(context(), [
+        await candidate(fixture.pluginRoot),
+      ]);
+      const issued = await candidate(fixture.pluginRoot);
+
+      await expect(
+        service.refreshFromCompleteSnapshot(context(), [
+          { ...issued } as never,
+        ]),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(service.listTargets(context())).toEqual([created]);
+
+      const database = new Database(
+        path.join(fixture.dataRoot, "workbench.sqlite3"),
+        { readonly: true },
+      );
+      try {
+        expect(
+          database
+            .query("SELECT event_type FROM runtime_events ORDER BY sequence")
+            .all(),
+        ).toEqual([{ event_type: "object.created" }]);
+      } finally {
+        database.close();
+      }
+    } finally {
+      catalog.close();
+    }
+  });
+
+  test("rolls back complete-snapshot retirement when its audit event fails", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => 1_000,
+    });
+    const database = new Database(
+      path.join(fixture.dataRoot, "workbench.sqlite3"),
+    );
+    try {
+      const service = createDevelopmentTargetService(catalog);
+      const [created] = await service.refreshFromCompleteSnapshot(context(), [
+        await candidate(fixture.pluginRoot),
+      ]);
+      database.exec(`
+        CREATE TRIGGER test_fail_retirement_event
+        BEFORE INSERT ON runtime_events
+        WHEN NEW.event_type = 'target.retired'
+        BEGIN
+          SELECT RAISE(ABORT, 'injected retirement event failure');
+        END
+      `);
+
+      await expect(
+        service.refreshFromCompleteSnapshot(context(), []),
+      ).rejects.toMatchObject({ code: "internal" });
+      expect(service.listTargets(context())).toEqual([created]);
+      expect(
+        database.query("SELECT * FROM development_target_retirements").all(),
+      ).toEqual([]);
+      expect(
+        database
+          .query("SELECT event_type FROM runtime_events ORDER BY sequence")
+          .all(),
+      ).toEqual([{ event_type: "object.created" }]);
+    } finally {
+      database.close();
+      catalog.close();
+    }
+  });
+
+  test("fails closed when a retired target is made active without a reopen event", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => 1_000,
+    });
+    const service = createDevelopmentTargetService(catalog);
+    await service.refreshFromCompleteSnapshot(context(), [
+      await candidate(fixture.pluginRoot),
+    ]);
+    await service.refreshFromCompleteSnapshot(context(), []);
+    catalog.close();
+
+    const database = new Database(
+      path.join(fixture.dataRoot, "workbench.sqlite3"),
+    );
+    database.exec("DELETE FROM development_target_retirements");
+    database.close();
+
+    await expect(
+      openDevelopmentTargetCatalog({ dataRoot: fixture.dataRoot }),
+    ).rejects.toMatchObject({ code: "corrupt_data" });
+  });
+
+  test("retires removals before enforcing the persistent 128-target snapshot capacity", async () => {
+    const fixture = await makeFixture();
+    const parent = path.dirname(fixture.pluginRoot);
+    const roots: string[] = [];
+    for (let index = 0; index <= 128; index += 1) {
+      const pluginRoot = path.join(parent, `capacity-${index}`);
+      await fs.mkdir(pluginRoot);
+      await fs.writeFile(
+        path.join(pluginRoot, "package.json"),
+        JSON.stringify({ name: `bb-plugin-${index}`, version: "1.0.0" }),
+      );
+      roots.push(await fs.realpath(pluginRoot));
+    }
+    let nextId = 0;
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse((nextId++).toString(36).padStart(32, "i")),
+      clock: () => 1_000,
+    });
+    try {
+      const service = createDevelopmentTargetService(catalog);
+      const initial = await Promise.all(
+        roots.slice(0, 128).map(indexedCandidate),
+      );
+      const created = await service.refreshFromCompleteSnapshot(
+        context(),
+        initial,
+      );
+      expect(created).toHaveLength(128);
+
+      const overCapacity = await Promise.all(roots.map(indexedCandidate));
+      await expect(
+        service.refreshFromCompleteSnapshot(context(), overCapacity),
+      ).rejects.toMatchObject({ code: "conflict" });
+      expect(service.listTargets(context())).toHaveLength(128);
+      expect(service.getTarget(context(), created[0]!.id)).toEqual(created[0]!);
+
+      const replacement = await Promise.all(
+        roots
+          .slice(1, 129)
+          .map((root, offset) => indexedCandidate(root, offset + 1)),
+      );
+      const refreshed = await service.refreshFromCompleteSnapshot(
+        context(),
+        replacement,
+      );
+      expect(refreshed).toHaveLength(128);
+      expect(service.listTargets(context())).toHaveLength(128);
+      expect(() => service.getTarget(context(), created[0]!.id)).toThrow(
+        new RuntimeError("not_found"),
+      );
+      expect(
+        refreshed.some((target) => target.manifest.pluginId === "plugin-128"),
+      ).toBe(true);
+
+      await expect(
+        service.refreshFromTrustedCandidate(
+          context(),
+          await indexedCandidate(roots[0]!, 0),
+        ),
+      ).rejects.toMatchObject({ code: "conflict" });
+      expect(service.listTargets(context())).toHaveLength(128);
+      expect(() => service.getTarget(context(), created[0]!.id)).toThrow(
+        new RuntimeError("not_found"),
+      );
+
+      const database = new Database(
+        path.join(fixture.dataRoot, "workbench.sqlite3"),
+      );
+      try {
+        const eventCountBeforeRepeat = database
+          .query<{ count: number }, []>(
+            "SELECT COUNT(*) AS count FROM runtime_events",
+          )
+          .get()!.count;
+        const repeated = await Promise.all(
+          roots
+            .slice(1, 129)
+            .map((root, offset) => indexedCandidate(root, offset + 1)),
+        );
+        const unchanged = await service.refreshFromCompleteSnapshot(
+          context(),
+          repeated,
+        );
+        expect(unchanged.map((target) => [target.id, target.revision])).toEqual(
+          refreshed.map((target) => [target.id, target.revision]),
+        );
+        expect(
+          database.query("SELECT COUNT(*) AS count FROM runtime_events").get(),
+        ).toEqual({ count: eventCountBeforeRepeat });
+      } finally {
+        database.close();
+      }
+    } finally {
+      catalog.close();
+    }
+  });
+
+  test("bounds retained unique-root history without disturbing the last active snapshot", async () => {
+    const fixture = await makeFixture();
+    const parent = path.dirname(fixture.pluginRoot);
+    const roots: string[] = [];
+    for (let index = 0; index <= TARGET_HISTORY_MAX_TARGETS; index += 1) {
+      const pluginRoot = path.join(parent, `history-${index}`);
+      await fs.mkdir(pluginRoot);
+      await fs.writeFile(
+        path.join(pluginRoot, "package.json"),
+        JSON.stringify({ name: `bb-plugin-${index}`, version: "1.0.0" }),
+      );
+      roots.push(await fs.realpath(pluginRoot));
+    }
+    let nextId = 0;
+    let now = 1_000;
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse((nextId++).toString(36).padStart(32, "h")),
+      clock: () => now++,
+    });
+    try {
+      const service = createDevelopmentTargetService(catalog);
+      let firstTargetId: string | undefined;
+      let secondTargetId: string | undefined;
+      let activeTargetId: string | undefined;
+      for (let index = 0; index < TARGET_HISTORY_MAX_TARGETS; index += 1) {
+        const [target] = await service.refreshFromCompleteSnapshot(context(), [
+          await indexedCandidate(roots[index]!, index),
+        ]);
+        if (index === 0) firstTargetId = target!.id;
+        if (index === 1) secondTargetId = target!.id;
+        activeTargetId = target!.id;
+      }
+      const purgedTargetId = TargetIdSchema.parse(firstTargetId);
+      const retainedSecondTargetId = TargetIdSchema.parse(secondTargetId);
+      const retainedActiveTargetId = TargetIdSchema.parse(activeTargetId);
+
+      const database = new Database(
+        path.join(fixture.dataRoot, "workbench.sqlite3"),
+      );
+      const feed = createEventFeed(database);
+      const purgedBindings = {
+        principalId,
+        bbContextId,
+        targetId: purgedTargetId,
+      };
+      const retainedBindings = {
+        principalId,
+        bbContextId,
+        targetId: retainedSecondTargetId,
+      };
+      const purgedCursor = feed.pull({ bindings: purgedBindings }).nextCursor!;
+      const retainedCursor = feed.pull({
+        bindings: retainedBindings,
+      }).nextCursor!;
+      database.exec(`
+        CREATE TRIGGER test_fail_retained_history_compaction
+        BEFORE DELETE ON runtime_objects
+        WHEN OLD.id = '${purgedTargetId}'
+        BEGIN
+          SELECT RAISE(ABORT, 'injected retained-history failure');
+        END
+      `);
+
+      await expect(
+        service.refreshFromCompleteSnapshot(context(), [
+          await indexedCandidate(
+            roots[TARGET_HISTORY_MAX_TARGETS]!,
+            TARGET_HISTORY_MAX_TARGETS,
+          ),
+        ]),
+      ).rejects.toMatchObject({ code: "internal" });
+      expect(service.listTargets(context()).map((target) => target.id)).toEqual(
+        [retainedActiveTargetId],
+      );
+      expect(
+        feed.pull({ bindings: purgedBindings, cursor: purgedCursor }),
+      ).toEqual({ events: [], nextCursor: purgedCursor });
+      expect(
+        feed.pull({ bindings: retainedBindings, cursor: retainedCursor }),
+      ).toEqual({ events: [], nextCursor: retainedCursor });
+      expect(() =>
+        database
+          .query("DELETE FROM runtime_events WHERE object_id = ?")
+          .run(purgedTargetId),
+      ).toThrow();
+      expect(
+        database
+          .query("SELECT COUNT(*) AS count FROM development_target_sources")
+          .get(),
+      ).toEqual({ count: TARGET_HISTORY_MAX_TARGETS });
+      expect(
+        database
+          .query("SELECT COUNT(*) AS count FROM development_target_retirements")
+          .get(),
+      ).toEqual({ count: TARGET_HISTORY_MAX_TARGETS - 1 });
+      database.exec("DROP TRIGGER test_fail_retained_history_compaction");
+
+      const [cycled] = await service.refreshFromCompleteSnapshot(context(), [
+        await indexedCandidate(
+          roots[TARGET_HISTORY_MAX_TARGETS]!,
+          TARGET_HISTORY_MAX_TARGETS,
+        ),
+      ]);
+      expect(cycled!.id).not.toBe(activeTargetId);
+      expect(service.listTargets(context()).map((target) => target.id)).toEqual(
+        [cycled!.id],
+      );
+
+      try {
+        expect(
+          database.query("SELECT COUNT(*) AS count FROM runtime_objects").get(),
+        ).toEqual({ count: TARGET_HISTORY_MAX_TARGETS });
+        expect(() =>
+          feed.pull({ bindings: purgedBindings, cursor: purgedCursor }),
+        ).toThrow(new RuntimeError("invalid_request"));
+        expect(
+          feed.pull({ bindings: retainedBindings, cursor: retainedCursor }),
+        ).toEqual({ events: [], nextCursor: retainedCursor });
+      } finally {
+        database.close();
+      }
+
+      const reopenedCatalog = await openDevelopmentTargetCatalog({
+        dataRoot: fixture.dataRoot,
+        id: () => ObjectIdSchema.parse("z".repeat(32)),
+        clock: () => 2_000,
+      });
+      try {
+        const reopenedService = createDevelopmentTargetService(reopenedCatalog);
+        const [reopened] = await reopenedService.refreshFromCompleteSnapshot(
+          context(),
+          [await indexedCandidate(roots[1]!, 1)],
+        );
+        expect(reopened!.id).toBe(retainedSecondTargetId);
+        expect(reopenedService.listTargets(context())).toHaveLength(1);
+      } finally {
+        reopenedCatalog.close();
+      }
+    } finally {
+      catalog.close();
+    }
+  }, 60_000);
+
+  test("bounds changed-event history while expiring only old cursors", async () => {
+    const fixture = await makeFixture();
+    let now = 1_000;
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => objectId,
+      clock: () => now++,
+    });
+    const service = createDevelopmentTargetService(catalog);
+    await service.refreshFromTrustedCandidate(
+      context(),
+      await candidate(fixture.pluginRoot),
+    );
+    await service.refreshFromCompleteSnapshot(context(), []);
+    await service.refreshFromCompleteSnapshot(context(), [
+      await candidate(fixture.pluginRoot),
+    ]);
+    const database = new Database(
+      path.join(fixture.dataRoot, "workbench.sqlite3"),
+    );
+    const feed = createEventFeed(database);
+    const bindings = { principalId, bbContextId, targetId };
+    const oldCursor = feed.pull({ bindings }).nextCursor!;
+    try {
+      for (
+        let index = 0;
+        index < TARGET_EVENT_MAX_EVENTS_PER_TARGET;
+        index += 1
+      ) {
+        await service.refreshFromTrustedCandidate(
+          context(),
+          await candidateNamed(fixture.pluginRoot, `Notes ${index}`),
+        );
+      }
+      let recentCursor: string | undefined;
+      for (;;) {
+        const page = feed.pull({
+          bindings,
+          ...(recentCursor === undefined ? {} : { cursor: recentCursor }),
+        });
+        if (page.events.length === 0) break;
+        recentCursor = page.nextCursor;
+      }
+      for (let index = 0; index < 10; index += 1) {
+        await service.refreshFromTrustedCandidate(
+          context(),
+          await candidateNamed(fixture.pluginRoot, `Recent ${index}`),
+        );
+      }
+
+      expect(() => feed.pull({ bindings, cursor: oldCursor })).toThrow(
+        new RuntimeError("invalid_request"),
+      );
+      const recent = feed.pull({ bindings, cursor: recentCursor! });
+      expect(recent.events).toHaveLength(10);
+      expect(
+        database
+          .query(
+            "SELECT COUNT(*) AS count FROM runtime_events WHERE object_id = ?",
+          )
+          .get(objectId),
+      ).toEqual({ count: TARGET_EVENT_MAX_EVENTS_PER_TARGET });
+      expect(
+        database
+          .query<{ event_type: string }, [string]>(
+            `SELECT DISTINCT event_type FROM runtime_events
+             WHERE object_id = ? ORDER BY event_type`,
+          )
+          .all(objectId)
+          .map(({ event_type }) => event_type),
+      ).toEqual([
+        "object.created",
+        "object.updated",
+        "target.reopened",
+        "target.retired",
+      ]);
+      expect(
+        feed
+          .pull({ bindings })
+          .events.every(({ type }) => type === "object.updated"),
+      ).toBe(true);
+      const checkpoint = database
+        .query<{ expired_through_sequence: number }, [string]>(
+          `SELECT expired_through_sequence
+           FROM development_target_event_retention WHERE object_id = ?`,
+        )
+        .get(objectId)!;
+      expect(() =>
+        database
+          .query(
+            "DELETE FROM development_target_event_retention WHERE object_id = ?",
+          )
+          .run(objectId),
+      ).toThrow();
+      let purgeCheckpointChanges = 0;
+      expect(() =>
+        database.transaction(() => {
+          database
+            .query("DELETE FROM development_target_sources WHERE object_id = ?")
+            .run(objectId);
+          purgeCheckpointChanges = database
+            .query(
+              "DELETE FROM development_target_event_retention WHERE object_id = ?",
+            )
+            .run(objectId).changes;
+          throw new Error("rollback checkpoint purge tracer");
+        })(),
+      ).toThrow("rollback checkpoint purge tracer");
+      expect(purgeCheckpointChanges).toBe(1);
+      expect(
+        database
+          .query(
+            "SELECT COUNT(*) AS count FROM development_target_event_retention WHERE object_id = ?",
+          )
+          .get(objectId),
+      ).toEqual({ count: 1 });
+      expect(() =>
+        database
+          .query(
+            `UPDATE development_target_event_retention
+             SET expired_through_sequence = ? WHERE object_id = ?`,
+          )
+          .run(checkpoint.expired_through_sequence - 1, objectId),
+      ).toThrow();
+      expect(() =>
+        database
+          .query(
+            `UPDATE development_target_event_retention
+             SET principal_id = 'wrong-principal' WHERE object_id = ?`,
+          )
+          .run(objectId),
+      ).toThrow();
+      expect(() => feed.pull({ bindings, cursor: oldCursor })).toThrow(
+        new RuntimeError("invalid_request"),
+      );
+    } finally {
+      database.close();
+      catalog.close();
+    }
+
+    const reopened = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    try {
+      expect(
+        createDevelopmentTargetService(reopened).listTargets(context()),
+      ).toHaveLength(1);
+    } finally {
+      reopened.close();
+    }
+
+    const floorTamper = new Database(
+      path.join(fixture.dataRoot, "workbench.sqlite3"),
+    );
+    floorTamper
+      .query(
+        `UPDATE development_target_event_retention
+         SET principal_id = ?, expired_through_sequence = (
+           SELECT MAX(sequence) FROM runtime_events WHERE object_id = ?
+         )`,
+      )
+      .run(principalId, objectId);
+    floorTamper.close();
+    await expect(
+      openDevelopmentTargetCatalog({ dataRoot: fixture.dataRoot }),
+    ).rejects.toMatchObject({ code: "corrupt_data" });
+  });
+
   test("persists and reopens one self-bound target while keeping its root private", async () => {
     const fixture = await makeFixture();
     const catalog = await openDevelopmentTargetCatalog({

@@ -17,12 +17,12 @@ export function PluginWorkbenchBoundary({
         <NativeSettingsSection
           headingId="pw-boundary-heading"
           title={
-            failed ? "Runtime status unavailable" : "Checking runtime status"
+            failed ? "Plugin Studio unavailable" : "Finding development plugins"
           }
           description={
             failed
-              ? "Plugin Workbench could not read the runtime status. No server details were exposed."
-              : "Reading the supervised runtime without starting it."
+              ? "Plugin Studio could not read project data. No server details were exposed."
+              : "Reading bb projects before the bounded plugin scan starts."
           }
           action={
             failed ? (
@@ -40,7 +40,7 @@ export function PluginWorkbenchBoundary({
           <p className="text-xs text-subtle-foreground" aria-live="polite">
             {failed
               ? "The current status is unknown."
-              : "The runtime remains idle until you open a project."}
+              : "Registered projects remain visible even when they have no plugins."}
           </p>
         </NativeSettingsSection>
       </div>

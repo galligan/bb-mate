@@ -489,7 +489,7 @@ export function resolveCompatibilityDecisionPath(
 
 export function formatCompatibilityReport(report: CompatibilityReport): string {
   const lines = [
-    `BB Mate compatibility: ${report.outcome}`,
+    `bb Plugin Studio compatibility: ${report.outcome}`,
     `Target: ${report.upstreamRef}`,
   ];
   for (const check of report.checks) {

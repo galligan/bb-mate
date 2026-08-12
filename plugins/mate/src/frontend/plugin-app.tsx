@@ -12,9 +12,10 @@ import type { rpcContract } from "../../server";
 import "./workbench-panel.css";
 import { PluginWorkbenchBoundary } from "./workbench-boundary";
 import {
+  PluginWorkbenchMissingTarget,
   PluginWorkbenchTargetDetail,
   PluginWorkbenchView,
-  type WorkbenchProjectThread,
+  type WorkbenchProjectThreads,
 } from "./workbench-panel";
 import {
   parsePluginWorkbenchSnapshot,
@@ -22,7 +23,7 @@ import {
 } from "./workbench-snapshot";
 
 const listChangedMessage = "The plugin list changed.";
-const projectOpenFailedMessage = "Project open failed safely. Try again.";
+const loadFailedMessage = "Plugin Studio reload failed safely. Try again.";
 const targetRoute = /^projects\/([^/]+)\/targets\/([^/]+)$/u;
 
 function parseTargetRoute(subPath: string) {
@@ -38,6 +39,41 @@ function parseTargetRoute(subPath: string) {
   }
 }
 
+function catalogFingerprint(snapshot: PluginWorkbenchSnapshot) {
+  if (
+    snapshot.projects.state === "unavailable" ||
+    snapshot.projects.items.some(
+      ({ scan }) =>
+        scan.state === "not_scanned" || scan.state === "unavailable",
+    )
+  ) {
+    return null;
+  }
+  return JSON.stringify(
+    snapshot.projects.items
+      .map((project) => [
+        project.id,
+        ...project.scan.items.map((target) => target.id).sort(),
+      ])
+      .sort(([left], [right]) => String(left).localeCompare(String(right))),
+  );
+}
+
+function missingTargetReason(
+  snapshot: PluginWorkbenchSnapshot,
+  project: PluginWorkbenchSnapshot["projects"]["items"][number] | undefined,
+) {
+  if (snapshot.projects.state === "unavailable") return "catalog_unavailable";
+  if (project === undefined) {
+    return snapshot.projects.truncated ? "scan_incomplete" : "removed";
+  }
+  if (project.scan.state === "ready") return "removed";
+  if (project.scan.state === "partial") return "scan_incomplete";
+  if (project.scan.state === "not_scanned") return "not_scanned";
+  if (project.scan.state === "unavailable") return project.scan.reason;
+  return "scan_incomplete";
+}
+
 export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const rpc = useRpc<typeof rpcContract>();
   const navigate = useBbNavigate();
@@ -45,277 +81,182 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const threadActions = experimental_useSidebarThreadActions();
   const generation = useRef(0);
   const recoveredSubPath = useRef<string | null>(null);
-  const attemptedRouteSubPath = useRef<string | null>(null);
-  const activeSubPath = useRef(subPath);
-  const routedAdmissionSubPath = useRef<string | null>(null);
-  const failedAdmissionProjectId = useRef<string | null>(null);
-  const previousTargetIds = useRef(new Map<string, readonly string[]>());
+  const refreshSubPath = useRef<string | null>(null);
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
     null,
   );
   const [statusFailed, setStatusFailed] = useState(false);
-  const [openedProjectId, setOpenedProjectId] = useState<string | null>(null);
-  const [admittingProjectId, setAdmittingProjectId] = useState<string | null>(
-    null,
-  );
-  const [selectionMessage, setSelectionMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [catalogMessage, setCatalogMessage] = useState<string | null>(null);
 
   const acceptSnapshot = useCallback(
-    (value: unknown, openedProject: string | null) => {
+    (value: unknown, previous: PluginWorkbenchSnapshot | null) => {
       const next = parsePluginWorkbenchSnapshot(value);
-      failedAdmissionProjectId.current = null;
-      const hasUsableCatalog =
-        openedProject !== null &&
-        (next.targets.state === "ready" || next.targets.state === "partial");
-      const nextTargetIds = hasUsableCatalog
-        ? next.targets.items.map(({ id }) => id)
-        : [];
-      const previous =
-        openedProject === null
-          ? undefined
-          : previousTargetIds.current.get(openedProject);
-      setSelectionMessage(
-        hasUsableCatalog &&
-          previous !== undefined &&
-          (previous.length !== nextTargetIds.length ||
-            previous.some((id, index) => id !== nextTargetIds[index]))
+      const previousFingerprint =
+        previous === null ? null : catalogFingerprint(previous);
+      const nextFingerprint = catalogFingerprint(next);
+      setSnapshot(next);
+      setCatalogMessage(
+        previousFingerprint !== null &&
+          nextFingerprint !== null &&
+          previousFingerprint !== nextFingerprint
           ? listChangedMessage
           : null,
       );
-      if (openedProject !== null && hasUsableCatalog) {
-        previousTargetIds.current.set(openedProject, nextTargetIds);
-      }
-      setSnapshot(next);
-      setOpenedProjectId(openedProject);
       return next;
     },
     [],
   );
 
-  const requestStatus = useCallback(() => {
+  const initialLoad = useCallback(() => {
     const request = ++generation.current;
     setStatusFailed(false);
-    setAdmittingProjectId(null);
+    setRefreshing(false);
+    setCatalogMessage(null);
     void rpc.call("status", {}).then(
+      (statusValue) => {
+        if (request !== generation.current) return;
+        let statusSnapshot: PluginWorkbenchSnapshot;
+        try {
+          statusSnapshot = parsePluginWorkbenchSnapshot(statusValue);
+          setSnapshot(statusSnapshot);
+        } catch {
+          setStatusFailed(true);
+          return;
+        }
+        setRefreshing(true);
+        void rpc.call("refresh", {}).then(
+          (refreshValue) => {
+            if (request !== generation.current) return;
+            try {
+              acceptSnapshot(refreshValue, null);
+            } catch {
+              setCatalogMessage(loadFailedMessage);
+            } finally {
+              if (request === generation.current) setRefreshing(false);
+            }
+          },
+          () => {
+            if (request !== generation.current) return;
+            setRefreshing(false);
+            setCatalogMessage(loadFailedMessage);
+          },
+        );
+      },
+      () => {
+        if (request !== generation.current) return;
+        setStatusFailed(true);
+      },
+    );
+  }, [acceptSnapshot, rpc]);
+
+  const refresh = useCallback(() => {
+    const request = ++generation.current;
+    const previous = snapshot;
+    refreshSubPath.current = subPath;
+    setStatusFailed(false);
+    setRefreshing(true);
+    setCatalogMessage(null);
+    void rpc.call("refresh", {}).then(
       (value) => {
         if (request !== generation.current) return;
         try {
-          const retryRoute = failedAdmissionProjectId.current !== null;
-          acceptSnapshot(value, null);
-          if (retryRoute) attemptedRouteSubPath.current = null;
+          acceptSnapshot(value, previous);
         } catch {
-          if (snapshot === null) setStatusFailed(true);
-          else
-            setSelectionMessage("Workbench reload failed safely. Try again.");
+          setCatalogMessage(loadFailedMessage);
+        } finally {
+          if (request === generation.current) {
+            refreshSubPath.current = null;
+            setRefreshing(false);
+          }
         }
       },
       () => {
         if (request !== generation.current) return;
-        if (snapshot === null) setStatusFailed(true);
-        else setSelectionMessage("Workbench reload failed safely. Try again.");
+        refreshSubPath.current = null;
+        setRefreshing(false);
+        setCatalogMessage(loadFailedMessage);
       },
     );
-  }, [acceptSnapshot, rpc, snapshot]);
-
-  const openProject = useCallback(
-    (projectId: string, routedSubPath: string | null = null) => {
-      if (snapshot?.projects.state !== "ready") return;
-      const project = snapshot.projects.items.find(
-        ({ id }) => id === projectId,
-      );
-      if (project?.admission !== "available") return;
-      const request = ++generation.current;
-      if (failedAdmissionProjectId.current === projectId) {
-        failedAdmissionProjectId.current = null;
-      }
-      routedAdmissionSubPath.current = routedSubPath;
-      setAdmittingProjectId(projectId);
-      setStatusFailed(false);
-      setSelectionMessage(null);
-      void rpc.call("admit", { projectId }).then(
-        (value) => {
-          if (request !== generation.current) return;
-          try {
-            acceptSnapshot(value, projectId);
-          } catch {
-            failedAdmissionProjectId.current = projectId;
-            setSelectionMessage(projectOpenFailedMessage);
-          } finally {
-            if (request === generation.current) {
-              routedAdmissionSubPath.current = null;
-              setAdmittingProjectId(null);
-            }
-          }
-        },
-        () => {
-          if (request !== generation.current) return;
-          routedAdmissionSubPath.current = null;
-          failedAdmissionProjectId.current = projectId;
-          setAdmittingProjectId(null);
-          setSelectionMessage(projectOpenFailedMessage);
-        },
-      );
-    },
-    [acceptSnapshot, rpc, snapshot],
-  );
-
-  const reload = useCallback(() => {
-    const openedProjectIsAvailable =
-      openedProjectId !== null &&
-      snapshot?.projects.state === "ready" &&
-      failedAdmissionProjectId.current !== openedProjectId &&
-      snapshot.projects.items.some(
-        ({ id, admission }) =>
-          id === openedProjectId && admission === "available",
-      );
-    if (openedProjectIsAvailable) {
-      const activeRoute = parseTargetRoute(activeSubPath.current);
-      openProject(
-        openedProjectId,
-        activeRoute?.projectId === openedProjectId
-          ? activeSubPath.current
-          : null,
-      );
-    } else requestStatus();
-  }, [openProject, openedProjectId, requestStatus, snapshot]);
+  }, [acceptSnapshot, rpc, snapshot, subPath]);
 
   useEffect(() => {
-    requestStatus();
+    initialLoad();
     return () => {
       generation.current += 1;
     };
-    // Status runs once on mount. Subsequent reads are explicit actions.
+    // Initial status and the one bounded refresh run only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const route = useMemo(() => parseTargetRoute(subPath), [subPath]);
-
   useEffect(() => {
-    const routeChanged = activeSubPath.current !== subPath;
-    activeSubPath.current = subPath;
     if (
-      routeChanged &&
-      routedAdmissionSubPath.current !== null &&
-      routedAdmissionSubPath.current !== subPath
+      refreshSubPath.current !== null &&
+      refreshSubPath.current !== "" &&
+      refreshSubPath.current !== subPath
     ) {
       generation.current += 1;
-      routedAdmissionSubPath.current = null;
-      setAdmittingProjectId(null);
+      refreshSubPath.current = null;
+      setRefreshing(false);
     }
-    if (route === null) {
-      attemptedRouteSubPath.current = null;
-      return;
-    }
-    if (
-      routeChanged &&
-      admittingProjectId !== null &&
-      admittingProjectId !== route.projectId
-    ) {
-      generation.current += 1;
-      setAdmittingProjectId(null);
-    }
-    if (
-      snapshot?.projects.state === "ready" &&
-      openedProjectId !== route.projectId &&
-      attemptedRouteSubPath.current !== subPath
-    ) {
-      attemptedRouteSubPath.current = subPath;
-      openProject(route.projectId, subPath);
-    }
-  }, [
-    admittingProjectId,
-    openProject,
-    openedProjectId,
-    route,
-    snapshot,
-    subPath,
-  ]);
-
-  const target =
-    route !== null &&
-    openedProjectId === route.projectId &&
-    snapshot !== null &&
-    (snapshot.targets.state === "ready" || snapshot.targets.state === "partial")
-      ? snapshot.targets.items.find(({ id }) => id === route.targetId)
-      : undefined;
-  const project =
-    route !== null && snapshot?.projects.state === "ready"
-      ? snapshot.projects.items.find(({ id }) => id === route.projectId)
-      : undefined;
-  useEffect(() => {
-    const malformedRoute = subPath !== "" && route === null;
-    const invalidProject =
-      route !== null &&
-      snapshot?.projects.state === "ready" &&
-      project?.admission !== "available";
-    const missingTerminalTarget =
-      route !== null &&
-      openedProjectId === route.projectId &&
-      snapshot !== null &&
-      snapshot.targets.state === "ready" &&
-      target === undefined;
-    const routeOpenFailed =
-      route !== null &&
-      admittingProjectId === null &&
-      openedProjectId !== route.projectId &&
-      failedAdmissionProjectId.current === route.projectId &&
-      selectionMessage === projectOpenFailedMessage;
-    if (
-      !malformedRoute &&
-      !invalidProject &&
-      !missingTerminalTarget &&
-      !routeOpenFailed
-    ) {
+    if (subPath === "" || route !== null) {
       recoveredSubPath.current = null;
       return;
     }
     if (recoveredSubPath.current === subPath) return;
     recoveredSubPath.current = subPath;
     navigate.toPluginPanel("workbench", { replace: true });
-  }, [
-    admittingProjectId,
-    navigate,
-    openedProjectId,
-    project,
-    route,
-    selectionMessage,
-    snapshot,
-    subPath,
-    target,
-  ]);
-  const threads = useMemo<readonly WorkbenchProjectThread[]>(() => {
-    if (route === null || sidebar.status !== "ready") return [];
-    return sidebar.threads
-      .filter(
-        (thread) =>
-          thread.projectId === route.projectId && thread.isArchived === false,
-      )
-      .sort((left, right) => right.updatedAt - left.updatedAt)
-      .map((thread) => ({
-        id: thread.id,
-        title: thread.title ?? thread.titleFallback ?? "Untitled thread",
-        updatedAt: thread.updatedAt,
-      }));
+  }, [navigate, route, subPath]);
+  const project =
+    route !== null && snapshot?.projects.state !== "unavailable"
+      ? snapshot?.projects.items.find(({ id }) => id === route.projectId)
+      : undefined;
+  const target =
+    route !== null &&
+    project !== undefined &&
+    (project.scan.state === "ready" || project.scan.state === "partial")
+      ? project.scan.items.find(({ id }) => id === route.targetId)
+      : undefined;
+
+  const threads = useMemo<WorkbenchProjectThreads>(() => {
+    if (route === null || sidebar.status === "loading") {
+      return { state: "loading", items: [] };
+    }
+    if (sidebar.status === "error") {
+      return { state: "unavailable", items: [] };
+    }
+    return {
+      state: "ready",
+      items: sidebar.threads
+        .filter(
+          (thread) =>
+            thread.projectId === route.projectId && thread.isArchived === false,
+        )
+        .sort((left, right) => right.updatedAt - left.updatedAt)
+        .map((thread) => ({
+          id: thread.id,
+          title: thread.title ?? thread.titleFallback ?? "Untitled task",
+          updatedAt: thread.updatedAt,
+        })),
+    };
   }, [route, sidebar]);
 
   if (statusFailed) {
-    return <PluginWorkbenchBoundary state="failed" onRetry={requestStatus} />;
+    return <PluginWorkbenchBoundary state="failed" onRetry={initialLoad} />;
   }
   if (snapshot === null) {
-    return <PluginWorkbenchBoundary state="pending" onRetry={requestStatus} />;
+    return <PluginWorkbenchBoundary state="pending" onRetry={initialLoad} />;
   }
   if (route !== null && target && project) {
     return (
       <PluginWorkbenchTargetDetail
         snapshot={snapshot}
-        busy={admittingProjectId !== null}
-        message={selectionMessage}
         projectLabel={project.label}
         target={target}
         threads={threads}
-        threadsState={
-          sidebar.status === "error" ? "unavailable" : sidebar.status
-        }
+        refreshing={refreshing}
+        catalogMessage={catalogMessage}
         onBack={() => navigate.toPluginPanel("workbench")}
         onOpenThread={(threadId) => threadActions.open(threadId)}
         onNewThread={() =>
@@ -324,29 +265,36 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
             focusPrompt: true,
           })
         }
-        onRefresh={reload}
+        onRefresh={refresh}
+      />
+    );
+  }
+  if (route !== null) {
+    if (refreshing) {
+      return <PluginWorkbenchBoundary state="pending" onRetry={initialLoad} />;
+    }
+    return (
+      <PluginWorkbenchMissingTarget
+        snapshot={snapshot}
+        refreshing={refreshing}
+        catalogMessage={catalogMessage}
+        reason={missingTargetReason(snapshot, project)}
+        onBack={() => navigate.toPluginPanel("workbench")}
+        onRefresh={refresh}
       />
     );
   }
   return (
     <PluginWorkbenchView
       snapshot={snapshot}
-      openedProjectId={openedProjectId}
-      admittingProjectId={admittingProjectId}
-      selectionMessage={selectionMessage}
-      onOpenProject={(projectId) => {
-        if (route !== null && route.projectId !== projectId) {
-          attemptedRouteSubPath.current = subPath;
-          navigate.toPluginPanel("workbench", { replace: true });
-        }
-        openProject(projectId, route?.projectId === projectId ? subPath : null);
-      }}
+      refreshing={refreshing}
+      catalogMessage={catalogMessage}
       onOpenTarget={(projectId, targetId) =>
         navigate.toPluginPanel("workbench", {
           subPath: `projects/${encodeURIComponent(projectId)}/targets/${encodeURIComponent(targetId)}`,
         })
       }
-      onRefresh={reload}
+      onRefresh={refresh}
     />
   );
 }
@@ -354,7 +302,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
 export default definePluginApp((app) => {
   app.slots.navPanel({
     id: "plugin-workbench",
-    title: "Plugin Workbench",
+    title: "Plugin Studio",
     icon: "Toolbox",
     path: "workbench",
     component: PluginWorkbenchPanel,

@@ -229,7 +229,7 @@ describe("compatibility evaluation", () => {
     const output = formatCompatibilityReport(
       evaluateCompatibility(target, observed),
     );
-    expect(output).toContain("BB Mate compatibility: fail");
+    expect(output).toContain("bb Plugin Studio compatibility: fail");
     expect(output).toContain("✗ bb.version: fail");
     expect(output).toContain("next:");
   });

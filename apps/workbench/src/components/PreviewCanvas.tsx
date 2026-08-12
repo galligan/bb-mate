@@ -38,8 +38,8 @@ export function PreviewCanvas({
         </h1>
         <p>
           {mode === "live"
-            ? "Live bb is the visual authority. BB Mate does not fetch, embed, or reproduce the Connect runtime. Use the launcher handoff to open this plugin in bb."
-            : "The official testing contract may resolve, but BB Mate will not claim Harness fidelity until the upstream-backed adapter exists."}
+            ? "Live bb is the visual authority. bb Plugin Studio does not fetch, embed, or reproduce the Connect runtime. Use the launcher handoff to open this plugin in bb."
+            : "The official testing contract may resolve, but bb Plugin Studio will not claim Harness fidelity until the upstream-backed adapter exists."}
         </p>
       </section>
     </main>

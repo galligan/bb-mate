@@ -14,9 +14,11 @@ import {
   type RuntimeCapabilitiesV1,
 } from "../supervision/protocol.ts";
 import {
-  CurrentProjectTargetAdmissionRequestSchema,
+  BatchProjectTargetAdmissionRequestSchema,
+  BatchProjectTargetAdmissionResponseSchema,
   DevelopmentTargetListResponseSchema,
-  type CurrentProjectTargetAdmissionRequest,
+  type BatchProjectTargetAdmissionRequest,
+  type BatchProjectTargetAdmissionResponse,
   type DevelopmentTargetListResponse,
 } from "../supervision/targets.ts";
 
@@ -44,8 +46,11 @@ export interface RuntimeTargetController {
   readonly bbContextId: BbContextId;
   admit(
     context: RequestContext,
-    input: CurrentProjectTargetAdmissionRequest,
-  ): DevelopmentTargetListResponse | Promise<DevelopmentTargetListResponse>;
+    input: BatchProjectTargetAdmissionRequest,
+    signal?: AbortSignal,
+  ):
+    | BatchProjectTargetAdmissionResponse
+    | Promise<BatchProjectTargetAdmissionResponse>;
   list(
     context: RequestContext,
   ): DevelopmentTargetListResponse | Promise<DevelopmentTargetListResponse>;
@@ -181,9 +186,9 @@ function statusForRuntimeError(error: RuntimeError): number {
 
 function parseTargetAdmissionRequest(
   bytes: Uint8Array,
-): CurrentProjectTargetAdmissionRequest {
+): BatchProjectTargetAdmissionRequest {
   try {
-    return CurrentProjectTargetAdmissionRequestSchema.parse(
+    return BatchProjectTargetAdmissionRequestSchema.parse(
       JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
     );
   } catch (error) {
@@ -191,9 +196,22 @@ function parseTargetAdmissionRequest(
   }
 }
 
-function parseTargetResponse(input: unknown): DevelopmentTargetListResponse {
+function parseTargetAdmissionResponse(
+  input: unknown,
+  request: BatchProjectTargetAdmissionRequest,
+): BatchProjectTargetAdmissionResponse {
   try {
-    return DevelopmentTargetListResponseSchema.parse(input);
+    const response = BatchProjectTargetAdmissionResponseSchema.parse(input);
+    if (
+      response.projects.length !== request.projects.length ||
+      response.projects.some(
+        (project, index) =>
+          project.projectKey !== request.projects[index]?.projectKey,
+      )
+    ) {
+      throw new TypeError("Admission response keys do not match the request");
+    }
+    return response;
   } catch (error) {
     throw new RuntimeError("internal", { cause: error });
   }
@@ -418,6 +436,7 @@ export function createRuntimeHttpHandler({
           ) {
             throw new RuntimeError("forbidden");
           }
+          let admissionRequest: BatchProjectTargetAdmissionRequest | undefined;
           const result =
             routePath === "/v2/targets/admit"
               ? await targets.admit(
@@ -428,11 +447,17 @@ export function createRuntimeHttpHandler({
                     ) {
                       throw new RuntimeError("invalid_request");
                     }
-                    return parseTargetAdmissionRequest(bodyBytes);
+                    admissionRequest = parseTargetAdmissionRequest(bodyBytes);
+                    return admissionRequest;
                   })(),
+                  request.signal,
                 )
               : await targets.list(authorized);
-          const response = json(parseTargetResponse(result));
+          const response = json(
+            admissionRequest !== undefined
+              ? parseTargetAdmissionResponse(result, admissionRequest)
+              : DevelopmentTargetListResponseSchema.parse(result),
+          );
           return forRequestMethod(request, response);
         } catch (error) {
           const runtimeError =

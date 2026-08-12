@@ -111,9 +111,8 @@ export function assertMatePackageMetadata(
     "Mate package entrypoints must reference built dist files.",
   );
   assert(
-    manifest.bb?.name === "Plugin Workbench" &&
-      manifest.bb?.description ===
-        "Develop source plugins with the supervised bb-mate runtime.",
+    manifest.bb?.name === "Plugin Studio" &&
+      manifest.bb?.description === "Build, inspect, and preview bb plugins.",
     "Mate package plugin identity differs from the approved metadata.",
   );
   assert(
@@ -340,7 +339,7 @@ export async function inspectMatePackageDirectory(
   );
   assert(
     createHash("sha256").update(packagedReadme).digest("hex") ===
-      "c31484a21c8cb608f77df159e03fe6fa7a96b6d349226061c45a9eec3df7051e" &&
+      "dae96e1eb1edc711861b4f8354f16f27d1039c4ff193f8e73b8ad67f56c17cbe" &&
       Buffer.compare(packagedReadme, approvedReadme) === 0,
     "Mate packaged README differs from the approved usage document.",
   );
@@ -362,10 +361,11 @@ export async function inspectMatePackageDirectory(
   const skillText = packagedSkill.toString("utf8");
   assert(
     createHash("sha256").update(packagedSkill).digest("hex") ===
-      "3955f26db8200a737350dacf2a559483790715dc8e75181dddca3828eae92670" &&
+      "3c17bd8a5376ae5b631247cb1c49541caddc82fd03e0dc40c56ce1fb9e1559ed" &&
       Buffer.compare(packagedSkill, approvedSkill) === 0 &&
       skillText.startsWith("---\nname: plugin-workbench\ndescription:") &&
-      skillText.includes("# Plugin Workbench"),
+      skillText.includes("# Plugin Studio") &&
+      skillText.includes("On mount, Plugin Studio automatically performs"),
     "Mate packaged skill identity differs from the approved plugin-workbench skill.",
   );
   for (const file of paths.filter((file) => !file.endsWith("/bb-mate"))) {

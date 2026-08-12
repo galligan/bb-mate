@@ -6,8 +6,9 @@ describe("@bb-mate/runtime public surface", () => {
   test("exports only the transport-neutral runtime foundation", () => {
     expect(Object.keys(runtime).sort()).toEqual([
       "AuthenticatedPrincipalSchema",
+      "BatchProjectTargetAdmissionRequestSchema",
+      "BatchProjectTargetAdmissionResponseSchema",
       "BbContextIdSchema",
-      "CurrentProjectTargetAdmissionRequestSchema",
       "DevelopmentTargetCodec",
       "DevelopmentTargetListResponseSchema",
       "DevelopmentTargetPayloadSchema",
@@ -26,6 +27,7 @@ describe("@bb-mate/runtime public surface", () => {
       "RuntimeError",
       "ScopeSchema",
       "SessionIdSchema",
+      "TARGET_ADMISSION_MAX_PROJECTS",
       "TargetIdSchema",
       "authorize",
       "canonicalJson",

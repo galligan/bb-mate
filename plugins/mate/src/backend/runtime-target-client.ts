@@ -1,11 +1,14 @@
 import { request as requestHttp } from "node:http";
 import {
-  CurrentProjectTargetAdmissionRequestSchema,
+  BatchProjectTargetAdmissionRequestSchema,
+  BatchProjectTargetAdmissionResponseSchema,
   DevelopmentTargetListResponseSchema,
+  type BatchProjectTargetAdmissionRequest,
+  type BatchProjectTargetAdmissionResponse,
   type DevelopmentTargetListResponse,
 } from "@bb-mate/runtime/supervision";
 
-const MAX_RESPONSE_BYTES = 256 * 1024;
+const MAX_RESPONSE_BYTES = 1024 * 1024;
 
 export interface RuntimeJsonRequest {
   readonly url: string;
@@ -17,7 +20,9 @@ export interface RuntimeJsonRequest {
 
 export interface RuntimeTargetClient {
   list(): Promise<DevelopmentTargetListResponse>;
-  admit(sourcePath: string): Promise<DevelopmentTargetListResponse>;
+  admitProjects(
+    input: Omit<BatchProjectTargetAdmissionRequest, "schemaVersion">,
+  ): Promise<BatchProjectTargetAdmissionResponse>;
   dispose(): void;
 }
 
@@ -91,15 +96,16 @@ export function createRuntimeTargetClient(options: {
   const request = options.request ?? requestJson;
   const token = options.token;
   let disposed = false;
-  const execute = async (
+  const execute = async <T>(
     method: "GET" | "POST",
     route: string,
     body: unknown,
     timeoutMs: number,
+    parse: (input: unknown) => T,
   ) => {
     if (disposed) throw new Error("Runtime target request failed.");
     try {
-      return DevelopmentTargetListResponseSchema.parse(
+      return parse(
         await request({
           url: `${options.baseUrl}${route}`,
           method,
@@ -113,18 +119,36 @@ export function createRuntimeTargetClient(options: {
     }
   };
   return {
-    list: () => execute("GET", "/v2/targets", undefined, 2_000),
-    admit(sourcePath) {
+    list: () =>
+      execute("GET", "/v2/targets", undefined, 2_000, (input) =>
+        DevelopmentTargetListResponseSchema.parse(input),
+      ),
+    async admitProjects(input) {
       let body: unknown;
       try {
-        body = CurrentProjectTargetAdmissionRequestSchema.parse({
-          schemaVersion: 1,
-          sourcePath,
+        body = BatchProjectTargetAdmissionRequestSchema.parse({
+          schemaVersion: 2,
+          ...input,
         });
       } catch {
         throw new Error("Runtime target request failed.");
       }
-      return execute("POST", "/v2/targets/admit", body, 10_000);
+      const result = await execute(
+        "POST",
+        "/v2/targets/admit",
+        body,
+        30_000,
+        (input) => BatchProjectTargetAdmissionResponseSchema.parse(input),
+      );
+      if (
+        result.projects.length !== input.projects.length ||
+        result.projects.some(
+          ({ projectKey }, index) =>
+            projectKey !== input.projects[index]?.projectKey,
+        )
+      )
+        throw new Error("Runtime target request failed.");
+      return result;
     },
     dispose() {
       if (disposed) return;

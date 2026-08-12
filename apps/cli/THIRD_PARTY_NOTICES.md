@@ -1,6 +1,6 @@
 # Third-party notices
 
-The BB Mate local artifact bundles or embeds output from the packages and fonts
+The bb Plugin Studio local artifact bundles or embeds output from the packages and fonts
 below. `THIRD_PARTY_LICENSES.md` is generated from the exact installed versions'
 license and copyright files and adds explicit notices for transitive code
 flattened into Ladle's distributed browser client. Both files are packaged and
@@ -35,5 +35,5 @@ Renderer and PrismJS, PropTypes and React Is, React and scheduler, the Focus
 Lock/React Remove Scroll family, Reach UI dialog, tslib, and the inspection
 parser dependency closure. This inventory and those notices cover third-party
 components, including the runtime protocol's bundled Zod schema implementation,
-only. BB Mate itself is distributed under the MIT License included as `LICENSE`
+only. bb Plugin Studio itself is distributed under the MIT License included as `LICENSE`
 in the package.

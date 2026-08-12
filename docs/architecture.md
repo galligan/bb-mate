@@ -2,10 +2,10 @@
 
 ## Repository boundary
 
-BB Mate is downstream of [bb](https://github.com/get-bb/bb). Public plugin SDK
+bb Plugin Studio is downstream of [bb](https://github.com/get-bb/bb). Public plugin SDK
 contracts and live bb behavior are authoritative. A contributor may use a local
 upstream checkout for read-only comparison, but it is not part of this Bun
-workspace and is never required to build or test BB Mate.
+workspace and is never required to build or test bb Plugin Studio.
 
 ## Workbench
 
@@ -118,7 +118,7 @@ Harness preview. The sibling checkout is not a fallback dependency.
 [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134) is the upstream
 publication tracker.
 
-Scaffold dependency installation remains native bb behavior. BB Mate does not
+Scaffold dependency installation remains native bb behavior. bb Plugin Studio does not
 repair generated packages after the fact;
 [get-bb/bb#1133](https://github.com/get-bb/bb/issues/1133) and draft
 [PR #1135](https://github.com/get-bb/bb/pull/1135) own that fix.

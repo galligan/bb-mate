@@ -1,7 +1,22 @@
 # Changelog
 
-BB Mate is an alpha. This changelog records reviewable candidates and public
+bb Plugin Studio is an alpha. This changelog records reviewable candidates and public
 prereleases; it does not imply a stable API or support promise.
+
+## Unreleased
+
+### Changed
+
+- Rename the product to **bb Plugin Studio** and its native bb surface to
+  **Plugin Studio**.
+- Rename the source repository to `galligan/bb-plugin-studio`; GitHub preserves
+  redirects from the former repository URL.
+- Keep `bb-mate`, `@bb-mate/*`, `bb-plugin-mate`, `mate`, the `workbench` route,
+  the `plugin-workbench` skill ID, runtime artifact names, and plugin data paths
+  stable so existing installs retain their state.
+
+Historical release notes below retain the product names that were current when
+those releases were recorded.
 
 ## 0.1.0-alpha.2 — public README refresh
 
