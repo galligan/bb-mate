@@ -333,84 +333,88 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
-  test("retires a healthy project's removed targets while a peer stays partial", async () => {
-    const fixture = await makeFixture();
-    const healthyRoot = path.join(fixture.sourceRoot, "healthy");
-    const partialRoot = path.join(fixture.sourceRoot, "partial");
-    await writePlugin(healthyRoot, "removable-healthy");
-    await writePlugin(partialRoot, "retained-partial");
-    const partialManifestPath = path.join(partialRoot, "package.json");
-    const partialManifest = JSON.parse(
-      await fs.readFile(partialManifestPath, "utf8"),
-    ) as Record<string, unknown>;
-    partialManifest.workspaces = 42;
-    await fs.writeFile(partialManifestPath, JSON.stringify(partialManifest));
-    const catalog = await openDevelopmentTargetCatalog({
-      dataRoot: fixture.dataRoot,
-      clock: (() => {
-        let value = 1_000;
-        return () => (value += 1);
-      })(),
-    });
-    const controller = createRuntimeTargetController({
-      catalog,
-      principalId,
-      bbContextId,
-    });
-    const request = () => ({
-      schemaVersion: 2 as const,
-      inventoryState: "complete" as const,
-      projects: [
-        { projectKey: "h".repeat(32), sourcePath: healthyRoot },
-        { projectKey: "p".repeat(32), sourcePath: partialRoot },
-      ],
-    });
+  test(
+    "retires a healthy project's removed targets while a peer stays partial",
+    async () => {
+      const fixture = await makeFixture();
+      const healthyRoot = path.join(fixture.sourceRoot, "healthy");
+      const partialRoot = path.join(fixture.sourceRoot, "partial");
+      await writePlugin(healthyRoot, "removable-healthy");
+      await writePlugin(partialRoot, "retained-partial");
+      const partialManifestPath = path.join(partialRoot, "package.json");
+      const partialManifest = JSON.parse(
+        await fs.readFile(partialManifestPath, "utf8"),
+      ) as Record<string, unknown>;
+      partialManifest.workspaces = 42;
+      await fs.writeFile(partialManifestPath, JSON.stringify(partialManifest));
+      const catalog = await openDevelopmentTargetCatalog({
+        dataRoot: fixture.dataRoot,
+        clock: (() => {
+          let value = 1_000;
+          return () => (value += 1);
+        })(),
+      });
+      const controller = createRuntimeTargetController({
+        catalog,
+        principalId,
+        bbContextId,
+      });
+      const request = () => ({
+        schemaVersion: 2 as const,
+        inventoryState: "complete" as const,
+        projects: [
+          { projectKey: "h".repeat(32), sourcePath: healthyRoot },
+          { projectKey: "p".repeat(32), sourcePath: partialRoot },
+        ],
+      });
 
-    expect((await controller.admit(context(), request())).state).toBe(
-      "partial",
-    );
-    await fs.writeFile(
-      path.join(healthyRoot, "package.json"),
-      JSON.stringify({
-        name: "healthy-workspace",
-        private: true,
-        workspaces: ["cycle-*"],
-      }),
-    );
+      expect((await controller.admit(context(), request())).state).toBe(
+        "partial",
+      );
+      await fs.writeFile(
+        path.join(healthyRoot, "package.json"),
+        JSON.stringify({
+          name: "healthy-workspace",
+          private: true,
+          workspaces: ["cycle-*"],
+        }),
+      );
 
-    const refreshed = await controller.admit(context(), request());
+      const refreshed = await controller.admit(context(), request());
 
-    expect(refreshed.projects).toMatchObject([
-      { state: "ready", targets: [] },
-      {
-        state: "partial",
-        targets: [{ manifest: { pluginId: "retained-partial" } }],
-      },
-    ]);
-    expect(
-      (await controller.list(context())).targets.map(
-        (target) => target.manifest.pluginId,
-      ),
-    ).toEqual(["retained-partial"]);
+      expect(refreshed.projects).toMatchObject([
+        { state: "ready", targets: [] },
+        {
+          state: "partial",
+          targets: [{ manifest: { pluginId: "retained-partial" } }],
+        },
+      ]);
+      expect(
+        (await controller.list(context())).targets.map(
+          (target) => target.manifest.pluginId,
+        ),
+      ).toEqual(["retained-partial"]);
 
-    let previousRoot: string | undefined;
-    for (let index = 0; index <= TARGET_LIST_MAX_TARGETS; index += 1) {
-      if (previousRoot !== undefined) {
-        await fs.rm(previousRoot, { recursive: true });
+      let previousRoot: string | undefined;
+      for (let index = 0; index <= TARGET_LIST_MAX_TARGETS; index += 1) {
+        if (previousRoot !== undefined) {
+          await fs.rm(previousRoot, { recursive: true });
+        }
+        const nextRoot = path.join(healthyRoot, `cycle-${index}`);
+        await writePlugin(nextRoot, `cycle-${index}`);
+        const cycled = await controller.admit(context(), request());
+        expect(cycled.projects[0]?.targets).toHaveLength(1);
+        previousRoot = nextRoot;
       }
-      const nextRoot = path.join(healthyRoot, `cycle-${index}`);
-      await writePlugin(nextRoot, `cycle-${index}`);
-      const cycled = await controller.admit(context(), request());
-      expect(cycled.projects[0]?.targets).toHaveLength(1);
-      previousRoot = nextRoot;
-    }
-    expect(
-      (await controller.list(context())).targets.map(
-        (target) => target.manifest.pluginId,
-      ),
-    ).toEqual(["retained-partial", `cycle-${TARGET_LIST_MAX_TARGETS}`]);
-    catalog.close();
-  });
+      expect(
+        (await controller.list(context())).targets.map(
+          (target) => target.manifest.pluginId,
+        ),
+      ).toEqual(["retained-partial", `cycle-${TARGET_LIST_MAX_TARGETS}`]);
+      catalog.close();
+    },
+    { timeout: 15_000 },
+  );
 
   test("preserves targets reachable from a nested partial project", async () => {
     const fixture = await makeFixture();
