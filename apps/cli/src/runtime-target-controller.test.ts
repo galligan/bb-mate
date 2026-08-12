@@ -595,6 +595,99 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("keeps child-first shared candidates active across partial root snapshots", async () => {
+    const fixture = await makeFixture();
+    const nestedRoot = path.join(fixture.sourceRoot, "plugins", "shared");
+    await fs.mkdir(fixture.sourceRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "parent",
+        private: true,
+        workspaces: ["plugins/*"],
+      }),
+    );
+    await writePlugin(nestedRoot, "shared-partial");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("h".repeat(32)),
+      clock: () => 1_000,
+    });
+    const keys = ["c".repeat(32), "p".repeat(32)];
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse(keys.shift()),
+      clock: () => 1_000,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial" as const,
+      projects: [
+        { projectKey: "c".repeat(32), sourcePath: nestedRoot },
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    expect(
+      response.projects.map(({ targets }) =>
+        targets.map((target) => target.manifest.pluginId),
+      ),
+    ).toEqual([["shared-partial"], ["shared-partial"]]);
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["shared-partial"]);
+    catalog.close();
+  });
+
+  test("preserves an omitted nested project scope in a partial inventory", async () => {
+    const fixture = await makeFixture();
+    const childRoot = path.join(fixture.sourceRoot, "child");
+    await writePlugin(childRoot, "omitted-child");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("o".repeat(32)),
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [{ projectKey: "c".repeat(32), sourcePath: childRoot }],
+    });
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({ name: "parent", private: true }),
+    );
+
+    const partial = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    expect(partial.projects).toMatchObject([{ state: "ready", targets: [] }]);
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["omitted-child"]);
+    catalog.close();
+  });
+
   test("bounds duplicate-root fan-out by total serialized target entries", async () => {
     const fixture = await makeFixture();
     const workspaces = Array.from({ length: 65 }, (_, index) =>

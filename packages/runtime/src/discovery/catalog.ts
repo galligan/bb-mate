@@ -228,9 +228,25 @@ export async function openDevelopmentTargetCatalog(
                 ),
                 ...currentSourceRoots,
               ]);
-        const uncertainSourceRoots = validateSourceScopes(
+        const requestedUncertainSourceRoots = validateSourceScopes(
           input.uncertainSourceRoots,
         );
+        const uncertainSourceRoots =
+          currentSourceRoots === undefined &&
+          authoritativeSourceRoots !== undefined
+            ? new Set([
+                ...(requestedUncertainSourceRoots ?? []),
+                ...storage
+                  .listProjectScopes(input.principalId, input.bbContextId)
+                  .filter(
+                    (registeredScope) =>
+                      !authoritativeSourceRoots.has(registeredScope) &&
+                      [...authoritativeSourceRoots].some((sourceRoot) =>
+                        isWithinSourceRoot(registeredScope, sourceRoot),
+                      ),
+                  ),
+              ])
+            : requestedUncertainSourceRoots;
         if (
           currentSourceRoots !== undefined &&
           candidates.some(

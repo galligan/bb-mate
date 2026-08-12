@@ -215,8 +215,8 @@ export function createRuntimeTargetController({
         return batchResponse(projects, groups, partial);
       }
       for (const root of admission.roots) {
-        const candidatesForRoot = issuedCandidates.filter(
-          ({ candidate }) => candidate.rootKey === root.rootKey,
+        const candidatesForRoot = issuedCandidates.filter(({ rootKeys }) =>
+          rootKeys.includes(root.rootKey),
         );
         const projectKeys = projectKeysByAdmittedRoot.get(root.rootKey) ?? [];
         const sourceRoot = canonicalSourceRootByAdmittedRoot.get(root.rootKey);
@@ -361,7 +361,13 @@ function addTargetToGroups(
 ): void {
   if (rootKey === undefined) return;
   for (const projectKey of projectKeysByAdmittedRoot.get(rootKey) ?? []) {
-    groups.get(projectKey)?.targets.push(target);
+    const group = groups.get(projectKey);
+    if (
+      group !== undefined &&
+      !group.targets.some((existing) => existing.id === target.id)
+    ) {
+      group.targets.push(target);
+    }
   }
 }
 
