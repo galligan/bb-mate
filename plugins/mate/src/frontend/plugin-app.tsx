@@ -46,6 +46,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const generation = useRef(0);
   const recoveredSubPath = useRef<string | null>(null);
   const attemptedRouteSubPath = useRef<string | null>(null);
+  const failedAdmissionProjectId = useRef<string | null>(null);
   const previousTargetIds = useRef(new Map<string, readonly string[]>());
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
     null,
@@ -60,6 +61,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const acceptSnapshot = useCallback(
     (value: unknown, openedProject: string | null) => {
       const next = parsePluginWorkbenchSnapshot(value);
+      failedAdmissionProjectId.current = null;
       const nextTargetIds =
         openedProject !== null &&
         (next.targets.state === "ready" || next.targets.state === "partial")
@@ -126,6 +128,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
           try {
             acceptSnapshot(value, projectId);
           } catch {
+            failedAdmissionProjectId.current = projectId;
             setSelectionMessage(projectOpenFailedMessage);
           } finally {
             if (request === generation.current) setAdmittingProjectId(null);
@@ -133,6 +136,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
         },
         () => {
           if (request !== generation.current) return;
+          failedAdmissionProjectId.current = projectId;
           setAdmittingProjectId(null);
           setSelectionMessage(projectOpenFailedMessage);
         },
@@ -145,6 +149,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
     const openedProjectIsAvailable =
       openedProjectId !== null &&
       snapshot?.projects.state === "ready" &&
+      failedAdmissionProjectId.current !== openedProjectId &&
       snapshot.projects.items.some(
         ({ id, admission }) =>
           id === openedProjectId && admission === "available",

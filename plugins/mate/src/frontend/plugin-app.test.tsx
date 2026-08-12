@@ -371,6 +371,15 @@ describe("Plugin Workbench app registration", () => {
       "Project open failed safely. Try again.",
     );
     expect(navigateToPluginPanel).not.toHaveBeenCalled();
+
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenNthCalledWith(4, "status", {});
   });
 
   test("reloads status when an opened project's catalog becomes unavailable", async () => {
