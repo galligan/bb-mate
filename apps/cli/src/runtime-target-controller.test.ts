@@ -884,6 +884,79 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("registers an authoritative scope before capacity fallback persists targets", async () => {
+    const fixture = await makeFixture();
+    const unrelatedRoot = path.join(fixture.sourceRoot, "unrelated");
+    const ancestorRoot = path.join(fixture.sourceRoot, "ancestor");
+    const projectRoot = path.join(ancestorRoot, "project");
+    await fs.mkdir(unrelatedRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(unrelatedRoot, "package.json"),
+      JSON.stringify({
+        name: "unrelated",
+        private: true,
+        workspaces: ["plugin-*"],
+      }),
+    );
+    for (let index = 0; index < 120; index += 1) {
+      await writePlugin(
+        path.join(unrelatedRoot, `plugin-${index}`),
+        `unrelated-${index}`,
+      );
+    }
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(projectRoot, "package.json"),
+      JSON.stringify({
+        name: "fallback-project",
+        private: true,
+        workspaces: ["plugin-*"],
+      }),
+    );
+    for (let index = 0; index < 10; index += 1) {
+      await writePlugin(
+        path.join(projectRoot, `plugin-${index}`),
+        `fallback-${index}`,
+      );
+    }
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [{ projectKey: "u".repeat(32), sourcePath: unrelatedRoot }],
+    });
+
+    const fallback = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "f".repeat(32), sourcePath: projectRoot }],
+    });
+    expect(fallback).toMatchObject({ state: "partial" });
+    expect(fallback.projects[0]?.targets).toHaveLength(8);
+
+    await fs.rm(projectRoot, { recursive: true });
+    await fs.mkdir(projectRoot);
+    await fs.writeFile(
+      path.join(ancestorRoot, "package.json"),
+      JSON.stringify({ name: "ancestor", private: true }),
+    );
+    await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "a".repeat(32), sourcePath: ancestorRoot }],
+    });
+
+    expect((await controller.list(context())).targets).toHaveLength(128);
+    catalog.close();
+  });
+
   test("registers a nested project first seen in a partial inventory", async () => {
     const fixture = await makeFixture();
     const childRoot = path.join(fixture.sourceRoot, "child");

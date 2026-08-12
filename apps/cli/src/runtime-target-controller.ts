@@ -298,6 +298,20 @@ export function createRuntimeTargetController({
         } catch {
           signal?.throwIfAborted();
           partial = true;
+          try {
+            await abortable(
+              targets.registerProjectScopes(
+                context,
+                component.map(({ rootKey }) =>
+                  canonicalSourceRootByAdmittedRoot.get(rootKey)!,
+                ),
+                { signal },
+              ),
+              signal,
+            );
+          } catch {
+            signal?.throwIfAborted();
+          }
           for (const { rootKey } of component) {
             for (const projectKey of projectKeysByAdmittedRoot.get(rootKey) ??
               []) {
