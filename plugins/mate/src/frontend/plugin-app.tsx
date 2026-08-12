@@ -65,9 +65,7 @@ function missingTargetReason(
 ) {
   if (snapshot.projects.state === "unavailable") return "catalog_unavailable";
   if (project === undefined) {
-    return snapshot.projects.state === "partial"
-      ? "scan_incomplete"
-      : "removed";
+    return snapshot.projects.truncated ? "scan_incomplete" : "removed";
   }
   if (project.scan.state === "ready") return "removed";
   if (project.scan.state === "partial") return "scan_incomplete";

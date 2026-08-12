@@ -537,7 +537,7 @@ describe("Plugin Studio app registration", () => {
     expect(document.body.textContent).not.toContain("no longer available");
   });
 
-  test("does not claim removal when a deep-linked project is omitted from a partial catalog", async () => {
+  test("claims authoritative removal for an absent project despite unrelated partial scans", async () => {
     const partial = snapshot(
       [
         project("visible_project", "Visible", {
@@ -549,8 +549,36 @@ describe("Plugin Studio app registration", () => {
     );
     rpcImplementation = () => Promise.resolve(partial);
     await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(document.body.textContent).toContain("Plugin no longer available");
+    expect(document.body.textContent).not.toContain("could not verify");
+  });
+
+  test("does not claim removal when a deep-linked project is omitted from a truncated catalog", async () => {
+    const truncated = {
+      ...snapshot(
+        [
+          project("visible_project", "Visible", {
+            state: "partial",
+            items: [],
+          }),
+        ],
+        "partial",
+      ),
+      projects: {
+        state: "partial" as const,
+        truncated: true,
+        items: [
+          project("visible_project", "Visible", {
+            state: "partial",
+            items: [],
+          }),
+        ],
+      },
+    };
+    rpcImplementation = () => Promise.resolve(truncated);
+    await renderPanel(`projects/project_01/targets/${targetA}`);
     expect(document.body.textContent).toContain("Plugin unavailable");
-    expect(document.body.textContent).toContain("project scan was incomplete");
+    expect(document.body.textContent).toContain("could not verify");
     expect(document.body.textContent).not.toContain("no longer available");
   });
 
