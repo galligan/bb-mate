@@ -35,6 +35,11 @@ import type {
 const MAX_WORKSPACE_PATTERN_COUNT = 64;
 const MAX_WORKSPACE_PATTERN_BYTES = 256;
 const MAX_WORKSPACE_PATTERN_SEGMENTS = 32;
+// One admission's total character-level matching work. The static pattern
+// caps bound each comparison, but 64 wildcard patterns against every budgeted
+// directory entry still multiply into seconds of synchronous matching; this
+// aggregate cap keeps the worst case far below the request deadline.
+const MAX_WORKSPACE_MATCH_WORK = 8_000_000;
 const MAX_PNPM_WORKSPACE_BYTES = 64 * 1024;
 
 interface WorkspacePattern {
@@ -44,7 +49,24 @@ interface WorkspacePattern {
 
 interface WorkspaceScanState extends RootScanState {
   readonly patterns: readonly WorkspacePattern[];
+  readonly work: MatchWork;
   readonly signal?: AbortSignal;
+  budgetReported?: boolean;
+}
+
+interface MatchWork {
+  used: number;
+}
+
+class WorkspaceMatchWorkError extends Error {
+  constructor() {
+    super("workspace match work limit");
+  }
+}
+
+function chargeMatchWork(work: MatchWork, cost: number): void {
+  work.used += cost;
+  if (work.used > MAX_WORKSPACE_MATCH_WORK) throw new WorkspaceMatchWorkError();
 }
 
 export async function discoverWorkspaceSourceCandidates(
@@ -56,12 +78,14 @@ export async function discoverWorkspaceSourceCandidates(
   const diagnostics: DiscoveryDiagnostic[] = [];
   const baseStates = createRootScanStates(roots);
   const states: WorkspaceScanState[] = [];
+  const work: MatchWork = { used: 0 };
 
   for (const state of baseStates) {
     options.signal?.throwIfAborted();
     states.push({
       ...state,
       patterns: await readWorkspacePatterns(state, diagnostics, options.signal),
+      work,
       signal: options.signal,
     });
   }
@@ -269,35 +293,49 @@ async function scanAvailable(
   diagnostics: DiscoveryDiagnostic[],
 ): Promise<void> {
   state.signal?.throwIfAborted();
-  while (true) {
-    while (state.queue.length > 0) {
+  try {
+    while (true) {
+      while (state.queue.length > 0) {
+        state.signal?.throwIfAborted();
+        const current = state.queue.shift();
+        if (!current) break;
+        await inspectPendingDirectory(state, current, candidates, diagnostics);
+      }
+      if (state.budget.visitedEntries >= state.budget.maxVisitedEntries) return;
       state.signal?.throwIfAborted();
-      const current = state.queue.shift();
-      if (!current) break;
-      await inspectPendingDirectory(state, current, candidates, diagnostics);
-    }
-    if (state.budget.visitedEntries >= state.budget.maxVisitedEntries) return;
-    state.signal?.throwIfAborted();
-    const continuation = state.continuations.shift();
-    if (!continuation) return;
-    if (continuation.kind === "entries") {
-      consumeEntries(
+      const continuation = state.continuations.shift();
+      if (!continuation) return;
+      if (continuation.kind === "entries") {
+        consumeEntries(
+          state,
+          continuation.current,
+          continuation.entries,
+          diagnostics,
+        );
+        continue;
+      }
+      const entries = await readDirectoryEntries(
         state,
         continuation.current,
-        continuation.entries,
         diagnostics,
+        continuation.attestation,
       );
-      continue;
+      state.signal?.throwIfAborted();
+      if (entries)
+        consumeEntries(state, continuation.current, entries, diagnostics);
     }
-    const entries = await readDirectoryEntries(
-      state,
-      continuation.current,
-      diagnostics,
-      continuation.attestation,
+  } catch (error) {
+    if (!(error instanceof WorkspaceMatchWorkError)) throw error;
+    if (state.budgetReported) return;
+    state.budgetReported = true;
+    diagnostics.push(
+      discoveryDiagnostic(
+        "workspace-config-invalid",
+        state.root,
+        state.root.displayName,
+        `Workspace matching at ${state.root.displayName} stopped at the global matching budget; results are partial.`,
+      ),
     );
-    state.signal?.throwIfAborted();
-    if (entries)
-      consumeEntries(state, continuation.current, entries, diagnostics);
   }
 }
 
@@ -316,7 +354,8 @@ async function inspectPendingDirectory(
   state.signal?.throwIfAborted();
   if (!attestation) return;
   const matched =
-    current.relative === "" || matches(state.patterns, current.relative);
+    current.relative === "" ||
+    matches(state.patterns, current.relative, state.work);
   let packageBoundary = false;
   if (matched) {
     const candidate = await inspectDirectory(
@@ -341,7 +380,7 @@ async function inspectPendingDirectory(
   if (
     !stable ||
     (packageBoundary &&
-      !couldContainStrictMatch(state.patterns, current.relative)) ||
+      !couldContainStrictMatch(state.patterns, current.relative, state.work)) ||
     state.patterns.length === 0
   )
     return;
@@ -400,11 +439,12 @@ function consumeEntries(
         state.patterns,
         relative,
         entry.name,
+        state.work,
       )
     )
       continue;
     if (entry.isSymbolicLink()) {
-      if (couldContainMatch(state.patterns, relative)) {
+      if (couldContainMatch(state.patterns, relative, state.work)) {
         const displayPath = displayPathFor(
           state.root,
           relative.split("/").join(path.sep),
@@ -421,7 +461,7 @@ function consumeEntries(
       continue;
     }
     if (!entry.isDirectory()) continue;
-    if (!couldContainMatch(state.patterns, relative)) continue;
+    if (!couldContainMatch(state.patterns, relative, state.work)) continue;
     state.queue.push({
       directory: path.join(current.directory, entry.name),
       relative: relative.split("/").join(path.sep),
@@ -560,16 +600,17 @@ async function attestDirectoryOrReport(
 function matches(
   patterns: readonly WorkspacePattern[],
   relative: string,
+  work: MatchWork,
 ): boolean {
   const segments = relative.split(path.sep);
   return (
     patterns.some(
       (pattern) =>
-        !pattern.negative && matchesSegments(pattern.segments, segments),
+        !pattern.negative && matchesSegments(pattern.segments, segments, work),
     ) &&
     !patterns.some(
       (pattern) =>
-        pattern.negative && matchesSegments(pattern.segments, segments),
+        pattern.negative && matchesSegments(pattern.segments, segments, work),
     )
   );
 }
@@ -577,6 +618,7 @@ function matches(
 function couldContainMatch(
   patterns: readonly WorkspacePattern[],
   relative: string,
+  work: MatchWork,
 ): boolean {
   const segments = relative.split("/");
   if (
@@ -584,19 +626,20 @@ function couldContainMatch(
       (pattern) =>
         pattern.negative &&
         pattern.segments.at(-1) === "**" &&
-        matchesSegments(pattern.segments, segments),
+        matchesSegments(pattern.segments, segments, work),
     )
   )
     return false;
   return patterns.some(
     (pattern) =>
-      !pattern.negative && prefixCanMatch(pattern.segments, segments),
+      !pattern.negative && prefixCanMatch(pattern.segments, segments, work),
   );
 }
 
 function couldContainStrictMatch(
   patterns: readonly WorkspacePattern[],
   relative: string,
+  work: MatchWork,
 ): boolean {
   const segments = relative.split(path.sep);
   if (
@@ -604,26 +647,30 @@ function couldContainStrictMatch(
       (pattern) =>
         pattern.negative &&
         pattern.segments.at(-1) === "**" &&
-        matchesSegments(pattern.segments, segments),
+        matchesSegments(pattern.segments, segments, work),
     )
   )
     return false;
   return patterns.some(
     (pattern) =>
       !pattern.negative &&
-      prefixCanMatch(pattern.segments, segments, { strictDescendant: true }),
+      prefixCanMatch(pattern.segments, segments, work, {
+        strictDescendant: true,
+      }),
   );
 }
 
 function matchesSegments(
   pattern: readonly string[],
   input: readonly string[],
+  work: MatchWork,
 ): boolean {
   const seen = new Set<string>();
   const visit = (patternIndex: number, inputIndex: number): boolean => {
     const key = `${patternIndex}:${inputIndex}`;
     if (seen.has(key)) return false;
     seen.add(key);
+    chargeMatchWork(work, 1);
     if (patternIndex === pattern.length) return inputIndex === input.length;
     const segment = pattern[patternIndex]!;
     if (segment === "**")
@@ -635,7 +682,7 @@ function matchesSegments(
       );
     return (
       inputIndex < input.length &&
-      matchesPatternSegment(segment, input[inputIndex]!) &&
+      matchesPatternSegment(segment, input[inputIndex]!, work) &&
       visit(patternIndex + 1, inputIndex + 1)
     );
   };
@@ -645,24 +692,25 @@ function matchesSegments(
 function prefixCanMatch(
   pattern: readonly string[],
   input: readonly string[],
+  work: MatchWork,
   options: { strictDescendant?: boolean } = {},
 ): boolean {
   let states = new Set([0]);
   for (const inputSegment of input) {
     const next = new Set<number>();
-    for (const state of closeGlobstars(pattern, states)) {
+    for (const state of closeGlobstars(pattern, states, work)) {
       if (pattern[state] === "**" && !inputSegment.startsWith("."))
         next.add(state);
       else if (
         state < pattern.length &&
-        matchesPatternSegment(pattern[state]!, inputSegment)
+        matchesPatternSegment(pattern[state]!, inputSegment, work)
       )
         next.add(state + 1);
     }
     states = next;
     if (states.size === 0) return false;
   }
-  const reachable = closeGlobstars(pattern, states);
+  const reachable = closeGlobstars(pattern, states, work);
   return options.strictDescendant
     ? [...reachable].some((state) => state < pattern.length)
     : reachable.size > 0;
@@ -671,11 +719,14 @@ function prefixCanMatch(
 function closeGlobstars(
   pattern: readonly string[],
   input: ReadonlySet<number>,
+  work: MatchWork,
 ): Set<number> {
   const result = new Set(input);
   for (const state of [...result]) {
     let index = state;
-    while (pattern[index] === "**") {
+    while (true) {
+      chargeMatchWork(work, 1);
+      if (pattern[index] !== "**") break;
       index += 1;
       result.add(index);
     }
@@ -683,9 +734,17 @@ function closeGlobstars(
   return result;
 }
 
-function matchesSegment(pattern: string, input: string): boolean {
+function matchesSegment(
+  pattern: string,
+  input: string,
+  work: MatchWork,
+): boolean {
   const patternCharacters = [...pattern];
   const inputCharacters = [...input];
+  chargeMatchWork(
+    work,
+    patternCharacters.length * (inputCharacters.length + 1),
+  );
   let reachable = new Uint8Array(inputCharacters.length + 1);
   reachable[0] = 1;
   for (const patternCharacter of patternCharacters) {
@@ -716,10 +775,14 @@ function matchesSegment(pattern: string, input: string): boolean {
   return reachable[inputCharacters.length] === 1;
 }
 
-function matchesPatternSegment(pattern: string, input: string): boolean {
+function matchesPatternSegment(
+  pattern: string,
+  input: string,
+  work: MatchWork,
+): boolean {
   return (
     (!input.startsWith(".") || pattern.startsWith(".")) &&
-    matchesSegment(pattern, input)
+    matchesSegment(pattern, input, work)
   );
 }
 
@@ -743,6 +806,7 @@ function isExplicitlyIncludedIgnoredDirectory(
   patterns: readonly WorkspacePattern[],
   relative: string,
   name: string,
+  work: MatchWork,
 ): boolean {
   if (name === "node_modules") return false;
   const segments = relative.split("/");
@@ -752,8 +816,8 @@ function isExplicitlyIncludedIgnoredDirectory(
       pattern.segments.some(
         (segment, index) =>
           segment !== "**" &&
-          matchesPatternSegment(segment, name) &&
-          matchesSegments(pattern.segments.slice(0, index + 1), segments),
+          matchesPatternSegment(segment, name, work) &&
+          matchesSegments(pattern.segments.slice(0, index + 1), segments, work),
       ),
   );
 }

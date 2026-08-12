@@ -43,6 +43,43 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("stops pathological matching at the aggregate work budget", async () => {
+    const root = await harness.createRoot();
+    const names = Array.from(
+      { length: 8 },
+      (_, index) => `${String.fromCharCode(97 + index)}${"z".repeat(240)}`,
+    );
+    await Promise.all(names.map((name) => fs.mkdir(path.join(root, name))));
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: Array.from(
+          { length: 64 },
+          (_, index) =>
+            `${"*?".repeat(119)}${index.toString(36).padStart(2, "0")}`,
+        ),
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const started = performance.now();
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        detail: expect.stringContaining("global matching budget"),
+      }),
+    ]);
+  });
+
   test("bounds a separated-wildcard segment nonmatch", async () => {
     const root = await harness.createRoot();
     await fs.mkdir(path.join(root, `${"a".repeat(120)}c`));
