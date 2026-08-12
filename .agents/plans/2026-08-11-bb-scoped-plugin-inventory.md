@@ -211,27 +211,28 @@ process/environment facts, unknown keys, and impossible runtime/project states.
        lifecycle after the latest executable and shipped-skill changes.
 8. [x] Rebuild/reload the path plugin with state preserved and verify current
        Plugin Studio status/refresh behavior in released bb.
-9. [ ] Rerun current root/detail/Back browser click-through when binding is
-       available, obtain exact-head hosted CI and two clean review lanes, then
-       reconcile tracker/PR truth before moving PR #84 from draft to ready. No
-       merge is authorized.
+9. [ ] Obtain exact-head hosted CI and two clean review lanes, then reconcile
+       tracker/PR truth before moving PR #84 from draft to ready. No merge is
+       authorized.
 
 PR #84 remains draft. Its exact pushed evidence head
-`23b14cb09cbba3551941af9ce254a365a66213f9` is stacked on PR #83 head
-`06ee8ae4943bcbc61fb2302196ef370d12f18726`. The current local matrix passes
-790 tests: inspection 193/574 assertions, runtime 204/957, CLI 110/539, Mate
-102/446, scripts 94/351, Workbench 66, and Linear 21. Standalone, managed
+`6d58faad71f571334cf5c84acad7f3b38257d05a` is stacked on PR #83 head
+`1c897d5`. The current local matrix passes 791 tests: inspection 194/577
+assertions, runtime 204/957, CLI 110/539, Mate 102/446, scripts 94/351,
+Workbench 66, and Linear 21. Standalone, managed
 package, check, format, and diff gates are green. The runtime is
-`9493df9e…` (64,882,658 bytes), its manifest is `4ba4ce42…` (6,494 bytes), and
-the private package is `fee4508a…` (24,686,639 bytes).
+`95ab3719…` (64,882,658 bytes), its manifest is `027cde5e…` (6,494 bytes), and
+the private package is `0d2a37d3…` (24,686,636 bytes).
 
 Preserve-state Live proof passed at that exact head: the source remained
 unchanged, the runtime stayed running, app hash `de3682…` served Plugin Studio,
 schema 3 was ready, BB Mate exposed Linear revision 15 plus Plugin Studio
 revision 16, grid was ready-empty, responses contained no `/Users`, and logs
-were empty. Browser binding was unavailable, so current root/detail/Back visual
-click-through was not rerun; only its older Workbench-era proof is historical.
-Current exact-head hosted CI and reviews also remain pending.
+were empty. Current Browser proof also passed: every project was expanded; BB
+Mate listed Linear plus Plugin Studio; grid was ready-empty; Plugin Studio
+revision 16 detail showed preview-unavailable truth and the OS-648 Project task;
+Back returned to the catalog. Current exact-head hosted CI and reviews remain
+pending.
 
 ## Verification and stop lines
 
