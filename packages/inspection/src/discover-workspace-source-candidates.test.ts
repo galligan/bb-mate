@@ -143,6 +143,31 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("supports an inline comment after a double-quoted pnpm workspace pattern", async () => {
+    const root = await harness.createRoot();
+    const plugin = path.join(root, "plugins", "included");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "included");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      'packages:\n  - "plugins/*" # workspace plugins\n',
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "included",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("rejects trailing tokens after a quoted pnpm workspace pattern", async () => {
     const root = await harness.createRoot("private-pnpm-quoted-trailing");
     await fs.writeFile(
@@ -165,6 +190,34 @@ describe("workspace-aware source discovery", () => {
         code: "workspace-config-invalid",
         rootKey: WORKSPACE_ROOT_KEY,
         displayPath: "private-pnpm-quoted-trailing",
+      }),
+    ]);
+  });
+
+  test("rejects trailing tokens after a double-quoted pnpm workspace pattern", async () => {
+    const root = await harness.createRoot(
+      "private-pnpm-double-quoted-trailing",
+    );
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      'packages:\n  - "plugins/*" extra\n',
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-double-quoted-trailing",
       }),
     ]);
   });

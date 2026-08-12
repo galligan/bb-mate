@@ -242,8 +242,13 @@ function parseYamlPatternScalar(input: string): string {
     return quoted[1]!.replace(/''/gu, "'");
   }
   if (value.startsWith('"')) {
+    const quoted =
+      /^("(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*")(?:\s+#.*)?$/u.exec(
+        value,
+      );
+    if (!quoted) throw new Error();
     try {
-      const parsed = JSON.parse(value) as unknown;
+      const parsed = JSON.parse(quoted[1]!) as unknown;
       if (typeof parsed !== "string") throw new Error();
       return parsed;
     } catch {
