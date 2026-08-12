@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { discoverWorkspaceSourceCandidates } from "./discover-workspace-source-candidates.ts";
+import { sourceCandidateDiscoveringRootKeys } from "./discovery-scan-state.ts";
 import {
   createDiscoveryTestHarness,
   EXAMPLE_ROOT_KEY,
@@ -1038,6 +1039,59 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("supports exactly one leading BOM in a pnpm workspace document", async () => {
+    const root = await harness.createRoot();
+    const plugin = path.join(root, "plugins", "included");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "included");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "\uFEFFpackages:\n  - plugins/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "included",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("rejects multiple or noninitial BOMs in a pnpm workspace document", async () => {
+    for (const [name, source] of [
+      ["multiple", "\uFEFF\uFEFFpackages:\n  - plugins/*\n"],
+      ["noninitial", "# workspace\n\uFEFFpackages:\n  - plugins/*\n"],
+    ] as const) {
+      const root = await harness.createRoot(`private-pnpm-bom-${name}`);
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(path.join(root, "pnpm-workspace.yaml"), source);
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-pnpm-bom-${name}`,
+        }),
+      ]);
+    }
+  });
+
   test("does not normalize spaces inside a quoted pnpm key", async () => {
     const root = await harness.createRoot("private-pnpm-internal-key-spaces");
     await fs.writeFile(
@@ -1464,6 +1518,57 @@ describe("workspace-aware source discovery", () => {
         .map(({ pluginId, rootKey }) => `${pluginId}:${rootKey}`)
         .sort(),
     ).toEqual([`first:${WORKSPACE_ROOT_KEY}`, `second:${secondKey}`].sort());
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("counts shared candidates once while retaining every discovering root", async () => {
+    const parent = await harness.createRoot("parent-project");
+    const child = path.join(parent, "plugins");
+    await fs.mkdir(child);
+    await fs.writeFile(
+      path.join(parent, "package.json"),
+      JSON.stringify({
+        name: "parent-project",
+        private: true,
+        workspaces: ["plugins/*"],
+      }),
+    );
+    await fs.writeFile(
+      path.join(child, "package.json"),
+      JSON.stringify({
+        name: "child-project",
+        private: true,
+        workspaces: ["*"],
+      }),
+    );
+    for (let index = 0; index < 65; index += 1) {
+      const pluginRoot = path.join(child, `plugin-${index}`);
+      await fs.mkdir(pluginRoot);
+      await harness.writePlugin(pluginRoot, `shared-${index}`);
+    }
+    const childKey = "c".repeat(32);
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: parent },
+      { rootKey: childKey, kind: "current-project", path: child },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toHaveLength(65);
+    for (const pluginId of Array.from(
+      { length: 65 },
+      (_, index) => `shared-${index}`,
+    )) {
+      expect(
+        [
+          ...sourceCandidateDiscoveringRootKeys(
+            result.candidates.find(
+              (candidate) => candidate.pluginId === pluginId,
+            )!,
+          ),
+        ].sort(),
+      ).toEqual([WORKSPACE_ROOT_KEY, childKey].sort());
+    }
     expect(result.diagnostics).toEqual([]);
   });
 

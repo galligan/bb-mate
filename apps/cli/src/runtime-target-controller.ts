@@ -17,6 +17,7 @@ import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
 import {
   admitTrustedRoots,
   discoverWorkspaceSourceCandidates,
+  sourceCandidateDiscoveringRootKeys,
   trustedRootCanonicalRoot,
 } from "@bb-mate/inspection";
 import {
@@ -130,7 +131,12 @@ export function createRuntimeTargetController({
         readonly issued: Awaited<ReturnType<typeof bridge.issue>>;
         readonly rootKeys: readonly string[];
       }> = [];
-      const rootKeysByCanonicalRoot = discoveringRootKeys(discovery.candidates);
+      const rootKeysByCanonicalRoot = new Map(
+        discovery.candidates.map((candidate) => [
+          candidate.canonicalRoot,
+          sourceCandidateDiscoveringRootKeys(candidate),
+        ]),
+      );
       for (const candidate of preferMostSpecificProjectCandidates(
         discovery.candidates,
         canonicalSourceRootByAdmittedRoot,
@@ -413,20 +419,6 @@ function sourceRootsOverlap(first: string, second: string): boolean {
   }
   const reverse = path.relative(second, first);
   return !reverse.startsWith("..") && !path.isAbsolute(reverse);
-}
-
-function discoveringRootKeys<
-  T extends { readonly rootKey: string; readonly canonicalRoot: string },
->(candidates: readonly T[]): ReadonlyMap<string, readonly string[]> {
-  const rootKeys = new Map<string, string[]>();
-  for (const candidate of candidates) {
-    const discovered = rootKeys.get(candidate.canonicalRoot) ?? [];
-    if (!discovered.includes(candidate.rootKey)) {
-      discovered.push(candidate.rootKey);
-      rootKeys.set(candidate.canonicalRoot, discovered);
-    }
-  }
-  return rootKeys;
 }
 
 async function abortable<T>(operation: PromiseLike<T>, signal?: AbortSignal) {

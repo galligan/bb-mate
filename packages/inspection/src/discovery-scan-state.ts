@@ -46,6 +46,7 @@ export interface RootScanState {
   readonly queue: PendingDirectory[];
   readonly continuations: ScanContinuation[];
   readonly overflowCandidates: SourceCandidate[];
+  readonly candidateByCanonicalRoot: Map<string, SourceCandidate>;
   entryLimitDisplayPath: string | null;
   truncatedEntries: boolean;
 }
@@ -53,6 +54,7 @@ export interface RootScanState {
 export function createRootScanStates(
   roots: readonly TrustedRoot[],
 ): RootScanState[] {
+  const candidateByCanonicalRoot = new Map<string, SourceCandidate>();
   const ordered = roots
     .map((root) => ({
       root,
@@ -72,6 +74,7 @@ export function createRootScanStates(
     queue: [{ directory: state.canonicalRoot, relative: "", depth: 0 }],
     continuations: [],
     overflowCandidates: [],
+    candidateByCanonicalRoot,
     entryLimitDisplayPath: null,
     truncatedEntries: false,
   }));
@@ -140,14 +143,44 @@ export function recordCandidate(
   candidate: SourceCandidate,
   candidates: SourceCandidate[],
 ): void {
+  const existing = state.candidateByCanonicalRoot.get(candidate.canonicalRoot);
+  if (existing !== undefined) {
+    const rootKeys = discoveringRootKeys.get(existing);
+    if (rootKeys !== undefined && !rootKeys.includes(candidate.rootKey)) {
+      rootKeys.push(candidate.rootKey);
+    }
+    return;
+  }
   if (state.budget.acceptedCandidates < state.budget.maxCandidates) {
+    recordUniqueCandidate(state, candidate);
     candidates.push(candidate);
     state.budget.acceptedCandidates += 1;
     return;
   }
   if (state.overflowCandidates.length < MAX_CANDIDATES) {
+    recordUniqueCandidate(state, candidate);
     state.overflowCandidates.push(candidate);
   }
+}
+
+const discoveringRootKeys = new WeakMap<object, string[]>();
+
+export function sourceCandidateDiscoveringRootKeys(
+  candidate: SourceCandidate,
+): readonly string[] {
+  const rootKeys = discoveringRootKeys.get(candidate);
+  if (rootKeys === undefined) {
+    throw new TypeError("source candidate was not recorded by discovery");
+  }
+  return Object.freeze([...rootKeys]);
+}
+
+function recordUniqueCandidate(
+  state: RootScanState,
+  candidate: SourceCandidate,
+): void {
+  state.candidateByCanonicalRoot.set(candidate.canonicalRoot, candidate);
+  discoveringRootKeys.set(candidate, [candidate.rootKey]);
 }
 
 export async function redistributeUnusedEntryCapacity(

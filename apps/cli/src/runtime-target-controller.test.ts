@@ -456,11 +456,7 @@ describe("runtime target controller", () => {
           options,
         );
         return {
-          candidates: discovered.candidates.filter(
-            (candidate) =>
-              candidate.rootKey !== "p".repeat(32) ||
-              candidate.canonicalRoot !== childRoot,
-          ),
+          candidates: discovered.candidates,
           diagnostics: [
             ...discovered.diagnostics,
             {

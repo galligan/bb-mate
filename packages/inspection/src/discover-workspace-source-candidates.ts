@@ -236,6 +236,7 @@ async function readPnpmWorkspacePatterns(
 }
 
 function parsePnpmWorkspacePackages(source: string): readonly string[] {
+  if (source.startsWith("\uFEFF")) source = source.slice(1);
   const document = Bun.YAML.parse(source) as unknown;
   if (
     !isRecord(document) ||

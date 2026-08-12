@@ -2,6 +2,7 @@ export { inspectPlugin } from "./inspect.ts";
 export { discoverPluginRoots } from "./manifest.ts";
 export { discoverSourceCandidates } from "./discover-source-candidates.ts";
 export { discoverWorkspaceSourceCandidates } from "./discover-workspace-source-candidates.ts";
+export { sourceCandidateDiscoveringRootKeys } from "./discovery-scan-state.ts";
 export {
   admitTrustedRoots,
   trustedRootCanonicalRoot,
