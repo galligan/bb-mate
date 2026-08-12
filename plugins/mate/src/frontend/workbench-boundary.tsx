@@ -17,7 +17,7 @@ export function PluginWorkbenchBoundary({
         <NativeSettingsSection
           headingId="pw-boundary-heading"
           title={
-            failed ? "Workbench unavailable" : "Finding development plugins"
+            failed ? "Plugin Studio unavailable" : "Finding development plugins"
           }
           description={
             failed

@@ -149,7 +149,7 @@ const fixtures: Record<FixtureName, Fixture> = {
         ],
       },
     }),
-    catalogMessage: "Workbench reload failed safely. Try again.",
+    catalogMessage: "Plugin Studio reload failed safely. Try again.",
   },
   refreshing: { snapshot: allProjects, refreshing: true },
   "no-projects": { snapshot: readySnapshot([]) },
@@ -264,7 +264,7 @@ function VisualFixture({ fixture }: { fixture: Fixture }) {
                 items: [
                   {
                     id: "thread_01",
-                    title: "Native Workbench design",
+                    title: "Native Plugin Studio design",
                     updatedAt: 2,
                   },
                   {

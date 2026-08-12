@@ -25,7 +25,8 @@ describe("Plugin Studio visual fixtures", () => {
       const html = renderToStaticMarkup(<Story />);
       expect(html).toMatch(/runtime/iu);
       expect(html).toContain("Projects");
-      expect(html).not.toContain("Workbench preview");
+      expect(html).not.toContain("Plugin Studio preview");
+      expect(html).not.toContain("Workbench");
     }
   });
 

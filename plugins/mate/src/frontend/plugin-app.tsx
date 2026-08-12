@@ -23,7 +23,7 @@ import {
 } from "./workbench-snapshot";
 
 const listChangedMessage = "The plugin list changed.";
-const loadFailedMessage = "Workbench reload failed safely. Try again.";
+const loadFailedMessage = "Plugin Studio reload failed safely. Try again.";
 const targetRoute = /^projects\/([^/]+)\/targets\/([^/]+)$/u;
 
 function parseTargetRoute(subPath: string) {
@@ -191,7 +191,11 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
 
   const route = useMemo(() => parseTargetRoute(subPath), [subPath]);
   useEffect(() => {
-    if (refreshSubPath.current !== null && refreshSubPath.current !== subPath) {
+    if (
+      refreshSubPath.current !== null &&
+      refreshSubPath.current !== "" &&
+      refreshSubPath.current !== subPath
+    ) {
       generation.current += 1;
       refreshSubPath.current = null;
       setRefreshing(false);

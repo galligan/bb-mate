@@ -90,7 +90,8 @@ describe("Plugin Studio nav panel", () => {
     expect(html).not.toContain("<main");
     expect(html).toContain("Runtime ready");
     expect(html).toContain("0.7.0 · API 2");
-    expect(html).toContain('aria-label="Reload Workbench data"');
+    expect(html).toContain('aria-label="Reload Plugin Studio data"');
+    expect(html).not.toContain("Workbench");
     expect(html).toContain('data-icon="RotateCcw"');
   });
 
@@ -272,12 +273,12 @@ describe("Plugin Studio nav panel", () => {
       "No local projects found",
     );
     const message = render(snapshot(), {
-      catalogMessage: "Workbench reload failed safely. Try again.",
+      catalogMessage: "Plugin Studio reload failed safely. Try again.",
     });
-    expect(message).toContain("Workbench reload failed safely. Try again.");
+    expect(message).toContain("Plugin Studio reload failed safely. Try again.");
     const busy = render(snapshot(), { refreshing: true });
     expect(busy).toContain('aria-busy="true"');
-    expect(busy).toContain('aria-label="Reloading Workbench data"');
+    expect(busy).toContain('aria-label="Reloading Plugin Studio data"');
   });
 
   test("shows permanent runtime failure reasons to sighted users", () => {
@@ -337,7 +338,7 @@ describe("Plugin Studio nav panel", () => {
               : { state, items: [] }
           }
           refreshing
-          catalogMessage="Workbench reload failed safely. Try again."
+          catalogMessage="Plugin Studio reload failed safely. Try again."
           onBack={() => {}}
           onOpenThread={() => {}}
           onNewThread={() => {}}
@@ -347,8 +348,11 @@ describe("Plugin Studio nav panel", () => {
     expect(detail("ready")).toContain("Back to projects");
     expect(detail("ready")).toContain("Native design");
     expect(detail("ready")).toContain("New task");
-    expect(detail("ready")).toContain('aria-label="Reloading Workbench data"');
-    expect(detail("ready")).toContain("Workbench reload failed safely");
+    expect(detail("ready")).toContain(
+      'aria-label="Reloading Plugin Studio data"',
+    );
+    expect(detail("ready")).toContain("Plugin Studio reload failed safely");
+    expect(detail("ready")).not.toContain("Workbench");
     expect(detail("loading")).toContain('aria-live="polite" aria-busy="true"');
     expect(detail("loading")).toContain("Loading project tasks…");
     expect(detail("unavailable")).toContain(
@@ -370,7 +374,8 @@ describe("Plugin Studio nav panel", () => {
     );
     expect(html).toContain("Plugin no longer available");
     expect(html).toContain("Back to projects");
-    expect(html).toContain("Reload Workbench data");
+    expect(html).toContain("Reload Plugin Studio data");
+    expect(html).not.toContain("Workbench");
   });
 
   test("keeps callbacks explicit", () => {

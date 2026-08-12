@@ -217,6 +217,55 @@ describe("Plugin Studio app registration", () => {
     );
   });
 
+  test("preserves a pending root catalog reload when opening a plugin", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return pending.promise;
+    };
+    await renderPanel();
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_01/targets/${targetA}`}
+        />,
+      ),
+    );
+    const updated = {
+      ...mateTarget,
+      label: "Mate updated",
+    };
+    pending.resolve(
+      snapshot([
+        project("project_01", "bb Plugin Studio", {
+          state: "ready",
+          items: [updated],
+        }),
+      ]),
+    );
+    await flush();
+
+    expect(document.body.textContent).toContain("Mate updated");
+    expect(
+      document.querySelector('[aria-label="Reloading Plugin Studio data"]'),
+    ).toBeNull();
+  });
+
   test("replaces a malformed nonempty route with the Workbench root once", async () => {
     await renderPanel("not-a-plugin-detail");
 
@@ -361,13 +410,13 @@ describe("Plugin Studio app registration", () => {
     await renderPanel();
     await act(async () => {
       document
-        .querySelector('[aria-label="Reload Workbench data"]')
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flush();
     expect(document.body.textContent).toContain("Mate");
     expect(document.body.textContent).toContain(
-      "Workbench reload failed safely. Try again.",
+      "Plugin Studio reload failed safely. Try again.",
     );
   });
 
@@ -396,7 +445,7 @@ describe("Plugin Studio app registration", () => {
     await renderPanel();
     await act(async () => {
       document
-        .querySelector('[aria-label="Reload Workbench data"]')
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flush();
@@ -464,7 +513,7 @@ describe("Plugin Studio app registration", () => {
     await renderPanel();
     const reload = () =>
       document
-        .querySelector('[aria-label="Reload Workbench data"]')
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await act(async () => reload());
     await flush();
@@ -495,7 +544,7 @@ describe("Plugin Studio app registration", () => {
     };
     await renderPanel();
     const reload = document.querySelector(
-      '[aria-label="Reload Workbench data"]',
+      '[aria-label="Reload Plugin Studio data"]',
     );
     await act(async () => {
       reload?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -516,7 +565,9 @@ describe("Plugin Studio app registration", () => {
     await renderPanel(`projects/project_01/targets/${targetA}`);
     expect(document.body.textContent).toContain("Plugin no longer available");
     expect(button("Back to projects")).toBeInstanceOf(HTMLButtonElement);
-    expect(button("Reload Workbench data")).toBeInstanceOf(HTMLButtonElement);
+    expect(button("Reload Plugin Studio data")).toBeInstanceOf(
+      HTMLButtonElement,
+    );
     expect(navigateToPluginPanel).not.toHaveBeenCalled();
   });
 
@@ -631,11 +682,11 @@ describe("Plugin Studio app registration", () => {
     await renderPanel(`projects/project_01/targets/${targetA}`);
     await act(async () => {
       document
-        .querySelector('[aria-label="Reload Workbench data"]')
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(
-      document.querySelector('[aria-label="Reloading Workbench data"]'),
+      document.querySelector('[aria-label="Reloading Plugin Studio data"]'),
     ).toBeInstanceOf(HTMLButtonElement);
     expect(document.body.textContent).toContain("Mate");
     pending.resolve(ready);
@@ -659,7 +710,7 @@ describe("Plugin Studio app registration", () => {
     await renderPanel(`projects/project_01/targets/${targetA}`);
     await act(async () => {
       document
-        .querySelector('[aria-label="Reload Workbench data"]')
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await act(async () => button("Back to projects")?.click());
@@ -668,7 +719,7 @@ describe("Plugin Studio app registration", () => {
     await flush();
 
     expect(
-      document.querySelector('[aria-label="Reloading Workbench data"]'),
+      document.querySelector('[aria-label="Reloading Plugin Studio data"]'),
     ).toBeNull();
 
     pending.resolve(
@@ -683,6 +734,38 @@ describe("Plugin Studio app registration", () => {
 
     expect(document.body.textContent).not.toContain("Late project");
     expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
+  test("does not show a late detail reload failure after returning to projects", async () => {
+    const ready = snapshot([
+      project("project_01", "bb Plugin Studio", {
+        state: "ready",
+        items: [mateTarget],
+      }),
+    ]);
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(calls === 1 ? snapshot() : ready);
+      return pending.promise;
+    };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await act(async () => {
+      document
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+
+    pending.reject(new Error("offline"));
+    await flush();
+
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).not.toContain(
+      "Plugin Studio reload failed safely",
+    );
   });
 
   test("keeps an explicit detail reload failure visible", async () => {
@@ -701,13 +784,13 @@ describe("Plugin Studio app registration", () => {
     await renderPanel(`projects/project_01/targets/${targetA}`);
     await act(async () => {
       document
-        .querySelector('[aria-label="Reload Workbench data"]')
+        .querySelector('[aria-label="Reload Plugin Studio data"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flush();
     expect(document.body.textContent).toContain("Mate");
     expect(document.body.textContent).toContain(
-      "Workbench reload failed safely. Try again.",
+      "Plugin Studio reload failed safely. Try again.",
     );
   });
 });

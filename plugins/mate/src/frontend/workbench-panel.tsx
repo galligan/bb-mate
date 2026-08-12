@@ -41,7 +41,7 @@ const stateCopy: Record<
 > = {
   idle: {
     title: "Runtime idle",
-    detail: "Reload Workbench data to start plugin discovery.",
+    detail: "Reload Plugin Studio data to start plugin discovery.",
   },
   starting: {
     title: "Starting runtime",
@@ -61,7 +61,7 @@ const stateCopy: Record<
   },
   failed: {
     title: "Runtime stopped",
-    detail: "Reload Workbench data to retry.",
+    detail: "Reload Plugin Studio data to retry.",
   },
 };
 
@@ -90,7 +90,9 @@ function RefreshButton({
   busy: boolean;
   onRefresh(): void;
 }) {
-  const label = busy ? "Reloading Workbench data" : "Reload Workbench data";
+  const label = busy
+    ? "Reloading Plugin Studio data"
+    : "Reload Plugin Studio data";
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
@@ -244,12 +246,12 @@ function PluginRows({
 
 function unavailableCopy(scan: Extract<ProjectScan, { state: "unavailable" }>) {
   if (scan.reason === "source_changed") {
-    return "The project changed during scanning. Reload Workbench data to try again.";
+    return "The project changed during scanning. Reload Plugin Studio data to try again.";
   }
   if (scan.reason === "capacity_reached") {
     return "The shared scan limit was reached before this project could be inspected.";
   }
-  return "Plugins unavailable. Reload Workbench data to try again.";
+  return "Plugins unavailable. Reload Plugin Studio data to try again.";
 }
 
 function ProjectPlugins({
@@ -375,14 +377,14 @@ export function PluginWorkbenchView({
             <div className="p-4">
               <EmptyInset
                 title="Project list unavailable"
-                detail="Reload Workbench data to try again."
+                detail="Reload Plugin Studio data to try again."
               />
             </div>
           ) : projects.length === 0 ? (
             <div className="p-4">
               <EmptyInset
                 title="No local projects found"
-                detail="Add a project from bb's sidebar, then reload Workbench data."
+                detail="Add a project from bb's sidebar, then reload Plugin Studio data."
               />
             </div>
           ) : (
@@ -578,18 +580,18 @@ export function PluginWorkbenchMissingTarget({
   const removed = reason === "removed";
   const detail =
     reason === "catalog_unavailable"
-      ? "Project data is unavailable, so Workbench could not verify this plugin."
+      ? "Project data is unavailable, so Plugin Studio could not verify this plugin."
       : reason === "scan_incomplete"
-        ? "The project scan was incomplete, so Workbench could not verify this plugin."
+        ? "The project scan was incomplete, so Plugin Studio could not verify this plugin."
         : reason === "not_scanned"
-          ? "The project has not been scanned, so Workbench could not verify this plugin."
+          ? "The project has not been scanned, so Plugin Studio could not verify this plugin."
           : reason === "source_changed"
-            ? "The project changed during scanning, so Workbench could not verify this plugin."
+            ? "The project changed during scanning, so Plugin Studio could not verify this plugin."
             : reason === "capacity_reached"
-              ? "The shared scan limit was reached before Workbench could verify this plugin."
+              ? "The shared scan limit was reached before Plugin Studio could verify this plugin."
               : reason === "scan_failed"
-                ? "The project scan failed, so Workbench could not verify this plugin."
-                : "The project or plugin is not present in the latest complete Workbench scan.";
+                ? "The project scan failed, so Plugin Studio could not verify this plugin."
+                : "The project or plugin is not present in the latest complete Plugin Studio scan.";
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
@@ -621,7 +623,7 @@ export function PluginWorkbenchMissingTarget({
             disabled={refreshing}
             onClick={onRefresh}
           >
-            Reload Workbench data
+            Reload Plugin Studio data
           </Button>
         </NativeSettingsSection>
       </div>

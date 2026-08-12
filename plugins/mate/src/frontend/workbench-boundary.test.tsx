@@ -21,7 +21,8 @@ describe("Plugin Studio frontend boundary", () => {
       <PluginWorkbenchBoundary state="failed" onRetry={() => {}} />,
     );
 
-    expect(html).toContain("Workbench unavailable");
+    expect(html).toContain("Plugin Studio unavailable");
+    expect(html).not.toContain("Workbench");
     expect(html).toContain("No server details were exposed");
     expect(html).toContain("Check again");
   });
