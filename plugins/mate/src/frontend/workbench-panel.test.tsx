@@ -173,6 +173,25 @@ describe("Plugin Workbench nav panel", () => {
     expect(html).not.toContain("Reload this project");
   });
 
+  test("shows permanent runtime failure reasons to sighted users", () => {
+    const html = render(
+      snapshot({
+        runtimeState: "unavailable",
+        reason: "artifact_invalid",
+        runtimeVersion: null,
+        apiVersion: null,
+        canStart: false,
+      }),
+    );
+
+    expect(html).toContain(
+      "The packaged runtime did not pass integrity checks.",
+    );
+    expect(html).not.toContain(
+      'class="sr-only">The packaged runtime did not pass integrity checks.',
+    );
+  });
+
   test("renders hostile labels inertly", () => {
     const hostile = '<img src=x onerror="alert(1)">';
     const html = render(

@@ -248,7 +248,6 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
           thread.projectId === route.projectId && thread.isArchived === false,
       )
       .sort((left, right) => right.updatedAt - left.updatedAt)
-      .slice(0, 8)
       .map((thread) => ({
         id: thread.id,
         title: thread.title ?? thread.titleFallback ?? "Untitled thread",

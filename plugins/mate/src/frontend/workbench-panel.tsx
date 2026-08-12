@@ -149,9 +149,11 @@ function RuntimeSummary({
         <p className="min-w-0 text-xs text-subtle-foreground">
           <span className="font-medium text-foreground">{status.title}</span>
           {identity ? <span> · {identity}</span> : null}
-          <span className="sr-only">
-            {snapshot.reason ? reasonCopy[snapshot.reason] : status.detail}
-          </span>
+          {snapshot.reason ? (
+            <span> · {reasonCopy[snapshot.reason]}</span>
+          ) : (
+            <span className="sr-only">{status.detail}</span>
+          )}
         </p>
       </div>
       <RefreshButton busy={busy} onRefresh={onRefresh} />

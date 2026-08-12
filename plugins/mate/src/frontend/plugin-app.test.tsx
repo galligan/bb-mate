@@ -550,6 +550,32 @@ describe("Plugin Workbench app registration", () => {
     expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench");
   });
 
+  test("keeps every unarchived project thread reachable from detail", async () => {
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    rpcImplementation = () => Promise.resolve(targetSnapshot);
+    sidebarState = {
+      status: "ready",
+      projects: [],
+      threads: Array.from({ length: 9 }, (_, index) => ({
+        id: `thread_${index}`,
+        projectId: "project_01",
+        title: `Project thread ${index + 1}`,
+        titleFallback: null,
+        isArchived: false,
+        updatedAt: index,
+      })),
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(document.body.textContent).toContain("Project thread 1");
+    expect(document.body.textContent).toContain("Project thread 9");
+  });
+
   test("reports a changed plugin list after a project refresh", async () => {
     let admission = 0;
     rpcImplementation = (method) =>
