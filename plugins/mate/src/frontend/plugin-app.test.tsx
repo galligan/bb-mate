@@ -346,6 +346,32 @@ describe("Plugin Workbench app registration", () => {
     expect(navigateToPluginPanel).not.toHaveBeenCalled();
   });
 
+  test("reloads status when an opened project's catalog becomes unavailable", async () => {
+    let calls = 0;
+    rpcImplementation = (method) => {
+      calls += 1;
+      const value = snapshot(
+        method === "admit" ? { state: "ready", items: [] } : undefined,
+      );
+      if (calls === 2) value.projects = { state: "unavailable", items: [] };
+      return Promise.resolve(value);
+    };
+
+    await renderPanel();
+    await act(async () =>
+      button("Open")?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenNthCalledWith(3, "status", {});
+  });
+
   test("shows active project threads on a target detail and uses host actions", async () => {
     const targetSnapshot = snapshot({
       state: "ready",

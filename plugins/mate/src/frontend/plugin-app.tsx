@@ -142,9 +142,16 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   );
 
   const reload = useCallback(() => {
-    if (openedProjectId !== null) openProject(openedProjectId);
+    const openedProjectIsAvailable =
+      openedProjectId !== null &&
+      snapshot?.projects.state === "ready" &&
+      snapshot.projects.items.some(
+        ({ id, admission }) =>
+          id === openedProjectId && admission === "available",
+      );
+    if (openedProjectIsAvailable) openProject(openedProjectId);
     else requestStatus();
-  }, [openProject, openedProjectId, requestStatus]);
+  }, [openProject, openedProjectId, requestStatus, snapshot]);
 
   useEffect(() => {
     requestStatus();
