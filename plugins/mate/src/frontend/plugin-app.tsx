@@ -336,7 +336,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
           attemptedRouteSubPath.current = subPath;
           navigate.toPluginPanel("workbench", { replace: true });
         }
-        openProject(projectId);
+        openProject(projectId, route?.projectId === projectId ? subPath : null);
       }}
       onOpenTarget={(projectId, targetId) =>
         navigate.toPluginPanel("workbench", {

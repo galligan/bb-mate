@@ -327,6 +327,48 @@ describe("Plugin Workbench app registration", () => {
     }
   });
 
+  test("supersedes a pending recovery refresh when returning to the project list", async () => {
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = (method) => {
+      calls += 1;
+      if (method === "status") return Promise.resolve(snapshot());
+      if (calls === 2) {
+        return Promise.resolve(snapshot({ state: "partial", items: [] }));
+      }
+      return pending.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () => button("Refresh")?.click());
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+
+    const projectOpen = button("Open");
+    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
+    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
+
+    pending.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Late plugin",
+            pluginId: "late",
+            revision: 2,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).not.toContain("Late plugin");
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
   test("returns to the root before opening another project from an uncertain detail", async () => {
     rpcImplementation = (method, input) => {
       if (method === "status") return Promise.resolve(snapshot());
