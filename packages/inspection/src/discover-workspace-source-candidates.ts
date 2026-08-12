@@ -340,7 +340,11 @@ function topLevelMappingDelimiter(line: string): number {
       (index === 0 || /\s/u.test(line[index - 1]!))
     )
       return -1;
-    else if (character === ":") return index;
+    else if (
+      character === ":" &&
+      (index === line.length - 1 || /\s/u.test(line[index + 1]!))
+    )
+      return index;
   }
   return -1;
 }

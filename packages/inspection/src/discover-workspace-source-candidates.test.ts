@@ -976,6 +976,37 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("does not treat embedded plain-key colons as mapping delimiters", async () => {
+    for (const [name, metadataLine] of [
+      ["plain", "packages:metadata: true"],
+      ["single-quoted", "'packages:metadata': true"],
+      ["double-quoted", '"packages:metadata": true'],
+    ] as const) {
+      const root = await harness.createRoot(`pnpm-embedded-colon-${name}`);
+      const plugin = path.join(root, "plugins", "included");
+      await fs.mkdir(plugin, { recursive: true });
+      await harness.writePlugin(plugin, "included");
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `packages:\n  - plugins/*\n${metadataLine}\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+        "included",
+      ]);
+      expect(result.diagnostics).toEqual([]);
+    }
+  });
+
   test("reports unsupported pnpm workspace syntax as partial", async () => {
     const root = await harness.createRoot("private-pnpm-workspace");
     const plugin = path.join(root, "plugins", "mate");
