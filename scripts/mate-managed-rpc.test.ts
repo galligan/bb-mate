@@ -202,4 +202,32 @@ describe("managed Mate RPC proof codec", () => {
       }),
     ).toThrow("project catalog values");
   });
+
+  test("bounds total projected target entries across duplicate project fan-out", () => {
+    const fanout = (targetsPerProject: number) => ({
+      ...snapshot(),
+      projects: {
+        state: "ready",
+        items: ["project_1", "project_2"].map((id) => ({
+          id,
+          label: id,
+          activity: { active: false, lastThreadUpdatedAt: null },
+          scan: {
+            state: "ready",
+            items: Array.from({ length: targetsPerProject }, (_, index) => ({
+              id: String(index).padStart(32, "0"),
+              label: `Plugin ${index}`,
+              pluginId: `plugin-${index}`,
+              revision: 1,
+            })),
+          },
+        })),
+      },
+    });
+
+    expect(parseMateSnapshot(fanout(64)).projects.state).toBe("ready");
+    expect(() => parseMateSnapshot(fanout(65))).toThrow(
+      "too many target entries",
+    );
+  });
 });

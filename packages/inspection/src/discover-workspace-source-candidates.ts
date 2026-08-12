@@ -722,13 +722,44 @@ function closeGlobstars(
 }
 
 function matchesSegment(pattern: string, input: string): boolean {
-  let expression = "^";
-  for (const character of pattern) {
-    if (character === "*") expression += ".*";
-    else if (character === "?") expression += ".";
-    else expression += character.replace(/[\\^$.*+?()[\]{}|]/gu, "\\$&");
+  const inputCharacters = [...input];
+  let reachable = new Uint8Array(inputCharacters.length + 1);
+  reachable[0] = 1;
+  for (const patternCharacter of pattern) {
+    const next = new Uint8Array(inputCharacters.length + 1);
+    if (patternCharacter === "*") {
+      next[0] = reachable[0]!;
+      for (let index = 1; index < next.length; index += 1) {
+        next[index] =
+          reachable[index] ||
+          (next[index - 1] && matchesWildcard(inputCharacters[index - 1]!))
+            ? 1
+            : 0;
+      }
+    } else {
+      for (let index = 1; index < next.length; index += 1) {
+        const inputCharacter = inputCharacters[index - 1]!;
+        next[index] =
+          reachable[index - 1] &&
+          (patternCharacter === "?"
+            ? matchesWildcard(inputCharacter)
+            : patternCharacter === inputCharacter)
+            ? 1
+            : 0;
+      }
+    }
+    reachable = next;
   }
-  return new RegExp(`${expression}$`, "u").test(input);
+  return reachable[inputCharacters.length] === 1;
+}
+
+function matchesWildcard(character: string): boolean {
+  return (
+    character !== "\n" &&
+    character !== "\r" &&
+    character !== "\u2028" &&
+    character !== "\u2029"
+  );
 }
 
 function shouldIgnoreDirectory(name: string): boolean {

@@ -174,9 +174,8 @@ function projectCatalog(value: unknown): MateProjectCatalog {
     "Mate RPC project IDs are duplicated.",
   );
   assert(
-    new Set(items.flatMap(({ scan }) => scan.items.map(({ id }) => id))).size <=
-      128,
-    "Mate RPC returned too many distinct targets.",
+    items.reduce((count, { scan }) => count + scan.items.length, 0) <= 128,
+    "Mate RPC returned too many target entries.",
   );
   if (catalog.state === "unavailable") {
     assert(

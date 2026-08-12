@@ -41,6 +41,27 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("bounds a separated-wildcard segment nonmatch", async () => {
+    const root = await harness.createRoot();
+    await fs.mkdir(path.join(root, `${"a".repeat(120)}c`));
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: [`${"*?".repeat(120)}b`],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("continues through a package boundary when a declared pattern reaches a nested workspace", async () => {
     const root = await harness.createRoot();
     const parentPackage = path.join(root, "packages", "tools");
