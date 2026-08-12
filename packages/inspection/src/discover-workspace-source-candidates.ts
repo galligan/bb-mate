@@ -220,7 +220,10 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
       continue;
     }
     if (trimmed === "" || trimmed.startsWith("#")) continue;
-    if (!line.startsWith(" ")) break;
+    if (!line.startsWith(" ")) {
+      if (line.startsWith("-")) throw new Error();
+      break;
+    }
     const item = /^ +-[ ]+(.+?)\s*$/u.exec(line);
     if (!item) throw new Error();
     values.push(parseYamlPatternScalar(item[1]!));

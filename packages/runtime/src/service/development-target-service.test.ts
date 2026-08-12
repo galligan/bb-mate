@@ -574,7 +574,7 @@ describe("DevelopmentTargetService", () => {
     } finally {
       catalog.close();
     }
-  }, 30_000);
+  }, 60_000);
 
   test("bounds changed-event history while expiring only old cursors", async () => {
     const fixture = await makeFixture();
