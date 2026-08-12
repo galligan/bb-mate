@@ -254,6 +254,7 @@ export function createRuntimeTargetController({
         }
       }
       const reconciledRootKeys = new Set<string>();
+      const reconciledCandidateRoots = new Set<string>();
       for (const component of overlappingRootComponents(
         authoritativeRoots,
         canonicalSourceRootByAdmittedRoot,
@@ -290,6 +291,9 @@ export function createRuntimeTargetController({
               );
             }
           }
+          for (const { candidate } of candidatesForComponent) {
+            reconciledCandidateRoots.add(candidate.canonicalRoot);
+          }
           for (const { rootKey } of component) reconciledRootKeys.add(rootKey);
         } catch {
           signal?.throwIfAborted();
@@ -308,7 +312,8 @@ export function createRuntimeTargetController({
           rootKeys.includes(root.rootKey),
         );
         const projectKeys = projectKeysByAdmittedRoot.get(root.rootKey) ?? [];
-        for (const { issued, rootKeys } of candidatesForRoot) {
+        for (const { candidate, issued, rootKeys } of candidatesForRoot) {
+          if (reconciledCandidateRoots.has(candidate.canonicalRoot)) continue;
           try {
             signal?.throwIfAborted();
             const refreshed = await abortable(
