@@ -183,12 +183,13 @@ function ProjectTargets({
 }) {
   if (catalog.state === "project_not_selected") return null;
   if (catalog.state === "unavailable") {
-    return (
-      <EmptyInset
-        title="Plugins unavailable"
-        detail="Reload this project to retry plugin discovery."
-      />
-    );
+    const detail =
+      catalog.reason === "runtime_incompatible"
+        ? "Update or replace the packaged runtime before opening plugins."
+        : catalog.reason === "runtime_not_ready"
+          ? "Wait for the runtime to become ready, then reload Workbench data."
+          : "Reload this project to retry plugin discovery.";
+    return <EmptyInset title="Plugins unavailable" detail={detail} />;
   }
   if (catalog.state === "partial" && catalog.items.length === 0) {
     return (

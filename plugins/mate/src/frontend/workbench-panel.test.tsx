@@ -155,6 +155,24 @@ describe("Plugin Workbench nav panel", () => {
     expect(empty).toContain("No development plugins found");
   });
 
+  test("explains a permanent runtime incompatibility without offering reload", () => {
+    const html = render(
+      snapshot({
+        targets: {
+          state: "unavailable",
+          reason: "runtime_incompatible",
+          items: [],
+        },
+      }),
+      { openedProjectId: "project_01" },
+    );
+
+    expect(html).toContain(
+      "Update or replace the packaged runtime before opening plugins.",
+    );
+    expect(html).not.toContain("Reload this project");
+  });
+
   test("renders hostile labels inertly", () => {
     const hostile = '<img src=x onerror="alert(1)">';
     const html = render(
