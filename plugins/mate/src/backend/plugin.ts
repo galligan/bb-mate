@@ -256,6 +256,7 @@ export function createMatePlugin(
 
       const afterSources = sourceMap(after);
       const scans = new Map<string, ProjectOption["scan"]>();
+      let responseRuntime = runtime;
       const listedSources = before.sources.map((source) =>
         stableSource(source, afterSources),
       );
@@ -358,6 +359,7 @@ export function createMatePlugin(
             );
           }
         } catch {
+          responseRuntime = supervisor.status();
           for (const project of admitted) {
             scans.set(project.projectId, {
               state: "unavailable",
@@ -367,7 +369,7 @@ export function createMatePlugin(
           }
         }
       }
-      return snapshot(runtime, scannedCatalog(before.catalog, scans));
+      return snapshot(responseRuntime, scannedCatalog(before.catalog, scans));
     };
 
     const refresh = () => {

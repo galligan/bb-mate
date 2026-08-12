@@ -427,15 +427,23 @@ describe("Plugin Studio backend v3", () => {
     const held = new Promise<void>((resolve) => (release = resolve));
     let admissions = 0;
     let allocations = 0;
+    let runtime = idle;
+    const failed: RuntimeSupervisorSnapshot = {
+      ...idle,
+      runtimeState: "failed",
+      reason: "startup_failed",
+    };
     const host = hostFixture(
       {
-        status: () => idle,
+        status: () => runtime,
         async ensure() {
+          runtime = ready;
           return ready;
         },
         async admitProjects() {
           admissions += 1;
           await held;
+          runtime = failed;
           throw new Error("/private/runtime/failure");
         },
         async runService() {},
@@ -458,6 +466,11 @@ describe("Plugin Studio backend v3", () => {
     const [left, right] = await Promise.all([first, second]);
     expect(left).toEqual(right);
     expect(left).toMatchObject({
+      runtimeState: "failed",
+      reason: "startup_failed",
+      runtimeVersion: null,
+      apiVersion: null,
+      canStart: true,
       projects: {
         state: "partial",
         items: [
