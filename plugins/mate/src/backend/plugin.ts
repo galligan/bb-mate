@@ -5,6 +5,7 @@ import { RUNTIME_ARTIFACT_STAMP } from "../generated/runtime-artifact-stamp.ts";
 import {
   deriveRuntimeDataRoot,
   loadProjectInventory,
+  resolveProjectSource,
   sameProjectSource,
   type ProjectInventory,
   type ReleasedProjectSdk,
@@ -255,13 +256,33 @@ export function createMatePlugin(
 
       const afterSources = sourceMap(after);
       const scans = new Map<string, ProjectOption["scan"]>();
-      const stableSources = before.sources.map((source) =>
+      const listedSources = before.sources.map((source) =>
         stableSource(source, afterSources),
       );
       if (
         after.sources.length !== before.sources.length ||
-        stableSources.some((source) => source === null)
+        listedSources.some((source) => source === null)
       ) {
+        for (const source of before.sources) {
+          scans.set(source.projectId, {
+            state: "unavailable",
+            reason: "source_changed",
+            items: [],
+          });
+        }
+        return snapshot(runtime, scannedCatalog(before.catalog, scans));
+      }
+      const stableSources = await Promise.all(
+        listedSources.map(async (source) => {
+          try {
+            const current = await resolveProjectSource(sdk, source!.projectId);
+            return sameProjectSource(source!, current) ? current : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (stableSources.some((source) => source === null)) {
         for (const source of before.sources) {
           scans.set(source.projectId, {
             state: "unavailable",

@@ -51,6 +51,7 @@ function hostFixture(
   options: {
     projects?: ReturnType<typeof project>[];
     listProjects?: () => Promise<ReturnType<typeof project>[]>;
+    getProject?: (projectId: string) => Promise<ReturnType<typeof project>>;
     systemConfig?: () => Promise<{
       primaryHostId: string | null;
       dataDir: string;
@@ -73,6 +74,7 @@ function hostFixture(
       projects: {
         list: options.listProjects ?? (async () => projects),
         get: async ({ projectId }: { projectId: string }) =>
+          options.getProject?.(projectId) ??
           projects.find(({ id }) => id === projectId)!,
       },
     },
@@ -370,6 +372,54 @@ describe("Plugin Studio backend v3", () => {
     });
     expect(admitted).toBeUndefined();
     expect(JSON.stringify(result)).not.toContain("/private/changed");
+  });
+
+  test("revalidates each listed source against the authoritative project record", async () => {
+    const projects = [project("project-1", "One"), project("project-2", "Two")];
+    let admitted: unknown;
+    const host = hostFixture(
+      {
+        status: () => idle,
+        async ensure() {
+          return ready;
+        },
+        async admitProjects(input) {
+          admitted = input;
+          return { schemaVersion: 2, state: "ready" as const, projects: [] };
+        },
+        async runService() {},
+        async stop() {},
+      },
+      {
+        projects,
+        getProject: async (projectId) =>
+          projectId === "project-2"
+            ? project(projectId, "Two", {
+                sources: [
+                  {
+                    ...source(projectId),
+                    updatedAt: 2,
+                    path: "/private/moved",
+                  },
+                ],
+              })
+            : projects[0]!,
+      },
+    );
+
+    const result = await host.handlers().refresh({} as never);
+
+    expect(admitted).toBeUndefined();
+    expect(result).toMatchObject({
+      projects: {
+        state: "partial",
+        items: [
+          { scan: { state: "unavailable", reason: "source_changed" } },
+          { scan: { state: "unavailable", reason: "source_changed" } },
+        ],
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("/private/moved");
   });
 
   test("shares concurrent refresh demand and redacts a batch failure", async () => {
