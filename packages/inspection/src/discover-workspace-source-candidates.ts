@@ -248,7 +248,7 @@ function parseYamlPatternScalar(input: string): string {
       throw new Error();
     }
   }
-  const withoutComment = value.replace(/\s+#.*$/u, "").trimEnd();
+  const withoutComment = value.replace(/(?:^|\s)#.*$/u, "").trimEnd();
   if (
     withoutComment === "" ||
     isYamlCoreNonStringScalar(withoutComment) ||

@@ -268,6 +268,35 @@ describe("workspace-aware source discovery", () => {
     );
   });
 
+  test("rejects comment-only pnpm workspace entries", async () => {
+    const root = await harness.createRoot("private-pnpm-comment-only");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - # plugins/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-comment-only",
+      }),
+    ]);
+    expect(JSON.stringify(result.diagnostics)).not.toContain(
+      path.dirname(root),
+    );
+  });
+
   test("rejects non-specific and local YAML tags as pnpm workspace patterns", async () => {
     for (const [name, scalar] of [
       ["non-specific-tag", "! plugins/*"],
