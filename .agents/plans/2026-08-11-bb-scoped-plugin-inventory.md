@@ -1,14 +1,14 @@
-# bb-scoped Plugin Workbench inventory
+# bb-scoped Plugin Studio inventory
 
 Date: 2026-08-11
-Status: Complete; final executable head local/package/Live/hosted/review proof
-is green, with only the docs-head administrative ready transition remaining.
+Status: In progress; the current scanner and Plugin Studio fixes are locally
+green, while fresh artifact, Live, hosted, and exact-head review proof remains.
 Issue: [#82](https://github.com/galligan/bb-mate/issues/82)
 Goal: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/`
 
 ## Outcome
 
-Plugin Workbench opens as a native inventory of every eligible ordinary bb
+Plugin Studio opens as a native inventory of every eligible ordinary bb
 project on this machine and every source plugin passively discoverable within
 those projects. Projects are always expanded. The UI has no project `Open`,
 accordion, or protocol-level “admit” concept.
@@ -20,7 +20,7 @@ project toward the top, but an idle eligible project remains visible.
 ## Product flow
 
 ```text
-Open Plugin Workbench
+Open Plugin Studio
   → read eligible projects from bb
   → start/confirm one supervised Mate runtime
   → revalidate every private source record
@@ -207,22 +207,28 @@ process/environment facts, unknown keys, and impossible runtime/project states.
 5. [x] Implement project activity/source revalidation and snapshot-v3 backend.
 6. [x] Implement always-expanded grouped frontend and deterministic visual/axe
        states.
-7. [x] Reconcile generated runtime/package identity and run isolated lifecycle.
-8. [x] Rebuild/reload the path plugin and verify released bb live behavior.
-9. [x] Resolve final standing/targeted review findings and reconcile tracker/PR
-       truth on the replacement executable head. The docs-only readiness head
-       must pass exact-head review and hosted checks before PR #84 moves from
-       draft to ready; no merge is authorized.
+7. [ ] Regenerate current runtime/package identities and rerun the isolated
+       lifecycle after the latest executable and shipped-skill changes.
+8. [ ] Rebuild/reload the path plugin and verify current Plugin Studio behavior
+       in released bb.
+9. [ ] Obtain exact-head hosted CI and two clean review lanes, then reconcile
+       tracker/PR truth before moving PR #84 from draft to ready. No merge is
+       authorized.
 
-PR #84 replacement implementation
-`d6196e864ef506eaeb5a63e71fdfdaba0f8fa9de` is stacked on PR #83 head
-`06ee8ae4943bcbc61fb2302196ef370d12f18726`. Its 709-test aggregate,
-standalone, managed-package, build/check/format, and 14+20 visual/axe gates are
-green. Exact executable/evidence head
-`a69fe031c43f5eb20f5c0ca43fe394f15f2a4b4a` has passed its Live, hosted, and
-review gates: both reviews are clean 5/5 and hosted verify/visual/standalone are
-terminal success. The final docs-only head is governed by the same exact-head
-checks before the administrative ready transition.
+PR #84 remains draft. Its current scanner/fix code head
+`89a38e0ff5cf67d423d80c88cb2c8e1993b3a9a0` is stacked on PR #83 head
+`06ee8ae4943bcbc61fb2302196ef370d12f18726`. Before this documentation and
+shipped-skill reconciliation, the current local matrix passed 790 tests:
+inspection 193, runtime 204, CLI 110, Mate 102, scripts 94, Workbench 66, and
+Linear 21. Mate reported 446 assertions, inspection 574, and CLI 539. These
+counts prove the current code checkpoint, not final artifact readiness.
+
+The current runtime and private-package identities were invalidated by the
+latest executable and shipped-skill changes and must be regenerated. Current
+Plugin Studio Live proof, exact-head hosted CI, and exact-head reviews remain
+pending. The former `a69fe031c43f5eb20f5c0ca43fe394f15f2a4b4a`
+Workbench-era package, Live, hosted, and review proof is preserved in the retro
+as historical evidence only; it is superseded for current readiness.
 
 ## Verification and stop lines
 

@@ -361,10 +361,11 @@ export async function inspectMatePackageDirectory(
   const skillText = packagedSkill.toString("utf8");
   assert(
     createHash("sha256").update(packagedSkill).digest("hex") ===
-      "f7c6d9e713b5cab3db697a37b011b468f8e8aa1fcf1e992adf5320a347858d66" &&
+      "3c17bd8a5376ae5b631247cb1c49541caddc82fd03e0dc40c56ce1fb9e1559ed" &&
       Buffer.compare(packagedSkill, approvedSkill) === 0 &&
       skillText.startsWith("---\nname: plugin-workbench\ndescription:") &&
-      skillText.includes("# Plugin Studio"),
+      skillText.includes("# Plugin Studio") &&
+      skillText.includes("On mount, Plugin Studio automatically performs"),
     "Mate packaged skill identity differs from the approved plugin-workbench skill.",
   );
   for (const file of paths.filter((file) => !file.endsWith("/bb-mate"))) {

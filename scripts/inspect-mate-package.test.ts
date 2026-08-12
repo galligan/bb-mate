@@ -76,6 +76,12 @@ describe("Mate package inspection", () => {
         "idle, starting, ready, stopping, unavailable, or failed",
       );
       expect(prose).toContain("all eligible bb-registered local projects");
+      if (document === skill) {
+        expect(prose).toContain(
+          "On mount, Plugin Studio automatically performs",
+        );
+        expect(prose).not.toContain("On mount, Workbench automatically");
+      }
       expect(prose).toContain("refresh icon");
       expect(prose).toContain("npm or Bun workspace configuration");
       expect(prose).toContain("bounded `pnpm-workspace.yaml`");

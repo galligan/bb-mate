@@ -12,7 +12,7 @@ runtime and its finite schema-v3 catalog.
   the runtime, open its catalog, or inspect source. It may report the current
   runtime state as idle, starting, ready, stopping, unavailable, or failed
   without changing it.
-- On mount, Workbench automatically performs one bounded refresh across all
+- On mount, Plugin Studio automatically performs one bounded refresh across all
   eligible bb-registered local projects. The refresh icon repeats that same
   all-project operation. There is no per-project selector or admit action.
 - Discovery checks each project root and packages inside its declared npm or Bun
