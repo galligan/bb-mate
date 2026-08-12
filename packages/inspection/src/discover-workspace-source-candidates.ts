@@ -229,7 +229,7 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
     if (!item) throw new Error();
     values.push(parseYamlPatternScalar(item[1]!));
   }
-  if (!sawPackages) throw new Error();
+  if (!sawPackages || values.length === 0) throw new Error();
   return values;
 }
 
