@@ -1171,6 +1171,67 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
+  test("does not let generic workspace wildcards traverse dot directories", async () => {
+    for (const [name, pattern] of [
+      ["segment", "packages/*/*"],
+      ["globstar", "packages/**"],
+    ] as const) {
+      const root = await harness.createRoot(`workspace-dot-${name}`);
+      const hiddenPlugin = path.join(root, "packages", ".private", "hidden");
+      const visiblePlugin = path.join(root, "packages", "public", "visible");
+      await fs.mkdir(hiddenPlugin, { recursive: true });
+      await fs.mkdir(visiblePlugin, { recursive: true });
+      await harness.writePlugin(hiddenPlugin, "hidden");
+      await harness.writePlugin(visiblePlugin, "visible");
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({
+          name: "workspace-root",
+          private: true,
+          workspaces: [pattern],
+        }),
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+        "visible",
+      ]);
+      expect(result.diagnostics).toEqual([]);
+    }
+  });
+
+  test("honors explicit dot wildcards and exclusions at nested segments", async () => {
+    const root = await harness.createRoot();
+    const included = path.join(root, "packages", ".public", "included");
+    const excluded = path.join(root, "packages", ".private", "excluded");
+    await fs.mkdir(included, { recursive: true });
+    await fs.mkdir(excluded, { recursive: true });
+    await harness.writePlugin(included, "included");
+    await harness.writePlugin(excluded, "excluded");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: ["packages/.*/*", "!packages/.private/*"],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "included",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("keeps candidates correlated across one globally budgeted multi-root scan", async () => {
     const first = await harness.createRoot("first-project");
     const second = await harness.createRoot("second-project");

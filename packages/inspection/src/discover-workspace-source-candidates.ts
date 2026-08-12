@@ -761,11 +761,13 @@ function matchesSegments(
     if (segment === "**")
       return (
         visit(patternIndex + 1, inputIndex) ||
-        (inputIndex < input.length && visit(patternIndex, inputIndex + 1))
+        (inputIndex < input.length &&
+          !input[inputIndex]!.startsWith(".") &&
+          visit(patternIndex, inputIndex + 1))
       );
     return (
       inputIndex < input.length &&
-      matchesSegment(segment, input[inputIndex]!, budget) &&
+      matchesPatternSegment(segment, input[inputIndex]!, budget) &&
       visit(patternIndex + 1, inputIndex + 1)
     );
   };
@@ -782,10 +784,11 @@ function prefixCanMatch(
   for (const inputSegment of input) {
     const next = new Set<number>();
     for (const state of closeGlobstars(pattern, states)) {
-      if (pattern[state] === "**") next.add(state);
+      if (pattern[state] === "**" && !inputSegment.startsWith("."))
+        next.add(state);
       else if (
         state < pattern.length &&
-        matchesSegment(pattern[state]!, inputSegment, budget)
+        matchesPatternSegment(pattern[state]!, inputSegment, budget)
       )
         next.add(state + 1);
     }
@@ -854,6 +857,17 @@ function matchesSegment(
   return reachable[inputCharacters.length] === 1;
 }
 
+function matchesPatternSegment(
+  pattern: string,
+  input: string,
+  budget: WorkspaceMatchBudget,
+): boolean {
+  return (
+    (!input.startsWith(".") || pattern.startsWith(".")) &&
+    matchesSegment(pattern, input, budget)
+  );
+}
+
 function chargeWorkspaceMatchWork(
   budget: WorkspaceMatchBudget,
   cost: number,
@@ -895,7 +909,7 @@ function isExplicitlyIncludedIgnoredDirectory(
       pattern.segments.some(
         (segment, index) =>
           segment !== "**" &&
-          matchesSegment(segment, name, budget) &&
+          matchesPatternSegment(segment, name, budget) &&
           matchesSegments(
             pattern.segments.slice(0, index + 1),
             segments,
