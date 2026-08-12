@@ -193,6 +193,38 @@ describe("passive source discovery", () => {
     expect(JSON.stringify(result.diagnostics)).not.toContain(rootPath);
   });
 
+  test("reports malformed UTF-8 in a manifest without exposing its path", async () => {
+    const rootPath = await harness.createRoot("private-invalid-utf8-root");
+    const brokenRoot = path.join(rootPath, "plugins", "private-broken");
+    await fs.mkdir(brokenRoot, { recursive: true });
+    await fs.writeFile(path.join(brokenRoot, "server.ts"), "export {};\n");
+    await fs.writeFile(
+      path.join(brokenRoot, "package.json"),
+      Buffer.concat([
+        Buffer.from(
+          '{"name":"bb-plugin-broken","version":"1.0.0","bb":{"name":"broken","description":"',
+        ),
+        Buffer.from([0xff]),
+        Buffer.from('","branding":{"icon":"Puzzle"},"server":"./server.ts"}}'),
+      ]),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: rootPath },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "manifest-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-invalid-utf8-root/plugins/private-broken",
+      }),
+    ]);
+    expect(JSON.stringify(result.diagnostics)).not.toContain(rootPath);
+  });
+
   test("rejects an oversized manifest without hiding a safe candidate", async () => {
     const rootPath = await harness.createRoot();
     const oversizedRoot = path.join(rootPath, "plugins", "oversized");

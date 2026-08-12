@@ -1092,6 +1092,44 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("rejects malformed UTF-8 in pnpm workspace and package configuration", async () => {
+    for (const [name, fileName, prefix] of [
+      ["pnpm", "pnpm-workspace.yaml", "packages:\n  - plugins/"],
+      ["package", "package.json", '{"workspaces":["plugins/'],
+    ] as const) {
+      const root = await harness.createRoot(`private-${name}-invalid-utf8`);
+      await fs.writeFile(
+        path.join(root, fileName),
+        Buffer.concat([Buffer.from(prefix), Buffer.from([0xff])]),
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-${name}-invalid-utf8`,
+        }),
+      );
+      if (name === "package")
+        expect(result.diagnostics).toContainEqual(
+          expect.objectContaining({
+            code: "manifest-invalid",
+            rootKey: WORKSPACE_ROOT_KEY,
+            displayPath: "private-package-invalid-utf8",
+          }),
+        );
+      expect(JSON.stringify(result.diagnostics)).not.toContain(
+        path.dirname(root),
+      );
+    }
+  });
+
   test("does not normalize spaces inside a quoted pnpm key", async () => {
     const root = await harness.createRoot("private-pnpm-internal-key-spaces");
     await fs.writeFile(
@@ -1570,6 +1608,61 @@ describe("workspace-aware source discovery", () => {
       ).toEqual([WORKSPACE_ROOT_KEY, childKey].sort());
     }
     expect(result.diagnostics).toEqual([]);
+  });
+
+  test("reports an omitted shared candidate to every discovering root", async () => {
+    const parent = await harness.createRoot("parent-overflow-project");
+    const child = path.join(parent, "z-child");
+    const shared = path.join(child, "z-shared");
+    await fs.mkdir(shared, { recursive: true });
+    await harness.writePlugin(shared, "shared-overflow");
+    await fs.writeFile(
+      path.join(parent, "package.json"),
+      JSON.stringify({
+        name: "parent-project",
+        private: true,
+        workspaces: ["a-parent/*", "z-child/z-shared"],
+      }),
+    );
+    await fs.writeFile(
+      path.join(child, "package.json"),
+      JSON.stringify({
+        name: "child-project",
+        private: true,
+        workspaces: ["a-child/*", "z-shared"],
+      }),
+    );
+    for (const [container, prefix] of [
+      [path.join(parent, "a-parent"), "parent"],
+      [path.join(child, "a-child"), "child"],
+    ] as const) {
+      await fs.mkdir(container);
+      await Promise.all(
+        Array.from({ length: 64 }, async (_, index) => {
+          const pluginRoot = path.join(container, `plugin-${index}`);
+          await fs.mkdir(pluginRoot);
+          await harness.writePlugin(pluginRoot, `${prefix}-${index}`);
+        }),
+      );
+    }
+    const childKey = "c".repeat(32);
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: parent },
+      { rootKey: childKey, kind: "current-project", path: child },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toHaveLength(128);
+    expect(
+      result.candidates.some(({ pluginId }) => pluginId === "shared-overflow"),
+    ).toBe(false);
+    expect(
+      result.diagnostics
+        .filter(({ code }) => code === "candidate-limit")
+        .map(({ rootKey }) => rootKey)
+        .sort(),
+    ).toEqual([WORKSPACE_ROOT_KEY, childKey].sort());
   });
 
   test("prunes fully excluded subtrees before they consume the global entry budget", async () => {

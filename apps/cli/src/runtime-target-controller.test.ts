@@ -164,6 +164,73 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("marks every project partial when its shared candidate exceeds the cap", async () => {
+    const fixture = await makeFixture();
+    const parent = path.join(fixture.sourceRoot, "parent");
+    const child = path.join(parent, "z-child");
+    await writePlugin(path.join(child, "z-shared"), "shared-overflow");
+    await fs.writeFile(
+      path.join(parent, "package.json"),
+      JSON.stringify({
+        name: "parent",
+        private: true,
+        workspaces: ["a-parent/*", "z-child/z-shared"],
+      }),
+    );
+    await fs.writeFile(
+      path.join(child, "package.json"),
+      JSON.stringify({
+        name: "child",
+        private: true,
+        workspaces: ["a-child/*", "z-shared"],
+      }),
+    );
+    for (const [container, prefix] of [
+      [path.join(parent, "a-parent"), "parent"],
+      [path.join(child, "a-child"), "child"],
+    ] as const) {
+      for (let index = 0; index < 64; index += 1)
+        await writePlugin(
+          path.join(container, `plugin-${index}`),
+          `${prefix}-${index}`,
+        );
+    }
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: parent },
+        { projectKey: "c".repeat(32), sourcePath: child },
+      ],
+    });
+
+    expect(response.state).toBe("partial");
+    expect(
+      response.projects.map(({ projectKey, state }) => ({ projectKey, state })),
+    ).toEqual([
+      { projectKey: "p".repeat(32), state: "partial" },
+      { projectKey: "c".repeat(32), state: "partial" },
+    ]);
+    expect(response.projects.flatMap(({ targets }) => targets)).toHaveLength(
+      128,
+    );
+    expect(
+      response.projects
+        .flatMap(({ targets }) => targets)
+        .some(({ manifest }) => manifest.pluginId === "shared-overflow"),
+    ).toBe(false);
+    catalog.close();
+  });
+
   test("preserves projects omitted from a partial inventory", async () => {
     const fixture = await makeFixture();
     const visible = path.join(fixture.sourceRoot, "visible-project");

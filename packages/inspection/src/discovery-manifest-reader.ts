@@ -4,6 +4,11 @@ import { DiscoveryFailure } from "./discovery-errors.ts";
 import { runDiscoveryTestHook } from "./discovery-test-hook.ts";
 
 const MAX_MANIFEST_BYTES = 256 * 1024;
+const utf8Decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+export function decodeUtf8Strict(bytes: Uint8Array): string {
+  return utf8Decoder.decode(bytes);
+}
 
 export interface BoundedManifestSnapshot {
   readonly source: string;
@@ -100,8 +105,14 @@ export async function readBoundedManifestSnapshot(
         "package.json changed while it was read",
       );
     }
+    let source: string;
+    try {
+      source = decodeUtf8Strict(bytes);
+    } catch {
+      throw new DiscoveryFailure("manifest-invalid", "manifest is not UTF-8");
+    }
     return {
-      source: bytes.toString("utf8"),
+      source,
       device: after.dev,
       inode: after.ino,
       sha256: createHash("sha256").update(bytes).digest("hex"),

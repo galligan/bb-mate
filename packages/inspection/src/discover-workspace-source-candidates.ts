@@ -5,7 +5,10 @@ import path from "node:path";
 import { discoveryDiagnostic } from "./discovery-diagnostic.ts";
 import { DiscoveryFailure } from "./discovery-errors.ts";
 import { candidateAtRoot } from "./discovery-manifest.ts";
-import { readBoundedManifest } from "./discovery-manifest-reader.ts";
+import {
+  decodeUtf8Strict,
+  readBoundedManifest,
+} from "./discovery-manifest-reader.ts";
 import {
   attestScanDirectory,
   displayPathFor,
@@ -228,7 +231,7 @@ async function readPnpmWorkspacePatterns(
     )
       throw new Error();
     return parsePnpmWorkspacePackages(
-      buffer.subarray(0, bytesRead).toString("utf8"),
+      decodeUtf8Strict(buffer.subarray(0, bytesRead)),
     );
   } finally {
     await handle.close();
