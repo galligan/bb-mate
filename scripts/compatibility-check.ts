@@ -298,7 +298,7 @@ export async function observeBbVersion(
 ): Promise<string> {
   const candidates = explicit
     ? [explicit]
-    : ["bb", path.join(repositoryRoot, "plugins/linear/node_modules/.bin/bb")];
+    : ["bb", path.join(repositoryRoot, "plugins/mate/node_modules/.bin/bb")];
   let missingError: string | undefined;
   for (const candidate of candidates) {
     const result = await run(candidate, ["--version"], repositoryRoot, {
@@ -346,10 +346,7 @@ export async function collectCompatibilityObservations(
 
   const [pluginPackageText, workbenchPackageText, localCss] = await Promise.all(
     [
-      readFile(
-        path.join(repositoryRoot, "plugins/linear/package.json"),
-        "utf8",
-      ),
+      readFile(path.join(repositoryRoot, "plugins/mate/package.json"), "utf8"),
       readFile(
         path.join(repositoryRoot, "apps/workbench/package.json"),
         "utf8",

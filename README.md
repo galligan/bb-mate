@@ -162,7 +162,7 @@ plugin looks or behaves exactly the same inside bb.
 apps/cli/        The published bb-mate CLI package
 apps/workbench/  Browser-only fixture workbench
 packages/        Shared inspection and authoring contracts
-plugins/         Independently versioned native bb plugins
+plugins/mate/    Studio-owned live integration plugin
 docs/            Architecture, authoring, trust, and compatibility guides
 ```
 

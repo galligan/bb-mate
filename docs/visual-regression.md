@@ -65,7 +65,7 @@ docker run --rm --ipc=host \
   --mount type=volume,target=/work/apps/cli/node_modules \
   --mount type=volume,target=/work/apps/workbench/node_modules \
   --mount type=volume,target=/work/packages/inspection/node_modules \
-  --mount type=volume,target=/work/plugins/linear/node_modules \
+  --mount type=volume,target=/work/plugins/mate/node_modules \
   --workdir /work mcr.microsoft.com/playwright:v1.62.1-noble \
   bash -lc 'npm install -g bun@1.3.14 && bun install --frozen-lockfile --ignore-scripts && cd apps/workbench && bun run stories:build && bunx playwright test --update-snapshots'
 ```

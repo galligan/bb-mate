@@ -3,9 +3,9 @@ import { parseCliArgs } from "./args.ts";
 
 describe("bb-mate arguments", () => {
   test("treats a bare plugin path as the dev command", () => {
-    expect(parseCliArgs(["plugins/linear"])).toEqual({
+    expect(parseCliArgs(["plugins/mate"])).toEqual({
       command: "dev",
-      targetPath: "plugins/linear",
+      targetPath: "plugins/mate",
       host: "127.0.0.1",
       port: 5173,
       json: false,
