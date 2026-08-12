@@ -204,81 +204,49 @@ async function readPnpmWorkspacePatterns(
 }
 
 function parsePnpmWorkspacePackages(source: string): readonly string[] {
+  const document = Bun.YAML.parse(source) as unknown;
+  if (
+    !isRecord(document) ||
+    !Object.hasOwn(document, "packages") ||
+    !Array.isArray(document.packages) ||
+    document.packages.length === 0 ||
+    document.packages.some((value) => typeof value !== "string")
+  )
+    throw new Error();
+  validatePnpmPackagesBlockSyntax(source);
+  return document.packages;
+}
+
+function validatePnpmPackagesBlockSyntax(source: string): void {
   if (source.includes("\t")) throw new Error();
-  const values: string[] = [];
   let inPackages = false;
   let sawPackages = false;
-  let packageItemIndent: number | null = null;
+  let itemIndent: number | null = null;
+  let itemCount = 0;
   for (const line of source.split(/\r?\n/u)) {
     const trimmed = line.trim();
-    if (!inPackages) {
-      if (trimmed === "" || trimmed.startsWith("#")) continue;
-      if (/^packages:\s*(?:#.*)?$/u.test(line)) {
-        if (sawPackages) throw new Error();
-        sawPackages = true;
-        inPackages = true;
-      }
+    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    if (line.startsWith("packages:")) {
+      if (sawPackages || !/^packages:\s*(?:#.*)?$/u.test(line))
+        throw new Error();
+      sawPackages = true;
+      inPackages = true;
       continue;
     }
-    if (trimmed === "" || trimmed.startsWith("#")) continue;
+    if (!inPackages) continue;
     if (!line.startsWith(" ")) {
       if (line.startsWith("-")) throw new Error();
       inPackages = false;
-      if (/^packages:/u.test(line)) throw new Error();
       continue;
     }
     const item = /^( +)-[ ]+(.+?)\s*$/u.exec(line);
-    if (!item) throw new Error();
+    if (!item || item[2]!.trimStart().startsWith("!")) throw new Error();
     const indentation = item[1]!.length;
-    if (packageItemIndent === null) packageItemIndent = indentation;
-    else if (indentation !== packageItemIndent) throw new Error();
-    values.push(parseYamlPatternScalar(item[2]!));
+    if (itemIndent === null) itemIndent = indentation;
+    else if (indentation !== itemIndent) throw new Error();
+    itemCount += 1;
   }
-  if (!sawPackages || values.length === 0) throw new Error();
-  return values;
-}
-
-function parseYamlPatternScalar(input: string): string {
-  const value = input.trim();
-  if (value.startsWith("'")) {
-    const quoted = /^'((?:[^']|'')*)'(?:\s+#.*)?$/u.exec(value);
-    if (!quoted) throw new Error();
-    return quoted[1]!.replace(/''/gu, "'");
-  }
-  if (value.startsWith('"')) {
-    const quoted =
-      /^("(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*")(?:\s+#.*)?$/u.exec(
-        value,
-      );
-    if (!quoted) throw new Error();
-    try {
-      const parsed = JSON.parse(quoted[1]!) as unknown;
-      if (typeof parsed !== "string") throw new Error();
-      return parsed;
-    } catch {
-      throw new Error();
-    }
-  }
-  const withoutComment = value.replace(/(?:^|\s)#.*$/u, "").trimEnd();
-  if (
-    withoutComment === "" ||
-    isYamlCoreNonStringScalar(withoutComment) ||
-    /:(?:$|\s)/u.test(withoutComment) ||
-    /^(?:-|\?)(?:$|\s)/u.test(withoutComment) ||
-    /^[@`]/u.test(withoutComment) ||
-    /^[\[\]{|>&*]/u.test(withoutComment) ||
-    /^!/u.test(withoutComment)
-  )
-    throw new Error();
-  return withoutComment;
-}
-
-function isYamlCoreNonStringScalar(value: string): boolean {
-  return (
-    /^(?:~|null|true|false)$/iu.test(value) ||
-    /^[-+]?(?:0o[0-7]+|0x[\da-f]+|\d+)$/iu.test(value) ||
-    /^[-+]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:e[-+]?\d+)?|\.inf|\.nan)$/iu.test(value)
-  );
+  if (!sawPackages || itemCount === 0) throw new Error();
 }
 
 function parseWorkspacePatterns(

@@ -354,6 +354,32 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
+  test("rejects malformed YAML outside the pnpm packages block", async () => {
+    const root = await harness.createRoot("private-pnpm-malformed-document");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "catalog: [\npackages:\n  - plugins/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-malformed-document",
+      }),
+    ]);
+  });
+
   test("rejects pnpm packages blocks without list items", async () => {
     const root = await harness.createRoot("private-pnpm-empty-packages");
     await fs.writeFile(
