@@ -292,22 +292,57 @@ function topLevelPackagesKey(
   line: string,
 ): { readonly remainder: string; readonly supported: boolean } | null {
   if (line.startsWith(" ")) return null;
-  const mapping = /^(.+):(.*)$/u.exec(line);
-  if (!mapping) return null;
+  const delimiter = topLevelMappingDelimiter(line);
+  if (delimiter < 0) return null;
+  const keySource = line.slice(0, delimiter);
   let parsed: unknown;
   try {
-    parsed = Bun.YAML.parse(`${mapping[1]!}: null`) as unknown;
+    parsed = Bun.YAML.parse(`${keySource}: null`) as unknown;
   } catch {
     return null;
   }
   if (!isRecord(parsed) || !Object.hasOwn(parsed, "packages")) return null;
   return {
-    remainder: mapping[2]!,
+    remainder: line.slice(delimiter + 1),
     supported:
       /^(?:packages|'(?:[^']|'')*'|"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*")$/u.test(
-        mapping[1]!,
+        keySource,
       ),
   };
+}
+
+function topLevelMappingDelimiter(line: string): number {
+  let quote: "'" | '"' | null = null;
+  let verbatimTag = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]!;
+    if (quote === "'") {
+      if (character !== "'") continue;
+      if (line[index + 1] === "'") index += 1;
+      else quote = null;
+      continue;
+    }
+    if (quote === '"') {
+      if (character === "\\") index += 1;
+      else if (character === '"') quote = null;
+      continue;
+    }
+    if (verbatimTag) {
+      if (character === ">") verbatimTag = false;
+      continue;
+    }
+    if (character === "'" || character === '"') quote = character;
+    else if (character === "!" && line[index + 1] === "<") {
+      verbatimTag = true;
+      index += 1;
+    } else if (
+      character === "#" &&
+      (index === 0 || /\s/u.test(line[index - 1]!))
+    )
+      return -1;
+    else if (character === ":") return index;
+  }
+  return -1;
 }
 
 function validateNoExplicitTopLevelPackagesKey(source: string): void {
