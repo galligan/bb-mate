@@ -140,6 +140,48 @@ describe("workspace-aware source discovery", () => {
     );
   });
 
+  test("charges triangular globstar closure visits against the matching budget", async () => {
+    const root = await harness.createRoot("private-workspace-closure-limit");
+    let directory = root;
+    for (let depth = 0; depth < 31; depth += 1) {
+      directory = path.join(directory, `level-${depth}`);
+      await fs.mkdir(directory);
+    }
+    await Promise.all(
+      Array.from({ length: 600 }, (_, index) =>
+        fs.symlink("missing", path.join(directory, `link-${index}`)),
+      ),
+    );
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: [
+          `${Array.from({ length: 31 }, () => "**").join("/")}/target`,
+        ],
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-workspace-closure-limit",
+        detail: expect.stringContaining("matching"),
+      }),
+    );
+    expect(JSON.stringify(result.diagnostics)).not.toContain(
+      path.dirname(root),
+    );
+  });
+
   test("completes a valid sixty-five-candidate workspace below the matching budget", async () => {
     const root = await harness.createRoot();
     const workspaces = Array.from(

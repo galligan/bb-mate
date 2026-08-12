@@ -810,12 +810,13 @@ function closeGlobstars(
   const result = new Set(input);
   for (const state of [...result]) {
     let index = state;
-    while (pattern[index] === "**") {
+    while (true) {
+      chargeWorkspaceMatchWork(budget, 1);
+      if (pattern[index] !== "**") break;
       index += 1;
       result.add(index);
     }
   }
-  chargeWorkspaceMatchWork(budget, result.size);
   return result;
 }
 
