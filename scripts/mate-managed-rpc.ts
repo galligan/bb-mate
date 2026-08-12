@@ -190,7 +190,7 @@ function projectCatalog(value: unknown): MateProjectCatalog {
   );
   assert(
     (catalog.state === "ready" || catalog.state === "partial") &&
-      incomplete === (catalog.state === "partial"),
+      (!incomplete || catalog.state === "partial"),
     "Mate RPC project catalog values are invalid.",
   );
   return { state: catalog.state, items };

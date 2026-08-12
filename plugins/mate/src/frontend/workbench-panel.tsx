@@ -386,13 +386,26 @@ export function PluginWorkbenchView({
               />
             </div>
           ) : (
-            projects.map((project) => (
-              <ProjectRow
-                key={project.id}
-                project={project}
-                onOpenTarget={onOpenTarget}
-              />
-            ))
+            <>
+              {snapshot.projects.state === "partial" ? (
+                <p
+                  className="px-4 py-3 text-xs leading-snug text-subtle-foreground"
+                  role="status"
+                >
+                  <span className="font-medium text-foreground">
+                    Project inventory incomplete.
+                  </span>{" "}
+                  Some bb projects may not be shown.
+                </p>
+              ) : null}
+              {projects.map((project) => (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  onOpenTarget={onOpenTarget}
+                />
+              ))}
+            </>
           )}
         </NativeSettingsSection>
       </div>

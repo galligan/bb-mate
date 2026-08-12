@@ -169,7 +169,13 @@ describe("managed Mate RPC proof codec", () => {
     ).toThrow("identity");
   });
 
-  test("requires catalog state to reflect partial and unavailable scans", () => {
+  test("accepts truncated partial catalogs and requires partial rows to propagate", () => {
+    const truncated = {
+      ...snapshot(),
+      projects: { ...snapshot().projects, state: "partial" },
+    };
+    expect(parseMateSnapshot(truncated).projects.state).toBe("partial");
+
     const partial = {
       ...snapshot(),
       projects: {

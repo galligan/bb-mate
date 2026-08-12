@@ -216,6 +216,23 @@ describe("Plugin Studio nav panel", () => {
     expect(html).not.toContain("Some plugins could not be opened");
   });
 
+  test("surfaces an incomplete project inventory when every visible scan is ready", () => {
+    const html = render(
+      snapshot({
+        state: "partial",
+        items: [
+          project({ id: "project_a", label: "Project A" }),
+          project({ id: "project_b", label: "Project B" }),
+        ],
+      }),
+    );
+
+    expect(html).toContain("Project inventory incomplete");
+    expect(html).toContain("Some bb projects may not be shown.");
+    expect(html).toContain('role="status"');
+    expect(html).not.toContain("Incomplete scan");
+  });
+
   test("renders honest global unavailable, empty, reload failure, and busy states", () => {
     expect(render(snapshot({ state: "unavailable", items: [] }))).toContain(
       "Project list unavailable",
