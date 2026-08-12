@@ -741,6 +741,40 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
+  test("rejects block-scalar explicit pnpm packages keys", async () => {
+    for (const [name, explicitKey] of [
+      ["literal-strip", "? |-\n  packages\n:"],
+      ["folded-keep", "? >+\n  packages\n:"],
+      ["multiline-literal", "?\n  |+\n  packages\n:"],
+    ] as const) {
+      const root = await harness.createRoot(
+        `private-pnpm-explicit-block-${name}`,
+      );
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `packages:\n  - plugins/*\n${explicitKey}\n  - extensions/*\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-pnpm-explicit-block-${name}`,
+        }),
+      ]);
+    }
+  });
+
   test("supports an alias used only as a pnpm workspace item value", async () => {
     const root = await harness.createRoot();
     const plugin = path.join(root, "plugins", "included");
@@ -799,29 +833,35 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
-  test("supports a single-quoted pnpm packages key", async () => {
-    const root = await harness.createRoot();
-    const plugin = path.join(root, "plugins", "included");
-    await fs.mkdir(plugin, { recursive: true });
-    await harness.writePlugin(plugin, "included");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({ name: "pnpm-root", private: true }),
-    );
-    await fs.writeFile(
-      path.join(root, "pnpm-workspace.yaml"),
-      "'packages':\n  - plugins/*\n",
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
+  test("supports plain and quoted pnpm packages keys", async () => {
+    for (const [name, packagesKey] of [
+      ["plain", "packages"],
+      ["single-quoted", "'packages'"],
+      ["double-quoted", '"packages"'],
+    ] as const) {
+      const root = await harness.createRoot(`pnpm-key-${name}`);
+      const plugin = path.join(root, "plugins", "included");
+      await fs.mkdir(plugin, { recursive: true });
+      await harness.writePlugin(plugin, "included");
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `${packagesKey}:\n  - plugins/*\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
 
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
 
-    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
-      "included",
-    ]);
-    expect(result.diagnostics).toEqual([]);
+      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+        "included",
+      ]);
+      expect(result.diagnostics).toEqual([]);
+    }
   });
 
   test("reports unsupported pnpm workspace syntax as partial", async () => {

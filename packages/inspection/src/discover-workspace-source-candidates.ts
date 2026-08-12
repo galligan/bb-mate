@@ -311,35 +311,9 @@ function topLevelPackagesKey(
 }
 
 function validateNoExplicitTopLevelPackagesKey(source: string): void {
-  let awaitingMultilineKey = false;
   for (const line of source.split(/\r?\n/u)) {
-    const trimmed = line.trim();
-    if (awaitingMultilineKey) {
-      if (trimmed === "" || trimmed.startsWith("#")) continue;
-      awaitingMultilineKey = false;
-      if (
-        line.startsWith(" ") &&
-        (isUnsupportedExplicitKeySource(trimmed) ||
-          isSemanticPackagesScalar(trimmed))
-      )
-        throw new Error();
-      if (line.startsWith(" ")) continue;
-    }
-    if (line.startsWith(" ")) continue;
-    const explicit = /^\?(?: +(.*))?$/u.exec(line);
-    if (!explicit) continue;
-    const key = explicit[1]?.trim();
-    if (!key || key.startsWith("#")) {
-      awaitingMultilineKey = true;
-      continue;
-    }
-    if (isUnsupportedExplicitKeySource(key) || isSemanticPackagesScalar(key))
-      throw new Error();
+    if (!line.startsWith(" ") && /^\?(?:\s|$)/u.test(line)) throw new Error();
   }
-}
-
-function isUnsupportedExplicitKeySource(source: string): boolean {
-  return source.trimStart().startsWith("!") || isYamlNodeReference(source);
 }
 
 function isUnsupportedTopLevelKeyReference(line: string): boolean {
@@ -351,14 +325,6 @@ function isUnsupportedTopLevelKeyReference(line: string): boolean {
 function isYamlNodeReference(source: string): boolean {
   const first = source.trimStart()[0];
   return first === "*" || first === "&";
-}
-
-function isSemanticPackagesScalar(source: string): boolean {
-  try {
-    return Bun.YAML.parse(source) === "packages";
-  } catch {
-    return false;
-  }
 }
 
 function parseWorkspacePatterns(
