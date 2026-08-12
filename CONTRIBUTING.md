@@ -24,7 +24,7 @@ bb Plugin Studio uses Bun:
 
 ```sh
 git clone https://github.com/galligan/bb-plugin-studio.git
-cd bb-mate
+cd bb-plugin-studio
 bun install --frozen-lockfile
 ```
 

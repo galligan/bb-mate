@@ -236,8 +236,9 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
 function parseYamlPatternScalar(input: string): string {
   const value = input.trim();
   if (value.startsWith("'")) {
-    if (!value.endsWith("'") || value.length < 2) throw new Error();
-    return value.slice(1, -1).replace(/''/gu, "'");
+    const quoted = /^'((?:[^']|'')*)'(?:\s+#.*)?$/u.exec(value);
+    if (!quoted) throw new Error();
+    return quoted[1]!.replace(/''/gu, "'");
   }
   if (value.startsWith('"')) {
     try {

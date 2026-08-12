@@ -27,7 +27,7 @@ From a fresh checkout:
 
 ```sh
 git clone https://github.com/galligan/bb-plugin-studio.git
-cd bb-mate
+cd bb-plugin-studio
 bun install --frozen-lockfile
 bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61000
 ```

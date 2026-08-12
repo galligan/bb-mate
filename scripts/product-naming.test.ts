@@ -75,6 +75,16 @@ describe("bb Plugin Studio product naming", () => {
     expect(stale).toEqual([]);
   });
 
+  test("uses the renamed repository directory after fresh clone commands", async () => {
+    for (const relative of ["CONTRIBUTING.md", "docs/plugin-author-guide.md"]) {
+      const text = await Bun.file(`${repositoryRoot}/${relative}`).text();
+      expect(text).toContain(
+        "git clone https://github.com/galligan/bb-plugin-studio.git\ncd bb-plugin-studio",
+      );
+      expect(text).not.toContain("\ncd bb-mate\n");
+    }
+  });
+
   test("keeps installed and published compatibility identities stable", async () => {
     const cliManifest = await Bun.file(
       `${repositoryRoot}/apps/cli/package.json`,
