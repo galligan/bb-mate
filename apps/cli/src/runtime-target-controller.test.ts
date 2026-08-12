@@ -717,6 +717,58 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("protects an omitted partial child scope from ready ancestor retirement", async () => {
+    const fixture = await makeFixture();
+    const parentRoot = path.join(fixture.sourceRoot, "repo");
+    const childRoot = path.join(parentRoot, "child");
+    await fs.mkdir(parentRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(parentRoot, "package.json"),
+      JSON.stringify({ name: "parent", private: true }),
+    );
+    await writePlugin(childRoot, "protected-child");
+    const childManifest = JSON.parse(
+      await fs.readFile(path.join(childRoot, "package.json"), "utf8"),
+    ) as Record<string, unknown>;
+    childManifest.workspaces = 42;
+    await fs.writeFile(
+      path.join(childRoot, "package.json"),
+      JSON.stringify(childManifest),
+    );
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+
+    const first = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "c".repeat(32), sourcePath: childRoot }],
+    });
+    expect(first.projects[0]).toMatchObject({
+      state: "partial",
+      targets: [{ manifest: { pluginId: "protected-child" } }],
+    });
+
+    const omitted = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "p".repeat(32), sourcePath: parentRoot }],
+    });
+
+    expect(omitted.projects[0]).toMatchObject({ state: "ready", targets: [] });
+    expect(
+      (await controller.list(context())).targets.map(
+        ({ manifest }) => manifest.pluginId,
+      ),
+    ).toEqual(["protected-child"]);
+    catalog.close();
+  });
+
   test("registers a nested project first seen in a partial inventory", async () => {
     const fixture = await makeFixture();
     const childRoot = path.join(fixture.sourceRoot, "child");

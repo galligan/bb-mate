@@ -54,6 +54,20 @@ export function createDevelopmentTargetService(
   catalog: DevelopmentTargetCatalog,
 ) {
   return {
+    async registerProjectScopes(
+      context: RequestContext,
+      sourceRoots: readonly string[],
+      options: { readonly signal?: AbortSignal } = {},
+    ) {
+      options.signal?.throwIfAborted();
+      const principal = authorizeUnboundTargetContext(context, "targets:write");
+      await catalog.registerProjectScopes({
+        principalId: principal.id,
+        bbContextId: principal.bbContextId,
+        sourceRoots,
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      });
+    },
     async refreshFromCompleteSnapshot(
       context: RequestContext,
       candidates: readonly TrustedDevelopmentTargetCandidate[],

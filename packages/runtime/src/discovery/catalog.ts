@@ -68,6 +68,12 @@ export interface ReconcileDevelopmentTargetNativeInput {
 }
 
 export interface DevelopmentTargetCatalog {
+  registerProjectScopes(input: {
+    readonly principalId: PrincipalId;
+    readonly bbContextId: BbContextId;
+    readonly sourceRoots: readonly string[];
+    readonly signal?: AbortSignal;
+  }): Promise<void>;
   refresh(
     input: RefreshDevelopmentTargetInput,
   ): Promise<DevelopmentTargetEnvelope>;
@@ -125,6 +131,27 @@ export async function openDevelopmentTargetCatalog(
   }
 
   return {
+    async registerProjectScopes(input) {
+      try {
+        input.signal?.throwIfAborted();
+        const sourceRoots = validateSourceScopes(input.sourceRoots);
+        if (sourceRoots === undefined)
+          throw new RuntimeError("invalid_request");
+        storage.assertIntegrity();
+        input.signal?.throwIfAborted();
+        storage.persistCompleteSnapshot({
+          present: [],
+          retired: [],
+          scopeAdditions: {
+            principalId: input.principalId,
+            bbContextId: input.bbContextId,
+            sourceRoots: [...sourceRoots],
+          },
+        });
+      } catch (error) {
+        storageError(error);
+      }
+    },
     async refresh(input) {
       try {
         const candidate = await validateTrustedDevelopmentTargetCandidate(

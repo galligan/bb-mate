@@ -226,6 +226,33 @@ export function createRuntimeTargetController({
           )
         );
       });
+      const authoritativeRootKeys = new Set(
+        authoritativeRoots.map(({ rootKey }) => rootKey),
+      );
+      const nonAuthoritativeRoots = admission.roots.filter(
+        ({ rootKey }) => !authoritativeRootKeys.has(rootKey),
+      );
+      const scopeAdditions = nonAuthoritativeRoots.flatMap(({ rootKey }) => {
+        const sourceRoot = canonicalSourceRootByAdmittedRoot.get(rootKey);
+        return sourceRoot === undefined ? [] : [sourceRoot];
+      });
+      if (scopeAdditions.length > 0) {
+        try {
+          await abortable(
+            targets.registerProjectScopes(context, scopeAdditions, { signal }),
+            signal,
+          );
+        } catch {
+          signal?.throwIfAborted();
+          partial = true;
+          for (const { rootKey } of nonAuthoritativeRoots) {
+            for (const projectKey of projectKeysByAdmittedRoot.get(rootKey) ??
+              []) {
+              markPartial(projectKey, groups);
+            }
+          }
+        }
+      }
       const reconciledRootKeys = new Set<string>();
       for (const component of overlappingRootComponents(
         authoritativeRoots,
