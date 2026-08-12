@@ -18,6 +18,8 @@ checked before any public distribution decision.
 | Ladle React                        | MIT        | <https://github.com/tajo/ladle>                 |
 | Ladle embedded client dependencies | MIT / ISC  | See `THIRD_PARTY_LICENSES.md`                   |
 | Lucide React                       | ISC        | <https://github.com/lucide-icons/lucide>        |
+| Radix Slot                         | MIT        | <https://github.com/radix-ui/primitives>        |
+| Radix Tooltip                      | MIT        | <https://github.com/radix-ui/primitives>        |
 | React                              | MIT        | <https://github.com/facebook/react>             |
 | React DOM                          | MIT        | <https://github.com/facebook/react>             |
 | saxes                              | ISC        | <https://github.com/lddubeau/saxes>             |
@@ -27,10 +29,11 @@ checked before any public distribution decision.
 | xmlchars                           | MIT        | <https://github.com/lddubeau/xmlchars>          |
 | Zod                                | MIT        | <https://github.com/colinhacks/zod>             |
 
-The generated payload includes Base UI's runtime dependency closure, Ladle,
-classnames, Prism React Renderer and PrismJS, PropTypes and React Is, React and
-scheduler, the Focus Lock/React Remove Scroll family, Reach UI dialog, tslib,
-and the inspection parser dependency closure. This inventory and those notices
-cover third-party components, including the runtime protocol's bundled Zod
-schema implementation, only. BB Mate itself is distributed under the MIT License
-included as `LICENSE` in the package.
+The generated payload includes Base UI's runtime dependency closure, the Radix
+Slot and Tooltip runtime dependency closure, Ladle, classnames, Prism React
+Renderer and PrismJS, PropTypes and React Is, React and scheduler, the Focus
+Lock/React Remove Scroll family, Reach UI dialog, tslib, and the inspection
+parser dependency closure. This inventory and those notices cover third-party
+components, including the runtime protocol's bundled Zod schema implementation,
+only. BB Mate itself is distributed under the MIT License included as `LICENSE`
+in the package.

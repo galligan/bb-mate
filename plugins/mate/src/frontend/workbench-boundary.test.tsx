@@ -12,6 +12,8 @@ describe("Plugin Workbench frontend boundary", () => {
     expect(html).toContain("Checking runtime status");
     expect(html).not.toContain("Starting runtime");
     expect(html).not.toContain("Check again");
+    expect(html).toContain("until you open a project");
+    expect(html).not.toContain("admitted");
     expect(html).not.toContain("<main");
   });
 

@@ -1,28 +1,91 @@
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #202224;
-  --muted-foreground: #5f6670;
-  background: #f4f5f6;
+  --canvas: oklch(1 0 0);
+  --ink: oklch(0.3211 0 0);
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--canvas);
+  --card-foreground: var(--ink);
+  --popover: var(--canvas);
+  --popover-foreground: var(--ink);
+  --primary: oklch(0.27 0 0);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: color-mix(in oklch, var(--ink) 8%, var(--canvas));
+  --secondary-foreground: var(--ink);
+  --muted: color-mix(in oklch, var(--ink) 11%, var(--canvas));
+  --muted-foreground: oklch(0.44 0 0);
+  --subtle-foreground: oklch(0.5 0 0);
+  --state-hover: color-mix(in oklab, var(--ink) 5.9%, transparent);
+  --state-active: color-mix(in oklab, var(--ink) 11.8%, transparent);
+  --destructive: oklch(0.45 0.19 25.8625);
+  --destructive-foreground: oklch(1 0 0);
+  --warning: oklch(0.7 0.16 50);
+  --success: oklch(0.7 0.15 155);
+  --border: color-mix(in oklch, var(--ink) 14%, var(--canvas));
+  --input: color-mix(in oklch, var(--ink) 29.5%, var(--canvas));
+  --ring: var(--primary);
+  background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17191c;
-  --foreground: #f4f5f6;
-  --muted-foreground: #b8c0ca;
-  background: #0e1012;
+  --canvas: oklch(0.195 0 0);
+  --ink: oklch(0.81 0 0);
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--canvas);
+  --card-foreground: var(--ink);
+  --popover: var(--canvas);
+  --popover-foreground: var(--ink);
+  --primary: oklch(0.82 0 0);
+  --primary-foreground: oklch(0.2178 0 0);
+  --secondary: color-mix(in oklch, var(--ink) 13%, var(--canvas));
+  --secondary-foreground: var(--ink);
+  --muted: color-mix(in oklch, var(--ink) 16%, var(--canvas));
+  --muted-foreground: oklch(0.78 0 0);
+  --subtle-foreground: oklch(0.68 0 0);
+  --state-hover: color-mix(in oklab, var(--ink) 13.8%, transparent);
+  --state-active: color-mix(in oklab, var(--ink) 22.5%, transparent);
+  --destructive: oklch(0.56 0.19 22.1703);
+  --destructive-foreground: oklch(1 0 0);
+  --warning: oklch(0.75 0.16 50);
+  --success: oklch(0.74 0.15 155);
+  --border: color-mix(in oklch, var(--ink) 19.4%, var(--canvas));
+  --input: color-mix(in oklch, var(--ink) 32.6%, var(--canvas));
+  --ring: var(--primary);
 }
 
 * {
   box-sizing: border-box;
 }
 
+@layer theme {
+  :where(button, input, select, textarea) {
+    margin: 0;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+  }
+
+  :where(fieldset) {
+    min-width: 0;
+    margin: 0;
+    border: 0;
+    padding: 0;
+  }
+
+  :where(legend) {
+    padding: 0;
+  }
+}
+
 body {
   margin: 0;
   color: var(--foreground);
-  background: inherit;
+  background: var(--background);
 }
 
 .fixture-host {
@@ -40,7 +103,8 @@ body {
 
 #panel-fixture {
   overflow: hidden;
-  min-height: 34rem;
-  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  min-height: 42rem;
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
+  background: var(--background);
 }

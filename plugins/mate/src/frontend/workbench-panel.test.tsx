@@ -1,7 +1,10 @@
 import { describe, expect, mock, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { PluginWorkbenchView } from "./workbench-panel";
+import {
+  PluginWorkbenchTargetDetail,
+  PluginWorkbenchView,
+} from "./workbench-panel";
 import type { PluginWorkbenchSnapshot } from "./workbench-snapshot";
 
 const targetId = "abcdefghijklmnopqrstuvwxzy012345";
@@ -36,13 +39,11 @@ function render(
   return renderToStaticMarkup(
     <PluginWorkbenchView
       snapshot={value}
-      selectedProjectId=""
-      selectedTargetId={null}
-      admitting={false}
+      openedProjectId={null}
+      admittingProjectId={null}
       selectionMessage={null}
-      onProjectChange={() => {}}
-      onTargetChange={() => {}}
-      onAdmit={() => {}}
+      onOpenProject={() => {}}
+      onOpenTarget={() => {}}
       onRefresh={() => {}}
       {...overrides}
     />,
@@ -50,139 +51,162 @@ function render(
 }
 
 describe("Plugin Workbench nav panel", () => {
-  test("inherits muted microcopy from the bb host theme", async () => {
+  test("uses only host semantic color classes for its custom styling", async () => {
     const css = await Bun.file(
       new URL("./workbench-panel.css", import.meta.url),
     ).text();
-    expect(css).toContain("--pw-muted: var(--muted-foreground, #6a6f75);");
+    expect(css).not.toMatch(/#[0-9a-f]{3,8}/i);
+    expect(css).toContain("prefers-reduced-motion: reduce");
   });
 
   test("does not nest a main landmark inside the bb nav panel host", () => {
     expect(render(snapshot())).not.toContain("<main");
   });
 
-  test("renders an explicit project chooser and disables unavailable sources", () => {
+  test("uses a compact runtime line and the native icon refresh affordance", () => {
     const html = render(snapshot());
-    expect(html).toContain('aria-label="Development project"');
+    expect(html).toContain("Runtime ready");
+    expect(html).toContain("0.7.0 · API 2");
+    expect(html).toContain('aria-label="Reload Workbench data"');
+    expect(html).toContain('data-icon="RotateCcw"');
+    expect(html).not.toContain('data-native-settings-section="Runtime"');
+    expect(html).not.toContain("The supervised runtime passed");
+  });
+
+  test("renders projects as the primary objects with Open actions", () => {
+    const html = render(snapshot());
+    expect(html).toContain("Projects with local sources");
     expect(html).toContain("BB Mate");
-    expect(html).toContain("Remote — No eligible local source");
-    expect(html).not.toContain("Start runtime");
-    expect(html).not.toContain("Admit project</button>");
+    expect(html).toContain("Remote");
+    expect(html).toContain("Open</button>");
+    expect(html).not.toContain('role="combobox"');
+    expect(html).not.toContain("Admit project");
+  });
 
-    const selected = render(snapshot(), { selectedProjectId: "project_01" });
-    expect(selected).toContain("Admit project</button>");
-
-    const noEligible = render(
-      snapshot({
-        projects: {
-          state: "ready",
-          items: [
-            { id: "project_02", label: "Remote", admission: "no_source" },
-          ],
-        },
-      }),
-    );
-    expect(noEligible).toContain(
-      "No project has an eligible local development source",
+  test("names every project action with its project context", () => {
+    const value = snapshot({
+      projects: {
+        state: "ready",
+        items: [
+          { id: "project_01", label: "BB Mate", admission: "available" },
+          { id: "project_02", label: "Remote", admission: "available" },
+        ],
+      },
+    });
+    expect(render(value)).toContain('aria-label="Open BB Mate"');
+    expect(render(value)).toContain('aria-label="Open Remote"');
+    expect(render(value, { openedProjectId: "project_01" })).toContain(
+      'aria-label="Refresh BB Mate"',
     );
   });
 
-  test("renders unavailable and empty project states", () => {
-    const unavailable = render(
-      snapshot({ projects: { state: "unavailable", items: [] } }),
-    );
-    const empty = render(snapshot({ projects: { state: "ready", items: [] } }));
-    expect(unavailable).toContain("Project list unavailable");
-    expect(unavailable).toContain("Refresh status");
-    expect(empty).toContain("No eligible local projects");
-    expect(empty).toContain(
-      "Open a project with a local source on this machine",
-    );
-    expect(empty).not.toContain("Create a project in bb");
-  });
-
-  test("renders empty, one, many, partial, and unavailable target states", () => {
-    const item = {
-      id: targetId,
-      label: "Plugin Workbench",
-      pluginId: "mate",
-      revision: 3,
-    };
-    expect(
-      render(snapshot({ targets: { state: "ready", items: [] } }), {
-        selectedProjectId: "project_01",
-      }),
-    ).toContain("No development plugins found in this project");
-
-    const partialEmpty = render(
-      snapshot({ targets: { state: "partial", items: [] } }),
-      { selectedProjectId: "project_01" },
-    );
-    expect(partialEmpty).toContain("No development targets could be admitted");
-    expect(partialEmpty).not.toContain(
-      "No development plugins found in this project",
-    );
-
-    const one = render(
-      snapshot({ targets: { state: "ready", items: [item] } }),
-      { selectedProjectId: "project_01", selectedTargetId: targetId },
-    );
-    expect(one).toContain('type="radio"');
-    expect(one).toContain("Plugin Workbench");
-    expect(one).toContain("mate · revision 3");
-    expect(one).toContain("checked");
-
-    const many = render(
+  test("lists detected plugins inside the opened project", () => {
+    const html = render(
       snapshot({
         targets: {
           state: "partial",
           items: [
-            item,
             {
-              id: "0123456789abcdefghijklmnopqrstuv",
-              label: "Linear",
-              pluginId: "linear",
-              revision: 1,
+              id: targetId,
+              label: "Plugin Workbench",
+              pluginId: "mate",
+              revision: 3,
             },
           ],
         },
       }),
-      { selectedProjectId: "project_01" },
+      { openedProjectId: "project_01" },
     );
-    expect(many.match(/type="radio"/g)).toHaveLength(2);
-    expect(many).toContain("Some development plugins could not be admitted");
-
-    expect(
-      render(
-        snapshot({
-          targets: {
-            state: "unavailable",
-            reason: "catalog_unavailable",
-            items: [],
-          },
-        }),
-        { selectedProjectId: "project_01" },
-      ),
-    ).toContain("Development targets unavailable");
+    expect(html).toContain("Plugins in BB Mate");
+    expect(html).toContain("Plugin Workbench");
+    expect(html).toContain("mate · revision 3");
+    expect(html).toContain("The project scan was not exhaustive");
+    expect(html).toContain("Plugins found within the safety limits are shown");
+    expect(html).not.toContain("Some plugins could not be opened");
+    expect(html).toContain('aria-label="Open Plugin Workbench"');
   });
 
-  test("exposes busy and live states without color-only meaning", () => {
+  test("gives honest recovery when no local projects are available", () => {
+    const empty = render(snapshot({ projects: { state: "ready", items: [] } }));
+    expect(empty).toContain("No local projects found");
+    expect(empty).toContain(
+      "Add a project from bb&#x27;s sidebar, then reload",
+    );
+  });
+
+  test("keeps reload and open failures visible without an opened project", () => {
     const html = render(snapshot(), {
-      selectedProjectId: "project_01",
-      admitting: true,
-      selectionMessage: "The target list changed. Choose a target.",
+      selectionMessage: "Project open failed safely. Try again.",
     });
-    expect(html).toContain('aria-busy="true"');
-    expect(html).toContain("Admitting…");
+
+    expect(html).toContain("Project open failed safely. Try again.");
     expect(html).toContain('role="status"');
-    expect(html).toContain("The target list changed. Choose a target.");
   });
 
-  test("keeps browser launch explicitly unavailable", () => {
-    const html = render(snapshot());
-    expect(html).toContain("Open Workbench");
-    expect(html).toContain("disabled");
-    expect(html).toContain("Browser launch is unavailable in this build");
+  test("keeps project-switch failures visible above an opened empty project", () => {
+    const html = render(snapshot({ targets: { state: "ready", items: [] } }), {
+      openedProjectId: "project_01",
+      selectionMessage: "Project open failed safely. Try again.",
+    });
+
+    expect(html).toContain("Project open failed safely. Try again.");
+    expect(html).toContain('role="status"');
+    expect(html).toContain("No development plugins found");
+  });
+
+  test("keeps failure, partial-empty, and empty plugin states distinct", () => {
+    const unavailable = render(
+      snapshot({ projects: { state: "unavailable", items: [] } }),
+    );
+    expect(unavailable).toContain("Project list unavailable");
+
+    const partialEmpty = render(
+      snapshot({ targets: { state: "partial", items: [] } }),
+      { openedProjectId: "project_01" },
+    );
+    expect(partialEmpty).toContain("No plugins could be opened");
+
+    const empty = render(snapshot({ targets: { state: "ready", items: [] } }), {
+      openedProjectId: "project_01",
+    });
+    expect(empty).toContain("No development plugins found");
+  });
+
+  test("explains a permanent runtime incompatibility without offering reload", () => {
+    const html = render(
+      snapshot({
+        targets: {
+          state: "unavailable",
+          reason: "runtime_incompatible",
+          items: [],
+        },
+      }),
+      { openedProjectId: "project_01" },
+    );
+
+    expect(html).toContain(
+      "Update or replace the packaged runtime before opening plugins.",
+    );
+    expect(html).not.toContain("Reload this project");
+  });
+
+  test("shows permanent runtime failure reasons to sighted users", () => {
+    const html = render(
+      snapshot({
+        runtimeState: "unavailable",
+        reason: "artifact_invalid",
+        runtimeVersion: null,
+        apiVersion: null,
+        canStart: false,
+      }),
+    );
+
+    expect(html).toContain(
+      "The packaged runtime did not pass integrity checks.",
+    );
+    expect(html).not.toContain(
+      'class="sr-only">The packaged runtime did not pass integrity checks.',
+    );
   });
 
   test("renders hostile labels inertly", () => {
@@ -205,21 +229,105 @@ describe("Plugin Workbench nav panel", () => {
           ],
         },
       }),
-      { selectedProjectId: "project_01", selectedTargetId: targetId },
+      { openedProjectId: "project_01" },
     );
     expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
     expect(html).not.toContain("<img");
   });
 
+  test("renders a target detail with Back and project-thread actions", () => {
+    const html = renderToStaticMarkup(
+      <PluginWorkbenchTargetDetail
+        snapshot={snapshot()}
+        busy={false}
+        message="Project open failed safely. Try again."
+        projectLabel="BB Mate"
+        target={{
+          id: targetId,
+          label: "Plugin Workbench",
+          pluginId: "mate",
+          revision: 3,
+        }}
+        threads={[
+          { id: "thread_01", title: "Native design pass", updatedAt: 1 },
+        ]}
+        threadsState="ready"
+        onBack={() => {}}
+        onOpenThread={() => {}}
+        onNewThread={() => {}}
+        onRefresh={() => {}}
+      />,
+    );
+    expect(html).toContain("Back to projects");
+    expect(html).toContain("Plugin Workbench");
+    expect(html).toContain("Preview unavailable");
+    expect(html).toContain("Native design pass");
+    expect(html).toContain("New thread");
+    expect(html).toContain("Project open failed safely. Try again.");
+  });
+
+  test("disables the detail refresh affordance while reloading", () => {
+    const html = renderToStaticMarkup(
+      <PluginWorkbenchTargetDetail
+        snapshot={snapshot()}
+        busy
+        message={null}
+        projectLabel="BB Mate"
+        target={{
+          id: targetId,
+          label: "Plugin Workbench",
+          pluginId: "mate",
+          revision: 3,
+        }}
+        threads={[]}
+        threadsState="ready"
+        onBack={() => {}}
+        onOpenThread={() => {}}
+        onNewThread={() => {}}
+        onRefresh={() => {}}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Reloading Workbench data"');
+    expect(html).toContain("disabled");
+  });
+
+  test("distinguishes loading and unavailable project-thread states", () => {
+    const renderDetail = (threadsState: "loading" | "unavailable") =>
+      renderToStaticMarkup(
+        <PluginWorkbenchTargetDetail
+          snapshot={snapshot()}
+          busy={false}
+          message={null}
+          projectLabel="BB Mate"
+          target={{
+            id: targetId,
+            label: "Plugin Workbench",
+            pluginId: "mate",
+            revision: 3,
+          }}
+          threads={[]}
+          threadsState={threadsState}
+          onBack={() => {}}
+          onOpenThread={() => {}}
+          onNewThread={() => {}}
+          onRefresh={() => {}}
+        />,
+      );
+
+    expect(renderDetail("loading")).toContain("Loading project threads");
+    expect(renderDetail("unavailable")).toContain(
+      "Project threads unavailable",
+    );
+  });
+
   test("keeps callbacks as explicit actions", () => {
     const props = {
-      selectedProjectId: "project_01",
-      selectedTargetId: null,
-      admitting: false,
+      openedProjectId: "project_01",
+      admittingProjectId: null,
       selectionMessage: null,
-      onProjectChange: mock(() => {}),
-      onTargetChange: mock(() => {}),
-      onAdmit: mock(() => {}),
+      onOpenProject: mock(() => {}),
+      onOpenTarget: mock(() => {}),
       onRefresh: mock(() => {}),
     };
     expect(() => render(snapshot(), props)).not.toThrow();

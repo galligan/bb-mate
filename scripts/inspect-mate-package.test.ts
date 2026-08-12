@@ -37,7 +37,7 @@ function packageManifest() {
       name: "Plugin Workbench",
       description:
         "Develop source plugins with the supervised bb-mate runtime.",
-      branding: { icon: "Wrench" },
+      branding: { icon: "Toolbox" },
       server: "./dist/server.js",
       app: "./dist/app.js",
       skills: ["./skills/plugin-workbench"],
@@ -84,6 +84,22 @@ describe("Mate package inspection", () => {
     ).toThrow("build metadata");
   });
 
+  test("reports branding drift separately from entrypoint drift", () => {
+    expect(() =>
+      assertMatePackageMetadata(
+        {
+          ...packageManifest(),
+          bb: {
+            ...packageManifest().bb,
+            branding: { icon: "Wrench" },
+          },
+        },
+        buildMetadata(),
+        buildMetadata(),
+      ),
+    ).toThrow("branding");
+  });
+
   test("rejects dependency drift in the local-verification manifest", () => {
     expect(() =>
       assertMatePackageMetadata(
@@ -96,14 +112,30 @@ describe("Mate package inspection", () => {
 
   test("rejects incomplete runtime redistribution notices", () => {
     const notices =
-      "bundled Zod protocol implementation; compiled with and embeds the Bun 1.3.14 runtime; Bun itself is MIT-licensed; JavaScriptCore and WebKit under LGPL-2; local verification only; BUN_LICENSE.md";
+      "Radix Slot; Radix Tooltip; bundled Zod protocol implementation; compiled with and embeds the Bun 1.3.14 runtime; Bun itself is MIT-licensed; JavaScriptCore and WebKit under LGPL-2; local verification only; BUN_LICENSE.md";
+    const licenses =
+      "## @radix-ui/react-slot@1.3.3\n\n## @radix-ui/react-tooltip@1.2.16\n\n## zod@4.4.3\n";
     expect(() =>
-      assertMateThirdPartyCoverage(notices, "## zod@4.4.3\n", "1.3.14"),
+      assertMateThirdPartyCoverage(notices, licenses, "1.3.14"),
     ).not.toThrow();
     expect(() =>
       assertMateThirdPartyCoverage(
+        notices,
+        licenses.replace("## @radix-ui/react-tooltip@1.2.16\n\n", ""),
+        "1.3.14",
+      ),
+    ).toThrow("do not cover");
+    expect(() =>
+      assertMateThirdPartyCoverage(
+        notices.replace("Radix Tooltip; ", ""),
+        licenses,
+        "1.3.14",
+      ),
+    ).toThrow("do not cover");
+    expect(() =>
+      assertMateThirdPartyCoverage(
         notices.replace("compiled with and embeds", "built by"),
-        "## zod@4.4.3\n",
+        licenses,
         "1.3.14",
       ),
     ).toThrow("do not cover");

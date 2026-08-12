@@ -1,5 +1,8 @@
 import {
   definePluginApp,
+  experimental_useSidebarThreadActions,
+  experimental_useSidebarThreads,
+  useBbNavigate,
   useRpc,
   type PluginNavPanelProps,
 } from "@bb/plugin-sdk/app";
@@ -8,68 +11,82 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { rpcContract } from "../../server";
 import "./workbench-panel.css";
 import { PluginWorkbenchBoundary } from "./workbench-boundary";
-import { PluginWorkbenchView } from "./workbench-panel";
+import {
+  PluginWorkbenchTargetDetail,
+  PluginWorkbenchView,
+  type WorkbenchProjectThread,
+} from "./workbench-panel";
 import {
   parsePluginWorkbenchSnapshot,
   type PluginWorkbenchSnapshot,
 } from "./workbench-snapshot";
 
-const listChangedMessage = "The target list changed. Choose a target.";
+const listChangedMessage = "The plugin list changed.";
+const projectOpenFailedMessage = "Project open failed safely. Try again.";
+const targetRoute = /^projects\/([^/]+)\/targets\/([^/]+)$/u;
 
-export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
+function parseTargetRoute(subPath: string) {
+  const match = targetRoute.exec(subPath);
+  if (!match) return null;
+  try {
+    return {
+      projectId: decodeURIComponent(match[1] ?? ""),
+      targetId: decodeURIComponent(match[2] ?? ""),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const rpc = useRpc<typeof rpcContract>();
+  const navigate = useBbNavigate();
+  const sidebar = experimental_useSidebarThreads();
+  const threadActions = experimental_useSidebarThreadActions();
   const generation = useRef(0);
+  const recoveredSubPath = useRef<string | null>(null);
+  const attemptedRouteSubPath = useRef<string | null>(null);
+  const activeSubPath = useRef(subPath);
+  const routedAdmissionSubPath = useRef<string | null>(null);
+  const failedAdmissionProjectId = useRef<string | null>(null);
+  const previousTargetIds = useRef(new Map<string, readonly string[]>());
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
     null,
   );
   const [statusFailed, setStatusFailed] = useState(false);
-  const [admitting, setAdmitting] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [admittedProjectId, setAdmittedProjectId] = useState<string | null>(
+  const [openedProjectId, setOpenedProjectId] = useState<string | null>(null);
+  const [admittingProjectId, setAdmittingProjectId] = useState<string | null>(
     null,
   );
-  const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
-  const selectedTargetIdRef = useRef<string | null>(null);
   const [selectionMessage, setSelectionMessage] = useState<string | null>(null);
 
   const acceptSnapshot = useCallback(
-    (value: unknown, admittedProject: string | null) => {
+    (value: unknown, openedProject: string | null) => {
       const next = parsePluginWorkbenchSnapshot(value);
-      setSnapshot(next);
-      setAdmittedProjectId(admittedProject);
-      setSelectedProjectId((current) => {
-        if (
-          next.projects.state === "ready" &&
-          next.projects.items.some(({ id }) => id === current)
-        ) {
-          return current;
-        }
-        return "";
-      });
-      const currentTarget = selectedTargetIdRef.current;
-      let nextTarget: string | null = null;
-      let nextMessage: string | null = null;
-      if (
-        admittedProject !== null &&
-        (next.targets.state === "ready" || next.targets.state === "partial")
-      ) {
-        const currentRemains =
-          currentTarget !== null &&
-          next.targets.items.some(({ id }) => id === currentTarget);
-        nextTarget =
-          currentTarget !== null
-            ? currentRemains
-              ? currentTarget
-              : null
-            : next.targets.items.length === 1
-              ? (next.targets.items[0]?.id ?? null)
-              : null;
-        nextMessage =
-          currentTarget !== null && !currentRemains ? listChangedMessage : null;
+      failedAdmissionProjectId.current = null;
+      const hasUsableCatalog =
+        openedProject !== null &&
+        (next.targets.state === "ready" || next.targets.state === "partial");
+      const nextTargetIds = hasUsableCatalog
+        ? next.targets.items.map(({ id }) => id)
+        : [];
+      const previous =
+        openedProject === null
+          ? undefined
+          : previousTargetIds.current.get(openedProject);
+      setSelectionMessage(
+        hasUsableCatalog &&
+          previous !== undefined &&
+          (previous.length !== nextTargetIds.length ||
+            previous.some((id, index) => id !== nextTargetIds[index]))
+          ? listChangedMessage
+          : null,
+      );
+      if (openedProject !== null && hasUsableCatalog) {
+        previousTargetIds.current.set(openedProject, nextTargetIds);
       }
-      selectedTargetIdRef.current = nextTarget;
-      setSelectedTargetId(nextTarget);
-      setSelectionMessage(nextMessage);
+      setSnapshot(next);
+      setOpenedProjectId(openedProject);
       return next;
     },
     [],
@@ -78,24 +95,89 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
   const requestStatus = useCallback(() => {
     const request = ++generation.current;
     setStatusFailed(false);
-    setAdmitting(false);
+    setAdmittingProjectId(null);
     void rpc.call("status", {}).then(
       (value) => {
         if (request !== generation.current) return;
         try {
+          const retryRoute = failedAdmissionProjectId.current !== null;
           acceptSnapshot(value, null);
+          if (retryRoute) attemptedRouteSubPath.current = null;
         } catch {
           if (snapshot === null) setStatusFailed(true);
-          else setSelectionMessage("Status refresh failed safely. Try again.");
+          else
+            setSelectionMessage("Workbench reload failed safely. Try again.");
         }
       },
       () => {
         if (request !== generation.current) return;
         if (snapshot === null) setStatusFailed(true);
-        else setSelectionMessage("Status refresh failed safely. Try again.");
+        else setSelectionMessage("Workbench reload failed safely. Try again.");
       },
     );
   }, [acceptSnapshot, rpc, snapshot]);
+
+  const openProject = useCallback(
+    (projectId: string, routedSubPath: string | null = null) => {
+      if (snapshot?.projects.state !== "ready") return;
+      const project = snapshot.projects.items.find(
+        ({ id }) => id === projectId,
+      );
+      if (project?.admission !== "available") return;
+      const request = ++generation.current;
+      if (failedAdmissionProjectId.current === projectId) {
+        failedAdmissionProjectId.current = null;
+      }
+      routedAdmissionSubPath.current = routedSubPath;
+      setAdmittingProjectId(projectId);
+      setStatusFailed(false);
+      setSelectionMessage(null);
+      void rpc.call("admit", { projectId }).then(
+        (value) => {
+          if (request !== generation.current) return;
+          try {
+            acceptSnapshot(value, projectId);
+          } catch {
+            failedAdmissionProjectId.current = projectId;
+            setSelectionMessage(projectOpenFailedMessage);
+          } finally {
+            if (request === generation.current) {
+              routedAdmissionSubPath.current = null;
+              setAdmittingProjectId(null);
+            }
+          }
+        },
+        () => {
+          if (request !== generation.current) return;
+          routedAdmissionSubPath.current = null;
+          failedAdmissionProjectId.current = projectId;
+          setAdmittingProjectId(null);
+          setSelectionMessage(projectOpenFailedMessage);
+        },
+      );
+    },
+    [acceptSnapshot, rpc, snapshot],
+  );
+
+  const reload = useCallback(() => {
+    const openedProjectIsAvailable =
+      openedProjectId !== null &&
+      snapshot?.projects.state === "ready" &&
+      failedAdmissionProjectId.current !== openedProjectId &&
+      snapshot.projects.items.some(
+        ({ id, admission }) =>
+          id === openedProjectId && admission === "available",
+      );
+    if (openedProjectIsAvailable) {
+      const activeRoute = parseTargetRoute(activeSubPath.current);
+      openProject(
+        openedProjectId,
+        activeRoute?.projectId === openedProjectId
+          ? activeSubPath.current
+          : null,
+      );
+    } else requestStatus();
+  }, [openProject, openedProjectId, requestStatus, snapshot]);
 
   useEffect(() => {
     requestStatus();
@@ -106,83 +188,165 @@ export function PluginWorkbenchPanel(_props: PluginNavPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const admitProject = useCallback(() => {
-    if (snapshot?.projects.state !== "ready") return;
-    const selected = snapshot.projects.items.find(
-      ({ id }) => id === selectedProjectId,
-    );
-    if (selected?.admission !== "available") return;
-    const request = ++generation.current;
-    setAdmitting(true);
-    setStatusFailed(false);
-    setSelectionMessage(null);
-    void rpc.call("admit", { projectId: selected.id }).then(
-      (value) => {
-        if (request !== generation.current) return;
-        try {
-          acceptSnapshot(value, selected.id);
-        } catch {
-          setSelectionMessage("Project admission failed safely. Try again.");
-        } finally {
-          if (request === generation.current) setAdmitting(false);
-        }
-      },
-      () => {
-        if (request !== generation.current) return;
-        setAdmitting(false);
-        setSelectionMessage("Project admission failed safely. Try again.");
-      },
-    );
-  }, [acceptSnapshot, rpc, selectedProjectId, snapshot]);
+  const route = useMemo(() => parseTargetRoute(subPath), [subPath]);
 
-  const changeProject = useCallback((projectId: string) => {
-    generation.current += 1;
-    setAdmitting(false);
-    setSelectedProjectId(projectId);
-    setAdmittedProjectId(null);
-    selectedTargetIdRef.current = null;
-    setSelectedTargetId(null);
-    setSelectionMessage(null);
-  }, []);
-
-  const displayedSnapshot = useMemo(() => {
-    if (snapshot === null) {
-      return snapshot;
+  useEffect(() => {
+    const routeChanged = activeSubPath.current !== subPath;
+    activeSubPath.current = subPath;
+    if (
+      routeChanged &&
+      routedAdmissionSubPath.current !== null &&
+      routedAdmissionSubPath.current !== subPath
+    ) {
+      generation.current += 1;
+      routedAdmissionSubPath.current = null;
+      setAdmittingProjectId(null);
+    }
+    if (route === null) {
+      attemptedRouteSubPath.current = null;
+      return;
     }
     if (
-      (snapshot.targets.state !== "ready" &&
-        snapshot.targets.state !== "partial") ||
-      (admittedProjectId !== null && admittedProjectId === selectedProjectId)
+      routeChanged &&
+      admittingProjectId !== null &&
+      admittingProjectId !== route.projectId
     ) {
-      return snapshot;
+      generation.current += 1;
+      setAdmittingProjectId(null);
     }
-    return {
-      ...snapshot,
-      targets: { state: "project_not_selected", items: [] },
-    } satisfies PluginWorkbenchSnapshot;
-  }, [admittedProjectId, selectedProjectId, snapshot]);
+    if (
+      snapshot?.projects.state === "ready" &&
+      openedProjectId !== route.projectId &&
+      attemptedRouteSubPath.current !== subPath
+    ) {
+      attemptedRouteSubPath.current = subPath;
+      openProject(route.projectId, subPath);
+    }
+  }, [
+    admittingProjectId,
+    openProject,
+    openedProjectId,
+    route,
+    snapshot,
+    subPath,
+  ]);
+
+  const target =
+    route !== null &&
+    openedProjectId === route.projectId &&
+    snapshot !== null &&
+    (snapshot.targets.state === "ready" || snapshot.targets.state === "partial")
+      ? snapshot.targets.items.find(({ id }) => id === route.targetId)
+      : undefined;
+  const project =
+    route !== null && snapshot?.projects.state === "ready"
+      ? snapshot.projects.items.find(({ id }) => id === route.projectId)
+      : undefined;
+  useEffect(() => {
+    const malformedRoute = subPath !== "" && route === null;
+    const invalidProject =
+      route !== null &&
+      snapshot?.projects.state === "ready" &&
+      project?.admission !== "available";
+    const missingTerminalTarget =
+      route !== null &&
+      openedProjectId === route.projectId &&
+      snapshot !== null &&
+      snapshot.targets.state === "ready" &&
+      target === undefined;
+    const routeOpenFailed =
+      route !== null &&
+      admittingProjectId === null &&
+      openedProjectId !== route.projectId &&
+      failedAdmissionProjectId.current === route.projectId &&
+      selectionMessage === projectOpenFailedMessage;
+    if (
+      !malformedRoute &&
+      !invalidProject &&
+      !missingTerminalTarget &&
+      !routeOpenFailed
+    ) {
+      recoveredSubPath.current = null;
+      return;
+    }
+    if (recoveredSubPath.current === subPath) return;
+    recoveredSubPath.current = subPath;
+    navigate.toPluginPanel("workbench", { replace: true });
+  }, [
+    admittingProjectId,
+    navigate,
+    openedProjectId,
+    project,
+    route,
+    selectionMessage,
+    snapshot,
+    subPath,
+    target,
+  ]);
+  const threads = useMemo<readonly WorkbenchProjectThread[]>(() => {
+    if (route === null || sidebar.status !== "ready") return [];
+    return sidebar.threads
+      .filter(
+        (thread) =>
+          thread.projectId === route.projectId && thread.isArchived === false,
+      )
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+      .map((thread) => ({
+        id: thread.id,
+        title: thread.title ?? thread.titleFallback ?? "Untitled thread",
+        updatedAt: thread.updatedAt,
+      }));
+  }, [route, sidebar]);
 
   if (statusFailed) {
     return <PluginWorkbenchBoundary state="failed" onRetry={requestStatus} />;
   }
-  if (displayedSnapshot === null) {
+  if (snapshot === null) {
     return <PluginWorkbenchBoundary state="pending" onRetry={requestStatus} />;
+  }
+  if (route !== null && target && project) {
+    return (
+      <PluginWorkbenchTargetDetail
+        snapshot={snapshot}
+        busy={admittingProjectId !== null}
+        message={selectionMessage}
+        projectLabel={project.label}
+        target={target}
+        threads={threads}
+        threadsState={
+          sidebar.status === "error" ? "unavailable" : sidebar.status
+        }
+        onBack={() => navigate.toPluginPanel("workbench")}
+        onOpenThread={(threadId) => threadActions.open(threadId)}
+        onNewThread={() =>
+          threadActions.openNewThread({
+            projectId: project.id,
+            focusPrompt: true,
+          })
+        }
+        onRefresh={reload}
+      />
+    );
   }
   return (
     <PluginWorkbenchView
-      snapshot={displayedSnapshot}
-      selectedProjectId={selectedProjectId}
-      selectedTargetId={selectedTargetId}
-      admitting={admitting}
+      snapshot={snapshot}
+      openedProjectId={openedProjectId}
+      admittingProjectId={admittingProjectId}
       selectionMessage={selectionMessage}
-      onProjectChange={changeProject}
-      onTargetChange={(targetId) => {
-        selectedTargetIdRef.current = targetId;
-        setSelectedTargetId(targetId);
-        setSelectionMessage(null);
+      onOpenProject={(projectId) => {
+        if (route !== null && route.projectId !== projectId) {
+          attemptedRouteSubPath.current = subPath;
+          navigate.toPluginPanel("workbench", { replace: true });
+        }
+        openProject(projectId, route?.projectId === projectId ? subPath : null);
       }}
-      onAdmit={admitProject}
-      onRefresh={requestStatus}
+      onOpenTarget={(projectId, targetId) =>
+        navigate.toPluginPanel("workbench", {
+          subPath: `projects/${encodeURIComponent(projectId)}/targets/${encodeURIComponent(targetId)}`,
+        })
+      }
+      onRefresh={reload}
     />
   );
 }
@@ -191,7 +355,7 @@ export default definePluginApp((app) => {
   app.slots.navPanel({
     id: "plugin-workbench",
     title: "Plugin Workbench",
-    icon: "Wrench",
+    icon: "Toolbox",
     path: "workbench",
     component: PluginWorkbenchPanel,
   });

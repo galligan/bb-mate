@@ -31,7 +31,7 @@ function snapshot(
       state: "ready",
       items: [
         { id: "project_01", label: "BB Mate", admission: "available" },
-        { id: "project_02", label: "Remote", admission: "no_source" },
+        { id: "project_02", label: "Remote", admission: "available" },
       ],
     },
     targets,
@@ -55,11 +55,35 @@ let rpcImplementation: (
 const rpcCall = mock((method: string, input: unknown) =>
   rpcImplementation(method, input),
 );
-const rpcClient = { call: rpcCall };
+const navigateToPluginPanel = mock(() => {});
+const openThread = mock(() => {});
+const openNewThread = mock(() => {});
+let sidebarState: {
+  status: "loading" | "ready" | "error";
+  threads: Array<Record<string, unknown>>;
+  projects: Array<Record<string, unknown>>;
+} = { status: "ready", threads: [], projects: [] };
 
 mock.module("@bb/plugin-sdk/app", () => ({
   definePluginApp: (setup: unknown) => ({ __bbPluginApp: true, setup }),
-  useRpc: () => rpcClient,
+  useRpc: () => ({ call: rpcCall }),
+  useBbNavigate: () => ({
+    toPluginPanel: navigateToPluginPanel,
+    toThread: () => {},
+    toProject: () => {},
+    toCompose: () => {},
+    openThreadPanel: () => false,
+  }),
+  experimental_useSidebarThreads: () => sidebarState,
+  experimental_useSidebarThreadActions: () => ({
+    open: openThread,
+    openNewThread,
+    setPinned: async () => {},
+    setRead: async () => {},
+    rename: async () => {},
+    archive: () => {},
+    requestDelete: () => {},
+  }),
 }));
 
 let root: Root | undefined;
@@ -71,12 +95,14 @@ async function flush() {
   });
 }
 
-async function renderPanel() {
+async function renderPanel(subPath = "") {
   const { PluginWorkbenchPanel } = await import("./plugin-app");
   const container = document.querySelector("#root");
   if (!(container instanceof HTMLElement)) throw new Error("Missing root.");
   root = createRoot(container);
-  await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+  await act(async () =>
+    root?.render(<PluginWorkbenchPanel subPath={subPath} />),
+  );
   await flush();
 }
 
@@ -86,19 +112,13 @@ function button(label: string) {
   );
 }
 
-async function chooseProject(projectId = "project_01") {
-  const select = document.querySelector("select");
-  if (!(select instanceof HTMLSelectElement))
-    throw new Error("Missing project chooser.");
-  await act(async () => {
-    select.value = projectId;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
-
 beforeEach(() => {
   rpcCall.mockClear();
+  navigateToPluginPanel.mockClear();
+  openThread.mockClear();
+  openNewThread.mockClear();
   rpcImplementation = () => Promise.resolve(snapshot());
+  sidebarState = { status: "ready", threads: [], projects: [] };
   document.body.innerHTML = '<div id="root"></div>';
 });
 
@@ -109,7 +129,7 @@ afterEach(async () => {
 });
 
 describe("Plugin Workbench app registration", () => {
-  test("registers one native nav panel with the released contract", async () => {
+  test("registers one native nav panel with a supported Toolbox icon", async () => {
     const definition = (await import("./plugin-app")).default;
     const registrations: unknown[] = [];
     definition.setup({
@@ -121,13 +141,13 @@ describe("Plugin Workbench app registration", () => {
     expect(registrations[0]).toMatchObject({
       id: "plugin-workbench",
       title: "Plugin Workbench",
-      icon: "Wrench",
+      icon: "Toolbox",
       path: "workbench",
       component: expect.any(Function),
     });
   });
 
-  test("loads read-only status and admits only the explicitly chosen project", async () => {
+  test("loads read-only status and opens only the chosen project", async () => {
     rpcImplementation = (method) =>
       Promise.resolve(
         method === "status"
@@ -143,9 +163,7 @@ describe("Plugin Workbench app registration", () => {
     expect(rpcCall).toHaveBeenNthCalledWith(1, "status", {});
     expect(rpcCall).toHaveBeenCalledTimes(1);
 
-    await chooseProject();
-    expect(rpcCall).toHaveBeenCalledTimes(1);
-    await act(async () => button("Admit project")?.click());
+    await act(async () => button("Open")?.click());
     await flush();
 
     expect(rpcCall).toHaveBeenNthCalledWith(2, "admit", {
@@ -154,12 +172,13 @@ describe("Plugin Workbench app registration", () => {
     expect(rpcCall.mock.calls.some(([method]) => method === "ensure")).toBe(
       false,
     );
-    const radio = document.querySelector('input[type="radio"]');
-    expect(radio).toBeInstanceOf(HTMLInputElement);
-    expect((radio as HTMLInputElement).checked).toBe(true);
+    expect(document.body.textContent).toContain("Plugins in BB Mate");
+    expect(document.querySelector('[aria-label="Open Mate"]')).toBeInstanceOf(
+      HTMLButtonElement,
+    );
   });
 
-  test("keeps multiple target selection client-only", async () => {
+  test("opens a plugin through panel-internal history", async () => {
     rpcImplementation = (method) =>
       Promise.resolve(
         method === "status"
@@ -168,35 +187,340 @@ describe("Plugin Workbench app registration", () => {
               state: "ready",
               items: [
                 { id: targetA, label: "Mate", pluginId: "mate", revision: 1 },
-                {
-                  id: targetB,
-                  label: "Linear",
-                  pluginId: "linear",
-                  revision: 2,
-                },
               ],
             }),
       );
     await renderPanel();
-    await chooseProject();
-    await act(async () => button("Admit project")?.click());
+    await act(async () => button("Open")?.click());
     await flush();
-    const radios = Array.from(
-      document.querySelectorAll('input[type="radio"]'),
-    ) as HTMLInputElement[];
-    expect(radios).toHaveLength(2);
-    expect(radios.every(({ checked }) => !checked)).toBe(true);
-    await act(async () => radios[1]?.click());
-    expect(radios[1]?.checked).toBe(true);
-    expect(rpcCall).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      const target = document.querySelector('[aria-label="Open Mate"]');
+      if (!(target instanceof HTMLButtonElement))
+        throw new Error("Missing target.");
+      target.click();
+    });
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      subPath: `projects/project_01/targets/${targetA}`,
+    });
   });
 
-  test("hides a prior catalog when the user changes projects", async () => {
+  test("recovers a malformed detail route back to the project list once", async () => {
+    await renderPanel("not-a-plugin-detail");
+    await flush();
+
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("recovers a detail route for a project that is no longer available", async () => {
+    await renderPanel(`projects/missing_project/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("recovers a detail route for a project that is no longer eligible", async () => {
+    const ineligibleSnapshot = snapshot();
+    ineligibleSnapshot.projects.items[0] = {
+      id: "project_01",
+      label: "BB Mate",
+      admission: "no_source",
+    };
+    rpcImplementation = () => Promise.resolve(ineligibleSnapshot);
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("retries a detail route after the project catalog recovers", async () => {
+    let statusCalls = 0;
+    rpcImplementation = (method) => {
+      if (method === "admit") {
+        return Promise.resolve(
+          snapshot({
+            state: "ready",
+            items: [
+              { id: targetA, label: "Mate", pluginId: "mate", revision: 1 },
+            ],
+          }),
+        );
+      }
+      statusCalls += 1;
+      return Promise.resolve(
+        statusCalls === 1
+          ? snapshot({ state: "project_not_selected", items: [] })
+          : snapshot(),
+      ).then((value) => {
+        if (statusCalls === 1)
+          value.projects = { state: "unavailable", items: [] };
+        return value;
+      });
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(rpcCall).toHaveBeenCalledTimes(1);
+
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenNthCalledWith(2, "status", {});
+    expect(rpcCall).toHaveBeenNthCalledWith(3, "admit", {
+      projectId: "project_01",
+    });
+    expect(document.body.textContent).toContain("Mate");
+  });
+
+  test("recovers when a requested plugin is absent after project discovery", async () => {
+    rpcImplementation = () =>
+      Promise.resolve(snapshot({ state: "ready", items: [] }));
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(2);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("preserves a detail route while the target catalog is nonterminal", async () => {
+    const catalogs: PluginWorkbenchSnapshot["targets"][] = [
+      { state: "partial", items: [] },
+      {
+        state: "unavailable",
+        reason: "catalog_unavailable",
+        items: [],
+      },
+    ];
+    for (const targets of catalogs) {
+      rpcCall.mockClear();
+      navigateToPluginPanel.mockClear();
+      rpcImplementation = (method) =>
+        Promise.resolve(method === "status" ? snapshot() : snapshot(targets));
+
+      await renderPanel(`projects/project_01/targets/${targetA}`);
+      await flush();
+
+      expect(rpcCall).toHaveBeenCalledTimes(2);
+      expect(navigateToPluginPanel).not.toHaveBeenCalled();
+
+      await act(() => root?.unmount());
+      root = undefined;
+      document.body.innerHTML = '<div id="root"></div>';
+    }
+  });
+
+  test("supersedes a pending recovery refresh when returning to the project list", async () => {
+    const pending = deferred<unknown>();
+    let calls = 0;
+    rpcImplementation = (method) => {
+      calls += 1;
+      if (method === "status") return Promise.resolve(snapshot());
+      if (calls === 2) {
+        return Promise.resolve(snapshot({ state: "partial", items: [] }));
+      }
+      return pending.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () => button("Refresh")?.click());
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+
+    const projectOpen = button("Open");
+    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
+    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
+
+    pending.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Late plugin",
+            pluginId: "late",
+            revision: 2,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).not.toContain("Late plugin");
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
+  test("returns to the root before opening another project from an uncertain detail", async () => {
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      const projectId = (input as { projectId: string }).projectId;
+      return Promise.resolve(
+        snapshot(
+          projectId === "project_01"
+            ? { state: "partial", items: [] }
+            : {
+                state: "ready",
+                items: [
+                  {
+                    id: targetB,
+                    label: "Remote plugin",
+                    pluginId: "remote",
+                    revision: 1,
+                  },
+                ],
+              },
+        ),
+      );
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () =>
+      Array.from(document.querySelectorAll("button"))
+        .filter((candidate) => candidate.textContent === "Open")
+        .at(-1)
+        ?.click(),
+    );
+    await flush();
+
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+    expect(document.body.textContent).toContain("Remote plugin");
+  });
+
+  test("attempts a routed project once and recovers when opening fails", async () => {
     rpcImplementation = (method) =>
-      Promise.resolve(
-        method === "status"
-          ? snapshot()
-          : snapshot({
+      method === "status"
+        ? Promise.resolve(snapshot())
+        : Promise.reject(new Error("open failed"));
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(2);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+  });
+
+  test("retries a previously failed detail route without redirecting again", async () => {
+    const retry = deferred<unknown>();
+    let admissionAttempts = 0;
+    rpcImplementation = (method) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      admissionAttempts += 1;
+      return admissionAttempts === 1
+        ? Promise.reject(new Error("open failed"))
+        : retry.promise;
+    };
+
+    const detailSubPath = `projects/project_01/targets/${targetA}`;
+    await renderPanel(detailSubPath);
+    await flush();
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+    await act(async () =>
+      root?.render(<PluginWorkbenchPanel subPath={detailSubPath} />),
+    );
+    await flush();
+
+    expect(admissionAttempts).toBe(2);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+
+    retry.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetA,
+            label: "Plugin Workbench",
+            pluginId: "mate",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).toContain("Plugin Workbench");
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+  });
+
+  test("supersedes a pending project open when the detail route changes", async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      return (input as { projectId: string }).projectId === "project_01"
+        ? first.promise
+        : second.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_02/targets/${targetB}`}
+        />,
+      ),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledWith("admit", {
+      projectId: "project_02",
+    });
+
+    first.reject(new Error("first project failed"));
+    await flush();
+
+    expect(navigateToPluginPanel).not.toHaveBeenCalled();
+    second.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Remote plugin",
+            pluginId: "remote",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+    expect(document.body.textContent).toContain("Remote plugin");
+  });
+
+  test("supersedes a pending foreign project when history returns to the open detail", async () => {
+    const remote = deferred<unknown>();
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      return (input as { projectId: string }).projectId === "project_01"
+        ? Promise.resolve(
+            snapshot({
               state: "ready",
               items: [
                 {
@@ -207,20 +531,279 @@ describe("Plugin Workbench app registration", () => {
                 },
               ],
             }),
-      );
-    await renderPanel();
-    await chooseProject();
-    await act(async () => button("Admit project")?.click());
-    await flush();
-    expect(document.body.textContent).toContain("Mate");
+          )
+        : remote.promise;
+    };
 
-    await chooseProject("project_02");
-    expect(document.querySelectorAll('input[type="radio"]')).toHaveLength(0);
-    expect(document.body.textContent).toContain("Choose a development project");
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_02/targets/${targetB}`}
+        />,
+      ),
+    );
+    await flush();
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_01/targets/${targetA}`}
+        />,
+      ),
+    );
+    await flush();
+
+    remote.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Remote plugin",
+            pluginId: "remote",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).not.toContain("Remote plugin");
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
+  test("supersedes a pending routed project when history returns to the root", async () => {
+    const pending = deferred<unknown>();
+    rpcImplementation = (method) =>
+      method === "status" ? Promise.resolve(snapshot()) : pending.promise;
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+
+    const projectOpen = button("Open");
+    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
+    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
+
+    pending.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetA,
+            label: "Late plugin",
+            pluginId: "late",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).not.toContain("Late plugin");
     expect(rpcCall).toHaveBeenCalledTimes(2);
   });
 
-  test("clears a vanished target selection with a generic live message", async () => {
+  test("supersedes a pending detail refresh when returning to the project list", async () => {
+    const pending = deferred<unknown>();
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(targetSnapshot);
+      return pending.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await act(async () => button("Back to projects")?.click());
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+
+    const projectOpen = button("Open");
+    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
+    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
+
+    pending.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Late plugin",
+            pluginId: "late",
+            revision: 2,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).not.toContain("Late plugin");
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
+  test("keeps a detail open and reports a failed refresh in place", async () => {
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls < 3 || calls === 5) return Promise.resolve(targetSnapshot);
+      if (calls === 4) return Promise.resolve(snapshot());
+      return Promise.reject(new Error("reload failed"));
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).toContain(
+      "Project open failed safely. Try again.",
+    );
+    expect(navigateToPluginPanel).not.toHaveBeenCalled();
+
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenNthCalledWith(4, "status", {});
+    expect(rpcCall).toHaveBeenNthCalledWith(5, "admit", {
+      projectId: "project_01",
+    });
+    expect(document.body.textContent).toContain("Mate");
+  });
+
+  test("reloads status when an opened project's catalog becomes unavailable", async () => {
+    let calls = 0;
+    rpcImplementation = (method) => {
+      calls += 1;
+      const value = snapshot(
+        method === "admit" ? { state: "ready", items: [] } : undefined,
+      );
+      if (calls === 2) value.projects = { state: "unavailable", items: [] };
+      return Promise.resolve(value);
+    };
+
+    await renderPanel();
+    await act(async () =>
+      button("Open")?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenNthCalledWith(3, "status", {});
+  });
+
+  test("shows active project threads on a target detail and uses host actions", async () => {
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    rpcImplementation = () => Promise.resolve(targetSnapshot);
+    sidebarState = {
+      status: "ready",
+      projects: [],
+      threads: [
+        {
+          id: "thread_active",
+          projectId: "project_01",
+          title: "Native design pass",
+          titleFallback: null,
+          isArchived: false,
+          updatedAt: 3,
+        },
+        {
+          id: "thread_archived",
+          projectId: "project_01",
+          title: "Archived work",
+          titleFallback: null,
+          isArchived: true,
+          updatedAt: 4,
+        },
+        {
+          id: "thread_other",
+          projectId: "project_02",
+          title: "Other project",
+          titleFallback: null,
+          isArchived: false,
+          updatedAt: 5,
+        },
+      ],
+    };
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(document.body.textContent).toContain("Native design pass");
+    expect(document.body.textContent).not.toContain("Archived work");
+    expect(document.body.textContent).not.toContain("Other project");
+    await act(async () => button("Native design pass")?.click());
+    expect(openThread).toHaveBeenCalledWith("thread_active");
+    await act(async () => button("New thread")?.click());
+    expect(openNewThread).toHaveBeenCalledWith({
+      projectId: "project_01",
+      focusPrompt: true,
+    });
+    await act(async () => button("Back to projects")?.click());
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench");
+  });
+
+  test("keeps every unarchived project thread reachable from detail", async () => {
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    rpcImplementation = () => Promise.resolve(targetSnapshot);
+    sidebarState = {
+      status: "ready",
+      projects: [],
+      threads: Array.from({ length: 9 }, (_, index) => ({
+        id: `thread_${index}`,
+        projectId: "project_01",
+        title: `Project thread ${index + 1}`,
+        titleFallback: null,
+        isArchived: false,
+        updatedAt: index,
+      })),
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+
+    expect(document.body.textContent).toContain("Project thread 1");
+    expect(document.body.textContent).toContain("Project thread 9");
+  });
+
+  test("reports a changed plugin list after a project refresh", async () => {
     let admission = 0;
     rpcImplementation = (method) =>
       Promise.resolve(
@@ -249,29 +832,132 @@ describe("Plugin Workbench app registration", () => {
             }),
       );
     await renderPanel();
-    await chooseProject();
-    await act(async () => button("Admit project")?.click());
+    await act(async () => button("Open")?.click());
     await flush();
-    expect(
-      (document.querySelector('input[type="radio"]') as HTMLInputElement)
-        .checked,
-    ).toBe(true);
-
-    await act(async () => button("Refresh project")?.click());
+    await act(async () => button("Refresh")?.click());
     await flush();
-    const next = document.querySelector(
-      'input[type="radio"]',
-    ) as HTMLInputElement;
-    expect(next.checked).toBe(false);
-    expect(document.body.textContent).toContain(
-      "The target list changed. Choose a target.",
-    );
-    expect(document.body.textContent).not.toContain(targetA);
-    await act(async () => next.click());
-    expect(next.checked).toBe(true);
+    expect(document.body.textContent).toContain("The plugin list changed.");
+    expect(document.body.textContent).toContain("Linear");
+    expect(document.body.textContent).not.toContain("mate · revision 1");
   });
 
-  test("ignores superseded status responses and never polls", async () => {
+  test("reports plugins added after a recorded empty catalog", async () => {
+    let admission = 0;
+    rpcImplementation = (method) =>
+      Promise.resolve(
+        method === "status"
+          ? snapshot()
+          : snapshot({
+              state: "ready",
+              items:
+                admission++ === 0
+                  ? []
+                  : [
+                      {
+                        id: targetA,
+                        label: "Mate",
+                        pluginId: "mate",
+                        revision: 1,
+                      },
+                    ],
+            }),
+      );
+    await renderPanel();
+    await act(async () => button("Open")?.click());
+    await flush();
+    await act(async () => button("Refresh")?.click());
+    await flush();
+
+    expect(document.body.textContent).toContain("The plugin list changed.");
+    expect(document.body.textContent).toContain("Mate");
+  });
+
+  test("preserves the prior plugin list across an unavailable refresh", async () => {
+    let admission = 0;
+    rpcImplementation = (method) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      admission += 1;
+      if (admission === 2) {
+        return Promise.resolve(
+          snapshot({
+            state: "unavailable",
+            reason: "catalog_unavailable",
+            items: [],
+          }),
+        );
+      }
+      return Promise.resolve(
+        snapshot({
+          state: "ready",
+          items: [
+            admission === 1
+              ? {
+                  id: targetA,
+                  label: "Mate",
+                  pluginId: "mate",
+                  revision: 1,
+                }
+              : {
+                  id: targetB,
+                  label: "Linear",
+                  pluginId: "linear",
+                  revision: 2,
+                },
+          ],
+        }),
+      );
+    };
+
+    await renderPanel();
+    await act(async () => button("Open")?.click());
+    await flush();
+    await act(async () => button("Refresh")?.click());
+    await flush();
+    expect(document.body.textContent).not.toContain("The plugin list changed.");
+
+    await act(async () => button("Refresh")?.click());
+    await flush();
+    expect(document.body.textContent).toContain("The plugin list changed.");
+    expect(document.body.textContent).toContain("Linear");
+  });
+
+  test("compares plugin-list changes within a project instead of across projects", async () => {
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      const projectId = (input as { projectId: string }).projectId;
+      return Promise.resolve(
+        snapshot({
+          state: "ready",
+          items: [
+            projectId === "project_01"
+              ? {
+                  id: targetA,
+                  label: "Mate",
+                  pluginId: "mate",
+                  revision: 1,
+                }
+              : {
+                  id: targetB,
+                  label: "Remote plugin",
+                  pluginId: "remote",
+                  revision: 1,
+                },
+          ],
+        }),
+      );
+    };
+
+    await renderPanel();
+    await act(async () => button("Open")?.click());
+    await flush();
+    await act(async () => button("Open")?.click());
+    await flush();
+
+    expect(document.body.textContent).toContain("Remote plugin");
+    expect(document.body.textContent).not.toContain("The plugin list changed.");
+  });
+
+  test("ignores superseded reload responses and never polls", async () => {
     const older = deferred<unknown>();
     const newer = deferred<unknown>();
     let calls = 0;
@@ -281,15 +967,16 @@ describe("Plugin Workbench app registration", () => {
       return calls === 2 ? older.promise : newer.promise;
     };
     await renderPanel();
-    expect(document.body.textContent).toContain("Runtime ready");
+    const reload = document.querySelector(
+      '[aria-label="Reload Workbench data"]',
+    );
+    expect(reload).toBeInstanceOf(HTMLButtonElement);
     await act(async () => {
-      button("Refresh status")?.click();
-      button("Refresh status")?.click();
+      reload?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      reload?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    newer.resolve(
-      snapshot({ state: "project_not_selected", items: [] }) satisfies unknown,
-    );
+    newer.resolve(snapshot());
     await flush();
     older.resolve({
       ...snapshot(),
@@ -298,9 +985,7 @@ describe("Plugin Workbench app registration", () => {
     await flush();
 
     await new Promise((resolve) => setTimeout(resolve, 5));
-    expect(document.body.textContent).not.toContain(
-      "No eligible local projects",
-    );
+    expect(document.body.textContent).not.toContain("No local projects found");
     expect(rpcCall).toHaveBeenCalledTimes(3);
   });
 });

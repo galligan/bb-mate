@@ -35,23 +35,19 @@ function snapshot(
 
 function Fixture({
   value,
-  selectedProjectId = "",
-  selectedTargetId = null,
+  openedProjectId = null,
 }: {
   value: PluginWorkbenchSnapshot;
-  selectedProjectId?: string;
-  selectedTargetId?: string | null;
+  openedProjectId?: string | null;
 }) {
   return (
     <PluginWorkbenchView
       snapshot={value}
-      selectedProjectId={selectedProjectId}
-      selectedTargetId={selectedTargetId}
-      admitting={false}
+      openedProjectId={openedProjectId}
+      admittingProjectId={null}
       selectionMessage={null}
-      onProjectChange={() => {}}
-      onTargetChange={() => {}}
-      onAdmit={() => {}}
+      onOpenProject={() => {}}
+      onOpenTarget={() => {}}
       onRefresh={() => {}}
     />
   );
@@ -92,8 +88,7 @@ export function HostileVersion() {
           ],
         },
       })}
-      selectedProjectId="project_01"
-      selectedTargetId={targetId}
+      openedProjectId="project_01"
     />
   );
 }
