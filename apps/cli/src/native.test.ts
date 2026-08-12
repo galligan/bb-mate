@@ -160,20 +160,29 @@ describe("native command boundary", () => {
       "stubborn-tree",
       [
         "#!/bin/sh",
+        // Ignore TERM before forking so the descendant inherits SIG_IGN and
+        // setup cannot be interrupted between its fork and its own trap line.
+        'trap "" TERM',
         "sh -c 'trap \"\" TERM; while :; do :; done' &",
         "descendant=$!",
         `printf '%s' \"$descendant\" > ${JSON.stringify(descendantPidFile)}`,
+        // Readiness signal: exceeding maxOutputBytes triggers termination, so
+        // the kill sequence is causally ordered after the pid file write
+        // instead of racing shell startup against a wall-clock timeout.
+        "head -c 2048 /dev/zero",
         'wait "$descendant"',
         "",
       ].join("\n"),
     );
 
     const result = await runCapturedCommand(stalled.file, [], stalled.root, {
-      timeoutMs: 20,
+      timeoutMs: 5_000,
+      maxOutputBytes: 1_024,
     });
     const descendantPid = Number(await fs.readFile(descendantPidFile, "utf8"));
 
-    expect(result.exitCode).toBe(124);
+    expect(descendantPid).toBeGreaterThan(0);
+    expect(result.exitCode).toBe(125);
     expect(() => process.kill(descendantPid, 0)).toThrow();
   });
 
