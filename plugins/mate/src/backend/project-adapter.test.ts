@@ -240,6 +240,7 @@ describe("released bb project adapter", () => {
     if (inventory.state !== "ready") throw new Error("Expected inventory");
     expect(inventory.inventoryState).toBe("partial");
     const result = inventory.catalog;
+    expect(result.state).toBe("partial");
     expect(result.items).toHaveLength(128);
     expect(result.items[0]?.id).toBe("project-000");
     expect(result.items.at(-1)?.id).toBe("project-127");

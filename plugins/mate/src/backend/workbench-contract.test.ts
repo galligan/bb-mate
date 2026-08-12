@@ -145,6 +145,12 @@ describe("Plugin Studio v3 contract", () => {
         },
       }).success,
     ).toBe(false);
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: { state: "partial", items: [project] },
+      }).success,
+    ).toBe(true);
   });
 
   test("requires coherent runtime identity, activity, state, and unique bounded items", () => {

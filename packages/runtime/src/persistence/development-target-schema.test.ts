@@ -5,10 +5,18 @@ import * as os from "node:os";
 import * as path from "node:path";
 
 import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
+import {
+  bbContextId,
+  candidate,
+  cleanupDevelopmentTargetReconciliationFixtures,
+  makeFixture,
+  principalId,
+} from "../service/development-target-reconciliation-fixture.ts";
 
 const temporaryRoots: string[] = [];
 
 afterEach(async () => {
+  await cleanupDevelopmentTargetReconciliationFixtures();
   await Promise.all(
     temporaryRoots
       .splice(0)
@@ -17,6 +25,40 @@ afterEach(async () => {
 });
 
 describe("development-target source schema attestation", () => {
+  test("backfills legacy current-project scopes before complete-inventory retirement", async () => {
+    const fixture = await makeFixture();
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    await catalog.refresh({
+      principalId,
+      bbContextId,
+      candidate: await candidate(fixture.pluginRoot),
+    });
+    catalog.close();
+
+    const databasePath = path.join(fixture.dataRoot, "workbench.sqlite3");
+    const legacy = new Database(databasePath);
+    legacy.exec(`
+      DELETE FROM development_target_project_scopes;
+      DELETE FROM runtime_migrations WHERE version = 9;
+    `);
+    legacy.close();
+
+    const reopened = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    await reopened.refreshCompleteSnapshot({
+      principalId,
+      bbContextId,
+      candidates: [],
+      currentSourceRoots: [],
+      uncertainSourceRoots: [],
+    });
+    expect(reopened.list({ principalId, bbContextId })).toEqual([]);
+    reopened.close();
+  });
+
   test("upgrades legacy append-only guards to parent-lifetime retention guards", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
@@ -43,7 +85,7 @@ describe("development-target source schema attestation", () => {
         BEGIN
           SELECT RAISE(ABORT, 'development target host observations are append-only');
         END;
-      DELETE FROM runtime_migrations WHERE version IN (6, 7, 8);
+      DELETE FROM runtime_migrations WHERE version IN (6, 7, 8, 9);
     `);
     legacy.close();
 
@@ -82,7 +124,7 @@ describe("development-target source schema attestation", () => {
         inspect
           .query("SELECT MAX(version) AS version FROM runtime_migrations")
           .get(),
-      ).toEqual({ version: 8 });
+      ).toEqual({ version: 9 });
     } finally {
       inspect.close();
     }

@@ -96,7 +96,7 @@ export const projectCatalogSchema = z.discriminatedUnion("state", [
       const incomplete = catalog.items.some(
         ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
       );
-      return incomplete === (catalog.state === "partial");
+      return catalog.state === "partial" || !incomplete;
     }),
   z.object({ state: z.literal("unavailable"), items: z.tuple([]) }).strict(),
 ]);

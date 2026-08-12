@@ -233,10 +233,18 @@ describe("Plugin Studio backend v3", () => {
     );
 
     const result = (await host.handlers().refresh({} as never)) as {
-      projects: { items: unknown[] };
+      projects: {
+        state: string;
+        items: { scan: { state: string; items: unknown[] } }[];
+      };
     };
 
     expect(result.projects.items).toHaveLength(128);
+    expect(result.projects.state).toBe("partial");
+    expect(result.projects.items[0]?.scan).toEqual({
+      state: "ready",
+      items: [],
+    });
     const admitted = admission as {
       inventoryState: string;
       projects: { sourcePath: string }[];

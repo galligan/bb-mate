@@ -186,6 +186,15 @@ const PROJECT_SCOPES_TABLE = `CREATE TABLE development_target_project_scopes (
     PRIMARY KEY (principal_id, bb_context_id, canonical_root)
   ) STRICT`;
 
+const PROJECT_SCOPE_BACKFILL = `INSERT OR IGNORE INTO development_target_project_scopes (
+  principal_id,
+  bb_context_id,
+  canonical_root
+)
+SELECT principal_id, bb_context_id, canonical_root
+FROM development_target_sources
+WHERE root_kind = 'current-project';`;
+
 const PROJECT_SCOPE_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
   {
     type: "table",
@@ -325,6 +334,20 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
         database,
         "development_target_event_retention",
         EVENT_RETENTION_SCHEMA_ENTRIES,
+      );
+    },
+  },
+  {
+    version: 9,
+    checksum: createHash("sha256").update(PROJECT_SCOPE_BACKFILL).digest("hex"),
+    apply(database) {
+      database.exec(PROJECT_SCOPE_BACKFILL);
+    },
+    verify(database) {
+      verifyOwnedSchema(
+        database,
+        "development_target_project_scopes",
+        PROJECT_SCOPE_SCHEMA_ENTRIES,
       );
     },
   },

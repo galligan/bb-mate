@@ -176,17 +176,15 @@ export async function loadProjectInventory(
           left.option.id.localeCompare(right.option.id),
       );
     const admitted = eligible.slice(0, TARGET_ADMISSION_MAX_PROJECTS);
+    const truncated = eligible.length > TARGET_ADMISSION_MAX_PROJECTS;
     const catalog = projectCatalogSchema.parse({
-      state: "ready",
+      state: truncated ? "partial" : "ready",
       items: admitted.map(({ option }) => option),
     });
     if (catalog.state === "unavailable") throw new Error();
     return Object.freeze({
       state: "ready",
-      inventoryState:
-        eligible.length > TARGET_ADMISSION_MAX_PROJECTS
-          ? "partial"
-          : "complete",
+      inventoryState: truncated ? "partial" : "complete",
       catalog,
       sources: Object.freeze(admitted.map(({ source }) => source)),
       primaryHostId,

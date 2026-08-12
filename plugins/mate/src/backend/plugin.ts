@@ -128,11 +128,13 @@ function scannedCatalog(
       items: [] as const,
     },
   }));
-  const state = items.some(
-    ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
-  )
-    ? "partial"
-    : "ready";
+  const state =
+    catalog.state === "partial" ||
+    items.some(
+      ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
+    )
+      ? "partial"
+      : "ready";
   return projectCatalogSchema.parse({ state, items });
 }
 
@@ -317,9 +319,6 @@ export function createMatePlugin(
           const byKey = new Map(
             result.projects.map((project) => [project.projectKey, project]),
           );
-          const batchOnlyPartial =
-            result.state === "partial" &&
-            result.projects.every(({ state }) => state === "ready");
           for (const project of admitted) {
             const group = byKey.get(project.projectKey);
             const targets = group ? projectTargets(group) : null;
@@ -327,7 +326,7 @@ export function createMatePlugin(
               project.projectId,
               group && targets
                 ? {
-                    state: batchOnlyPartial ? "partial" : group.state,
+                    state: group.state,
                     items: targets,
                   }
                 : {
