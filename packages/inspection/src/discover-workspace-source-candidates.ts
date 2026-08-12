@@ -226,8 +226,9 @@ function validatePnpmPackagesBlockSyntax(source: string): void {
   for (const line of source.split(/\r?\n/u)) {
     const trimmed = line.trim();
     if (trimmed === "" || trimmed.startsWith("#")) continue;
-    if (line.startsWith("packages:")) {
-      if (sawPackages || !/^packages:\s*(?:#.*)?$/u.test(line))
+    const packagesRemainder = topLevelPackagesKeyRemainder(line);
+    if (packagesRemainder !== null) {
+      if (sawPackages || !/^\s*(?:#.*)?$/u.test(packagesRemainder))
         throw new Error();
       sawPackages = true;
       inPackages = true;
@@ -247,6 +248,18 @@ function validatePnpmPackagesBlockSyntax(source: string): void {
     itemCount += 1;
   }
   if (!sawPackages || itemCount === 0) throw new Error();
+}
+
+function topLevelPackagesKeyRemainder(line: string): string | null {
+  const mapping =
+    /^(packages|'(?:[^']|'')*'|"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*"):(.*)$/u.exec(
+      line,
+    );
+  if (!mapping) return null;
+  const parsed = Bun.YAML.parse(`${mapping[1]!}: null`) as unknown;
+  return isRecord(parsed) && Object.hasOwn(parsed, "packages")
+    ? mapping[2]!
+    : null;
 }
 
 function parseWorkspacePatterns(
