@@ -143,6 +143,38 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("rejects a duplicate pnpm packages key after the parsed block", async () => {
+    const root = await harness.createRoot("private-pnpm-duplicate");
+    const first = path.join(root, "plugins", "first");
+    const second = path.join(root, "extensions", "second");
+    await fs.mkdir(first, { recursive: true });
+    await fs.mkdir(second, { recursive: true });
+    await harness.writePlugin(first, "first");
+    await harness.writePlugin(second, "second");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - 'plugins/*'\nother: true\npackages:\n  - 'extensions/*'\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-duplicate",
+      }),
+    ]);
+  });
+
   test("reports unsupported pnpm workspace syntax as partial", async () => {
     const root = await harness.createRoot("private-pnpm-workspace");
     const plugin = path.join(root, "plugins", "mate");
