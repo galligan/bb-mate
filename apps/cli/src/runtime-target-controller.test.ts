@@ -1188,13 +1188,27 @@ describe("runtime target controller", () => {
 
   test("bounds duplicate-root fan-out by total serialized target entries", async () => {
     const fixture = await makeFixture();
-    const workspaces = Array.from({ length: 65 }, (_, index) =>
+    const workspaces = Array.from({ length: 64 }, (_, index) =>
       path.join("plugins", `plugin-${index}`),
     );
     await fs.mkdir(fixture.sourceRoot, { recursive: true });
     await fs.writeFile(
+      path.join(fixture.sourceRoot, "server.ts"),
+      "export {};\n",
+    );
+    await fs.writeFile(
       path.join(fixture.sourceRoot, "package.json"),
-      JSON.stringify({ name: "fixture", private: true, workspaces }),
+      JSON.stringify({
+        name: "bb-plugin-root-plugin",
+        version: "1.2.3",
+        bb: {
+          name: "root-plugin",
+          description: "root plugin",
+          branding: { icon: "Puzzle" },
+          server: "./server.ts",
+        },
+        workspaces,
+      }),
     );
     await Promise.all(
       workspaces.map((workspace, index) =>

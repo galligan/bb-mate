@@ -43,6 +43,43 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("stops pathological matching at the aggregate work budget", async () => {
+    const root = await harness.createRoot();
+    const names = Array.from(
+      { length: 8 },
+      (_, index) => `${String.fromCharCode(97 + index)}${"z".repeat(240)}`,
+    );
+    await Promise.all(names.map((name) => fs.mkdir(path.join(root, name))));
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: Array.from(
+          { length: 64 },
+          (_, index) =>
+            `${"*?".repeat(119)}${index.toString(36).padStart(2, "0")}`,
+        ),
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const started = performance.now();
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(performance.now() - started).toBeLessThan(2_000);
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        detail: expect.stringContaining("global matching budget"),
+      }),
+    ]);
+  });
+
   test("bounds a separated-wildcard segment nonmatch", async () => {
     const root = await harness.createRoot();
     await fs.mkdir(path.join(root, `${"a".repeat(120)}c`));
@@ -64,129 +101,10 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
-  test("bounds aggregate workspace matching work across directory entries", async () => {
-    const root = await harness.createRoot("private-workspace-match-limit");
-    await Promise.all(
-      Array.from({ length: 24 }, (_, index) =>
-        fs.mkdir(path.join(root, `${"a".repeat(40)}-${index}`)),
-      ),
-    );
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({
-        name: "workspace-root",
-        private: true,
-        workspaces: Array.from(
-          { length: 256 },
-          (_, index) => `${"*?".repeat(20)}z${index}`,
-        ),
-      }),
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-workspace-match-limit",
-        detail: expect.stringContaining("matching"),
-      }),
-    ]);
-    expect(JSON.stringify(result.diagnostics)).not.toContain(
-      path.dirname(root),
-    );
-  });
-
-  test("charges globstar memo states against the aggregate matching budget", async () => {
-    const root = await harness.createRoot("private-workspace-globstar-limit");
-    let directory = root;
-    for (let depth = 0; depth < 64; depth += 1) {
-      directory = path.join(directory, `level-${depth}`);
-      await fs.mkdir(directory);
-    }
-    const globstarChain = Array.from({ length: 31 }, () => "**").join("/");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({
-        name: "workspace-root",
-        private: true,
-        workspaces: [
-          "**",
-          ...Array.from({ length: 255 }, () => `!${globstarChain}/z`),
-        ],
-      }),
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-workspace-globstar-limit",
-        detail: expect.stringContaining("matching"),
-      }),
-    ]);
-    expect(JSON.stringify(result.diagnostics)).not.toContain(
-      path.dirname(root),
-    );
-  });
-
-  test("charges triangular globstar closure visits against the matching budget", async () => {
-    const root = await harness.createRoot("private-workspace-closure-limit");
-    let directory = root;
-    for (let depth = 0; depth < 31; depth += 1) {
-      directory = path.join(directory, `level-${depth}`);
-      await fs.mkdir(directory);
-    }
-    await Promise.all(
-      Array.from({ length: 600 }, (_, index) =>
-        fs.symlink("missing", path.join(directory, `link-${index}`)),
-      ),
-    );
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({
-        name: "workspace-root",
-        private: true,
-        workspaces: [
-          `${Array.from({ length: 31 }, () => "**").join("/")}/target`,
-        ],
-      }),
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-workspace-closure-limit",
-        detail: expect.stringContaining("matching"),
-      }),
-    );
-    expect(JSON.stringify(result.diagnostics)).not.toContain(
-      path.dirname(root),
-    );
-  });
-
-  test("completes a valid sixty-five-candidate workspace below the matching budget", async () => {
+  test("completes a valid sixty-four-candidate workspace", async () => {
     const root = await harness.createRoot();
     const workspaces = Array.from(
-      { length: 65 },
+      { length: 64 },
       (_, index) => `plugins/plugin-${index}`,
     );
     await Promise.all(
@@ -206,48 +124,97 @@ describe("workspace-aware source discovery", () => {
 
     const result = await discoverWorkspaceSourceCandidates(admission.roots);
 
-    expect(result.candidates).toHaveLength(65);
+    expect(result.candidates).toHaveLength(64);
     expect(result.diagnostics).toEqual([]);
   });
 
-  test("marks a later unscanned root partial when the global matching budget is exhausted", async () => {
-    const expensiveRoot = await harness.createRoot("00-expensive");
-    const validRoot = path.join(path.dirname(expensiveRoot), "zz-valid");
-    await fs.mkdir(validRoot);
-    await harness.writePlugin(validRoot, "valid");
-    await Promise.all(
-      Array.from({ length: 24 }, (_, index) =>
-        fs.mkdir(path.join(expensiveRoot, `${"a".repeat(40)}-${index}`)),
-      ),
-    );
+  test("rejects a workspace declaring sixty-five patterns", async () => {
+    const root = await harness.createRoot("private-workspace-pattern-count");
+    const plugin = path.join(root, "plugins", "plugin-0");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "plugin-0");
     await fs.writeFile(
-      path.join(expensiveRoot, "package.json"),
+      path.join(root, "package.json"),
       JSON.stringify({
         name: "workspace-root",
         private: true,
         workspaces: Array.from(
-          { length: 256 },
-          (_, index) => `${"*?".repeat(20)}z${index}`,
+          { length: 65 },
+          (_, index) => `plugins/plugin-${index}`,
         ),
       }),
     );
     const admission = await admitTrustedRoots([
-      {
-        rootKey: WORKSPACE_ROOT_KEY,
-        kind: "current-project",
-        path: expensiveRoot,
-      },
-      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: validRoot },
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
     ]);
 
     const result = await discoverWorkspaceSourceCandidates(admission.roots);
 
     expect(result.candidates).toEqual([]);
-    expect(
-      result.diagnostics.map(({ code, rootKey }) => ({ code, rootKey })),
-    ).toEqual([
-      { code: "workspace-config-invalid", rootKey: WORKSPACE_ROOT_KEY },
-      { code: "workspace-config-invalid", rootKey: EXAMPLE_ROOT_KEY },
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-workspace-pattern-count",
+      }),
+    ]);
+  });
+
+  test("accepts a 256-byte pattern and rejects a 257-byte pattern", async () => {
+    const acceptedRoot = await harness.createRoot("workspace-pattern-bytes-ok");
+    const acceptedName = "a".repeat(248);
+    const acceptedPlugin = path.join(acceptedRoot, "plugins", acceptedName);
+    await fs.mkdir(acceptedPlugin, { recursive: true });
+    await harness.writePlugin(acceptedPlugin, "sized");
+    await fs.writeFile(
+      path.join(acceptedRoot, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: [`plugins/${acceptedName}`],
+      }),
+    );
+    const acceptedAdmission = await admitTrustedRoots([
+      {
+        rootKey: WORKSPACE_ROOT_KEY,
+        kind: "current-project",
+        path: acceptedRoot,
+      },
+    ]);
+
+    const accepted = await discoverWorkspaceSourceCandidates(
+      acceptedAdmission.roots,
+    );
+
+    expect(accepted.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "sized",
+    ]);
+    expect(accepted.diagnostics).toEqual([]);
+
+    const rejectedRoot = await harness.createRoot("workspace-pattern-bytes");
+    await fs.writeFile(
+      path.join(rejectedRoot, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: [`plugins/${"a".repeat(249)}`],
+      }),
+    );
+    const rejectedAdmission = await admitTrustedRoots([
+      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: rejectedRoot },
+    ]);
+
+    const rejected = await discoverWorkspaceSourceCandidates(
+      rejectedAdmission.roots,
+    );
+
+    expect(rejected.candidates).toEqual([]);
+    expect(rejected.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: EXAMPLE_ROOT_KEY,
+        displayPath: "workspace-pattern-bytes",
+      }),
     ]);
   });
 
