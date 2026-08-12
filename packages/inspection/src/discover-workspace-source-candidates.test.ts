@@ -715,6 +715,32 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("rejects an explicit pnpm packages key split after a tag property", async () => {
+    const root = await harness.createRoot("private-pnpm-explicit-tag-property");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - plugins/*\n? !!str\n  packages\n:\n  - extensions/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-explicit-tag-property",
+      }),
+    ]);
+  });
+
   test("supports an alias used only as a pnpm workspace item value", async () => {
     const root = await harness.createRoot();
     const plugin = path.join(root, "plugins", "included");

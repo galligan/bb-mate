@@ -319,7 +319,8 @@ function validateNoExplicitTopLevelPackagesKey(source: string): void {
       awaitingMultilineKey = false;
       if (
         line.startsWith(" ") &&
-        (isYamlNodeReference(trimmed) || isSemanticPackagesScalar(trimmed))
+        (isUnsupportedExplicitKeySource(trimmed) ||
+          isSemanticPackagesScalar(trimmed))
       )
         throw new Error();
       if (line.startsWith(" ")) continue;
@@ -332,9 +333,13 @@ function validateNoExplicitTopLevelPackagesKey(source: string): void {
       awaitingMultilineKey = true;
       continue;
     }
-    if (isYamlNodeReference(key) || isSemanticPackagesScalar(key))
+    if (isUnsupportedExplicitKeySource(key) || isSemanticPackagesScalar(key))
       throw new Error();
   }
+}
+
+function isUnsupportedExplicitKeySource(source: string): boolean {
+  return source.trimStart().startsWith("!") || isYamlNodeReference(source);
 }
 
 function isUnsupportedTopLevelKeyReference(line: string): boolean {
