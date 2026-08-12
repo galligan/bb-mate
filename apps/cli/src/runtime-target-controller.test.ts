@@ -648,7 +648,7 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
-  test("preserves an omitted nested project scope in a partial inventory", async () => {
+  test("registers a nested project first seen in a partial inventory", async () => {
     const fixture = await makeFixture();
     const childRoot = path.join(fixture.sourceRoot, "child");
     await writePlugin(childRoot, "omitted-child");
@@ -667,7 +667,7 @@ describe("runtime target controller", () => {
     });
     await controller.admit(context(), {
       schemaVersion: 2,
-      inventoryState: "complete" as const,
+      inventoryState: "partial" as const,
       projects: [{ projectKey: "c".repeat(32), sourcePath: childRoot }],
     });
     await fs.writeFile(

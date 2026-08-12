@@ -218,9 +218,13 @@ export async function openDevelopmentTargetCatalog(
         const currentSourceRoots = validateSourceScopes(
           input.currentSourceRoots,
         );
-        const authoritativeSourceRoots =
+        const requestedAuthoritativeSourceRoots =
           currentSourceRoots === undefined
             ? validateSourceScopes(input.authoritativeSourceRoots)
+            : undefined;
+        const authoritativeSourceRoots =
+          currentSourceRoots === undefined
+            ? requestedAuthoritativeSourceRoots
             : new Set([
                 ...storage.listProjectScopes(
                   input.principalId,
@@ -375,7 +379,15 @@ export async function openDevelopmentTargetCatalog(
           present,
           retired,
           ...(currentSourceRoots === undefined
-            ? {}
+            ? requestedAuthoritativeSourceRoots === undefined
+              ? {}
+              : {
+                  scopeAdditions: {
+                    principalId: input.principalId,
+                    bbContextId: input.bbContextId,
+                    sourceRoots: [...requestedAuthoritativeSourceRoots],
+                  },
+                }
             : {
                 scopeSnapshot: {
                   principalId: input.principalId,

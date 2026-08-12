@@ -174,6 +174,11 @@ export interface DevelopmentTargetCatalogStorage {
       readonly bbContextId: BbContextId;
       readonly currentSourceRoots: readonly string[];
     };
+    readonly scopeAdditions?: {
+      readonly principalId: PrincipalId;
+      readonly bbContextId: BbContextId;
+      readonly sourceRoots: readonly string[];
+    };
   }): void;
 }
 
@@ -302,6 +307,11 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const insertProjectScope = database.query(`
     INSERT INTO development_target_project_scopes (
+      principal_id, bb_context_id, canonical_root
+    ) VALUES (?, ?, ?)
+  `);
+  const addProjectScope = database.query(`
+    INSERT OR IGNORE INTO development_target_project_scopes (
       principal_id, bb_context_id, canonical_root
     ) VALUES (?, ?, ?)
   `);
@@ -670,6 +680,11 @@ export function createDevelopmentTargetCatalogStorage(
         readonly bbContextId: BbContextId;
         readonly currentSourceRoots: readonly string[];
       };
+      readonly scopeAdditions?: {
+        readonly principalId: PrincipalId;
+        readonly bbContextId: BbContextId;
+        readonly sourceRoots: readonly string[];
+      };
     }) => {
       const sample = input.present[0]?.envelope ?? input.retired[0]?.envelope;
       const activeCount = sample
@@ -795,6 +810,15 @@ export function createDevelopmentTargetCatalogStorage(
           insertProjectScope.run(
             input.scopeSnapshot.principalId,
             input.scopeSnapshot.bbContextId,
+            sourceRoot,
+          );
+        }
+      }
+      if (input.scopeAdditions) {
+        for (const sourceRoot of input.scopeAdditions.sourceRoots) {
+          addProjectScope.run(
+            input.scopeAdditions.principalId,
+            input.scopeAdditions.bbContextId,
             sourceRoot,
           );
         }
