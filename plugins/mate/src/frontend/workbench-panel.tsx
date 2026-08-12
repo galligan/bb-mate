@@ -174,13 +174,11 @@ function ProjectTargets({
   catalog,
   projectId,
   projectLabel,
-  selectionMessage,
   onOpenTarget,
 }: {
   catalog: TargetCatalog;
   projectId: string;
   projectLabel: string;
-  selectionMessage: string | null;
   onOpenTarget(projectId: string, targetId: string): void;
 }) {
   if (catalog.state === "project_not_selected") return null;
@@ -227,15 +225,6 @@ function ProjectTargets({
         >
           The project scan was not exhaustive. Plugins found within the safety
           limits are shown below.
-        </p>
-      ) : null}
-      {selectionMessage ? (
-        <p
-          className="text-xs leading-snug text-subtle-foreground"
-          role="status"
-          aria-live="polite"
-        >
-          {selectionMessage}
         </p>
       ) : null}
       <div className="divide-y divide-border overflow-hidden rounded-md border border-border">
@@ -293,7 +282,7 @@ export function PluginWorkbenchView({
           onRefresh={onRefresh}
         />
 
-        {selectionMessage && openedProjectId === null ? (
+        {selectionMessage ? (
           <p
             className="text-xs leading-snug text-subtle-foreground"
             role="status"
@@ -365,7 +354,6 @@ export function PluginWorkbenchView({
                         catalog={snapshot.targets}
                         projectId={project.id}
                         projectLabel={project.label}
-                        selectionMessage={selectionMessage}
                         onOpenTarget={onOpenTarget}
                       />
                     </div>

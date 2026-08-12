@@ -244,6 +244,48 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
+  test("retries a detail route after the project catalog recovers", async () => {
+    let statusCalls = 0;
+    rpcImplementation = (method) => {
+      if (method === "admit") {
+        return Promise.resolve(
+          snapshot({
+            state: "ready",
+            items: [
+              { id: targetA, label: "Mate", pluginId: "mate", revision: 1 },
+            ],
+          }),
+        );
+      }
+      statusCalls += 1;
+      return Promise.resolve(
+        statusCalls === 1
+          ? snapshot({ state: "project_not_selected", items: [] })
+          : snapshot(),
+      ).then((value) => {
+        if (statusCalls === 1)
+          value.projects = { state: "unavailable", items: [] };
+        return value;
+      });
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    expect(rpcCall).toHaveBeenCalledTimes(1);
+
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await flush();
+
+    expect(rpcCall).toHaveBeenNthCalledWith(2, "status", {});
+    expect(rpcCall).toHaveBeenNthCalledWith(3, "admit", {
+      projectId: "project_01",
+    });
+    expect(document.body.textContent).toContain("Mate");
+  });
+
   test("recovers when a requested plugin is absent after project discovery", async () => {
     rpcImplementation = () =>
       Promise.resolve(snapshot({ state: "ready", items: [] }));

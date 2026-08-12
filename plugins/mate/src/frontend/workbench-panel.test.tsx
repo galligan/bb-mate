@@ -126,6 +126,17 @@ describe("Plugin Workbench nav panel", () => {
     expect(html).toContain('role="status"');
   });
 
+  test("keeps project-switch failures visible above an opened empty project", () => {
+    const html = render(snapshot({ targets: { state: "ready", items: [] } }), {
+      openedProjectId: "project_01",
+      selectionMessage: "Project open failed safely. Try again.",
+    });
+
+    expect(html).toContain("Project open failed safely. Try again.");
+    expect(html).toContain('role="status"');
+    expect(html).toContain("No development plugins found");
+  });
+
   test("keeps failure, partial-empty, and empty plugin states distinct", () => {
     const unavailable = render(
       snapshot({ projects: { state: "unavailable", items: [] } }),

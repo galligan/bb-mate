@@ -163,7 +163,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       return;
     }
     if (
-      snapshot !== null &&
+      snapshot?.projects.state === "ready" &&
       openedProjectId !== route.projectId &&
       admittingProjectId === null &&
       attemptedRouteSubPath.current !== subPath
