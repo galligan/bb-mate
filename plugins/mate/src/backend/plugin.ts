@@ -236,8 +236,22 @@ export function createMatePlugin(
         });
       }
       const runtime = await supervisor.ensure(dataRoot);
-      if (runtime.runtimeState !== "ready")
-        return snapshot(runtime, before.catalog);
+      if (runtime.runtimeState !== "ready") {
+        const scans = new Map<string, ProjectOption["scan"]>(
+          before.sources.map((source) => [
+            source.projectId,
+            {
+              state: "unavailable" as const,
+              reason: "scan_failed" as const,
+              items: [],
+            },
+          ]),
+        );
+        return snapshot(
+          supervisor.status(),
+          scannedCatalog(before.catalog, scans),
+        );
+      }
 
       const after = await loadProjectInventory(sdk);
       if (

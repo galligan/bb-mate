@@ -26,6 +26,17 @@ const ready: RuntimeSupervisorSnapshot = {
   apiVersion: 2,
   canStart: false,
 };
+const failed: RuntimeSupervisorSnapshot = {
+  ...idle,
+  runtimeState: "failed",
+  reason: "startup_failed",
+};
+const unavailable: RuntimeSupervisorSnapshot = {
+  ...idle,
+  runtimeState: "unavailable",
+  reason: "artifact_missing",
+  canStart: false,
+};
 
 const source = (projectId: string, suffix = projectId) => ({
   id: `source-${suffix}`,
@@ -262,6 +273,96 @@ describe("Plugin Studio backend v3", () => {
     expect(admitted.inventoryState).toBe("partial");
     expect(admitted.projects).toHaveLength(128);
     expect(admitted.projects[0]?.sourcePath).toBe("/Users/test/project-000");
+  });
+
+  test("finishes every project scan when runtime startup is terminal", async () => {
+    const projects = Array.from({ length: 129 }, (_, index) => {
+      const id = `terminal-${String(index).padStart(3, "0")}`;
+      return project(id, `Terminal ${index}`, {
+        sources: [source(id)],
+      });
+    });
+    for (const terminal of [failed, unavailable]) {
+      let ensures = 0;
+      let admissions = 0;
+      let runtime = idle;
+      const host = hostFixture(
+        {
+          status: () => runtime,
+          async ensure() {
+            ensures += 1;
+            runtime = terminal;
+            return terminal;
+          },
+          async admitProjects() {
+            admissions += 1;
+            throw new Error("/private/admission/should-not-run");
+          },
+          async runService() {},
+          async stop() {},
+        },
+        { projects },
+      );
+
+      const statusResult = (await host.handlers().status({} as never)) as {
+        runtimeState: string;
+        projects: {
+          state: string;
+          truncated: boolean;
+          items: { scan: unknown }[];
+        };
+      };
+      expect(statusResult).toMatchObject({
+        runtimeState: "idle",
+        projects: {
+          state: "partial",
+          truncated: true,
+        },
+      });
+      expect(statusResult.projects.items).toHaveLength(128);
+      expect(
+        statusResult.projects.items.every(
+          ({ scan }) =>
+            JSON.stringify(scan) ===
+            JSON.stringify({ state: "not_scanned", items: [] }),
+        ),
+      ).toBe(true);
+      const [result, concurrent] = await Promise.all([
+        host.handlers().refresh({} as never),
+        host.handlers().refresh({} as never),
+      ]);
+      expect(concurrent).toEqual(result);
+      const terminalResult = result as {
+        projects: { items: { scan: unknown }[] };
+      };
+      expect(result).toMatchObject({
+        runtimeState: terminal.runtimeState,
+        reason: terminal.reason,
+        runtimeVersion: null,
+        apiVersion: null,
+        canStart: terminal.canStart,
+        projects: {
+          state: "partial",
+          truncated: true,
+        },
+      });
+      expect(terminalResult.projects.items).toHaveLength(128);
+      expect(
+        terminalResult.projects.items.every(
+          ({ scan }) =>
+            JSON.stringify(scan) ===
+            JSON.stringify({
+              state: "unavailable",
+              reason: "scan_failed",
+              items: [],
+            }),
+        ),
+      ).toBe(true);
+      expect(ensures).toBe(1);
+      expect(admissions).toBe(0);
+      expect(JSON.stringify(result)).not.toContain("/Users/test");
+      expect(JSON.stringify(result)).not.toContain("/private/admission");
+    }
   });
 
   test("attests a complete empty inventory while list failures make no runtime demand", async () => {
