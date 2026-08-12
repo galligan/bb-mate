@@ -319,11 +319,20 @@ describe("Plugin Studio backend v3", () => {
       }),
     ];
     let lists = 0;
+    let ensures = 0;
     let admitted: unknown;
+    let runtime = idle;
+    const failed: RuntimeSupervisorSnapshot = {
+      ...idle,
+      runtimeState: "failed",
+      reason: "startup_failed",
+    };
     const host = hostFixture(
       {
-        status: () => idle,
+        status: () => runtime,
         async ensure() {
+          ensures += 1;
+          runtime = ready;
           return ready;
         },
         async admitProjects(input) {
@@ -342,12 +351,26 @@ describe("Plugin Studio backend v3", () => {
         async stop() {},
       },
       {
-        listProjects: async () => (++lists === 1 ? before : after),
+        listProjects: async () => {
+          lists += 1;
+          if (lists === 1) return before;
+          runtime = failed;
+          return after;
+        },
       },
     );
 
-    const result = await host.handlers().refresh({} as never);
+    const [result, concurrent] = await Promise.all([
+      host.handlers().refresh({} as never),
+      host.handlers().refresh({} as never),
+    ]);
+    expect(concurrent).toEqual(result);
     expect(result).toMatchObject({
+      runtimeState: "failed",
+      reason: "startup_failed",
+      runtimeVersion: null,
+      apiVersion: null,
+      canStart: true,
       projects: {
         state: "partial",
         items: [
@@ -371,6 +394,8 @@ describe("Plugin Studio backend v3", () => {
       },
     });
     expect(admitted).toBeUndefined();
+    expect(ensures).toBe(1);
+    expect(lists).toBe(2);
     expect(JSON.stringify(result)).not.toContain("/private/changed");
   });
 

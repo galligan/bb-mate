@@ -33,6 +33,7 @@ const MAX_WORKSPACE_PATTERN_COUNT = 256;
 const MAX_WORKSPACE_PATTERN_BYTES = 1_024;
 const MAX_WORKSPACE_PATTERN_SEGMENTS = 32;
 const MAX_PNPM_WORKSPACE_BYTES = 64 * 1024;
+const MAX_WORKSPACE_MATCH_WORK = 8_000_000;
 
 interface WorkspacePattern {
   readonly negative: boolean;
@@ -41,7 +42,20 @@ interface WorkspacePattern {
 
 interface WorkspaceScanState extends RootScanState {
   readonly patterns: readonly WorkspacePattern[];
+  readonly matchBudget: WorkspaceMatchBudget;
   readonly signal?: AbortSignal;
+  matchComplete: boolean;
+}
+
+interface WorkspaceMatchBudget {
+  activeRoot: TrustedRoot | null;
+  used: number;
+}
+
+class WorkspaceMatchLimitError extends Error {
+  constructor(readonly root: TrustedRoot) {
+    super("workspace match limit");
+  }
 }
 
 export async function discoverWorkspaceSourceCandidates(
@@ -53,25 +67,43 @@ export async function discoverWorkspaceSourceCandidates(
   const diagnostics: DiscoveryDiagnostic[] = [];
   const baseStates = createRootScanStates(roots);
   const states: WorkspaceScanState[] = [];
+  const matchBudget: WorkspaceMatchBudget = { activeRoot: null, used: 0 };
 
   for (const state of baseStates) {
     options.signal?.throwIfAborted();
     states.push({
       ...state,
       patterns: await readWorkspacePatterns(state, diagnostics, options.signal),
+      matchBudget,
+      matchComplete: false,
       signal: options.signal,
     });
   }
-  for (const state of states) {
-    options.signal?.throwIfAborted();
-    await scanAvailable(state, candidates, diagnostics);
+  try {
+    for (const state of states) {
+      options.signal?.throwIfAborted();
+      await scanAvailable(state, candidates, diagnostics);
+    }
+    await redistributeUnusedEntryCapacity(
+      states,
+      candidates,
+      diagnostics,
+      scanWorkspaceRootState,
+    );
+  } catch (error) {
+    if (!(error instanceof WorkspaceMatchLimitError)) throw error;
+    for (const state of states) {
+      if (state.matchComplete) continue;
+      diagnostics.push(
+        discoveryDiagnostic(
+          "workspace-config-invalid",
+          state.root,
+          state.root.displayName,
+          `Workspace matching at ${state.root.displayName} did not complete because the global ${MAX_WORKSPACE_MATCH_WORK}-step limit was reached; results are partial.`,
+        ),
+      );
+    }
   }
-  await redistributeUnusedEntryCapacity(
-    states,
-    candidates,
-    diagnostics,
-    scanWorkspaceRootState,
-  );
   redistributeUnusedCandidateCapacity(states, candidates);
   reportTrueLimits(states, candidates.length, diagnostics);
   options.signal?.throwIfAborted();
@@ -309,7 +341,19 @@ async function scanAvailable(
   candidates: SourceCandidate[],
   diagnostics: DiscoveryDiagnostic[],
 ): Promise<void> {
+  state.matchComplete = false;
   state.signal?.throwIfAborted();
+  state.matchBudget.activeRoot = state.root;
+  await scanAvailableInner(state, candidates, diagnostics);
+  state.matchComplete =
+    state.queue.length === 0 && state.continuations.length === 0;
+}
+
+async function scanAvailableInner(
+  state: WorkspaceScanState,
+  candidates: SourceCandidate[],
+  diagnostics: DiscoveryDiagnostic[],
+): Promise<void> {
   while (true) {
     while (state.queue.length > 0) {
       state.signal?.throwIfAborted();
@@ -357,7 +401,8 @@ async function inspectPendingDirectory(
   state.signal?.throwIfAborted();
   if (!attestation) return;
   const matched =
-    current.relative === "" || matches(state.patterns, current.relative);
+    current.relative === "" ||
+    matches(state.patterns, current.relative, state.matchBudget);
   let packageBoundary = false;
   if (matched) {
     const candidate = await inspectDirectory(
@@ -382,7 +427,11 @@ async function inspectPendingDirectory(
   if (
     !stable ||
     (packageBoundary &&
-      !couldContainStrictMatch(state.patterns, current.relative)) ||
+      !couldContainStrictMatch(
+        state.patterns,
+        current.relative,
+        state.matchBudget,
+      )) ||
     state.patterns.length === 0
   )
     return;
@@ -441,11 +490,12 @@ function consumeEntries(
         state.patterns,
         relative,
         entry.name,
+        state.matchBudget,
       )
     )
       continue;
     if (entry.isSymbolicLink()) {
-      if (couldContainMatch(state.patterns, relative)) {
+      if (couldContainMatch(state.patterns, relative, state.matchBudget)) {
         const displayPath = displayPathFor(
           state.root,
           relative.split("/").join(path.sep),
@@ -462,7 +512,8 @@ function consumeEntries(
       continue;
     }
     if (!entry.isDirectory()) continue;
-    if (!couldContainMatch(state.patterns, relative)) continue;
+    if (!couldContainMatch(state.patterns, relative, state.matchBudget))
+      continue;
     state.queue.push({
       directory: path.join(current.directory, entry.name),
       relative: relative.split("/").join(path.sep),
@@ -601,16 +652,18 @@ async function attestDirectoryOrReport(
 function matches(
   patterns: readonly WorkspacePattern[],
   relative: string,
+  budget: WorkspaceMatchBudget,
 ): boolean {
   const segments = relative.split(path.sep);
   return (
     patterns.some(
       (pattern) =>
-        !pattern.negative && matchesSegments(pattern.segments, segments),
+        !pattern.negative &&
+        matchesSegments(pattern.segments, segments, budget),
     ) &&
     !patterns.some(
       (pattern) =>
-        pattern.negative && matchesSegments(pattern.segments, segments),
+        pattern.negative && matchesSegments(pattern.segments, segments, budget),
     )
   );
 }
@@ -618,6 +671,7 @@ function matches(
 function couldContainMatch(
   patterns: readonly WorkspacePattern[],
   relative: string,
+  budget: WorkspaceMatchBudget,
 ): boolean {
   const segments = relative.split("/");
   if (
@@ -625,19 +679,20 @@ function couldContainMatch(
       (pattern) =>
         pattern.negative &&
         pattern.segments.at(-1) === "**" &&
-        matchesSegments(pattern.segments, segments),
+        matchesSegments(pattern.segments, segments, budget),
     )
   )
     return false;
   return patterns.some(
     (pattern) =>
-      !pattern.negative && prefixCanMatch(pattern.segments, segments),
+      !pattern.negative && prefixCanMatch(pattern.segments, segments, budget),
   );
 }
 
 function couldContainStrictMatch(
   patterns: readonly WorkspacePattern[],
   relative: string,
+  budget: WorkspaceMatchBudget,
 ): boolean {
   const segments = relative.split(path.sep);
   if (
@@ -645,20 +700,23 @@ function couldContainStrictMatch(
       (pattern) =>
         pattern.negative &&
         pattern.segments.at(-1) === "**" &&
-        matchesSegments(pattern.segments, segments),
+        matchesSegments(pattern.segments, segments, budget),
     )
   )
     return false;
   return patterns.some(
     (pattern) =>
       !pattern.negative &&
-      prefixCanMatch(pattern.segments, segments, { strictDescendant: true }),
+      prefixCanMatch(pattern.segments, segments, budget, {
+        strictDescendant: true,
+      }),
   );
 }
 
 function matchesSegments(
   pattern: readonly string[],
   input: readonly string[],
+  budget: WorkspaceMatchBudget,
 ): boolean {
   const seen = new Set<string>();
   const visit = (patternIndex: number, inputIndex: number): boolean => {
@@ -674,7 +732,7 @@ function matchesSegments(
       );
     return (
       inputIndex < input.length &&
-      matchesSegment(segment, input[inputIndex]!) &&
+      matchesSegment(segment, input[inputIndex]!, budget) &&
       visit(patternIndex + 1, inputIndex + 1)
     );
   };
@@ -684,6 +742,7 @@ function matchesSegments(
 function prefixCanMatch(
   pattern: readonly string[],
   input: readonly string[],
+  budget: WorkspaceMatchBudget,
   options: { strictDescendant?: boolean } = {},
 ): boolean {
   let states = new Set([0]);
@@ -693,7 +752,7 @@ function prefixCanMatch(
       if (pattern[state] === "**") next.add(state);
       else if (
         state < pattern.length &&
-        matchesSegment(pattern[state]!, inputSegment)
+        matchesSegment(pattern[state]!, inputSegment, budget)
       )
         next.add(state + 1);
     }
@@ -721,11 +780,20 @@ function closeGlobstars(
   return result;
 }
 
-function matchesSegment(pattern: string, input: string): boolean {
+function matchesSegment(
+  pattern: string,
+  input: string,
+  budget: WorkspaceMatchBudget,
+): boolean {
+  const patternCharacters = [...pattern];
   const inputCharacters = [...input];
+  chargeWorkspaceMatchWork(
+    budget,
+    patternCharacters.length * (inputCharacters.length + 1),
+  );
   let reachable = new Uint8Array(inputCharacters.length + 1);
   reachable[0] = 1;
-  for (const patternCharacter of pattern) {
+  for (const patternCharacter of patternCharacters) {
     const next = new Uint8Array(inputCharacters.length + 1);
     if (patternCharacter === "*") {
       next[0] = reachable[0]!;
@@ -753,6 +821,17 @@ function matchesSegment(pattern: string, input: string): boolean {
   return reachable[inputCharacters.length] === 1;
 }
 
+function chargeWorkspaceMatchWork(
+  budget: WorkspaceMatchBudget,
+  cost: number,
+): void {
+  if (budget.used + cost > MAX_WORKSPACE_MATCH_WORK) {
+    if (!budget.activeRoot) throw new Error("workspace match root unavailable");
+    throw new WorkspaceMatchLimitError(budget.activeRoot);
+  }
+  budget.used += cost;
+}
+
 function matchesWildcard(character: string): boolean {
   return (
     character !== "\n" &&
@@ -773,6 +852,7 @@ function isExplicitlyIncludedIgnoredDirectory(
   patterns: readonly WorkspacePattern[],
   relative: string,
   name: string,
+  budget: WorkspaceMatchBudget,
 ): boolean {
   if (name === "node_modules") return false;
   const segments = relative.split("/");
@@ -782,8 +862,12 @@ function isExplicitlyIncludedIgnoredDirectory(
       pattern.segments.some(
         (segment, index) =>
           segment !== "**" &&
-          matchesSegment(segment, name) &&
-          matchesSegments(pattern.segments.slice(0, index + 1), segments),
+          matchesSegment(segment, name, budget) &&
+          matchesSegments(
+            pattern.segments.slice(0, index + 1),
+            segments,
+            budget,
+          ),
       ),
   );
 }

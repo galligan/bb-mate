@@ -5,6 +5,7 @@ import path from "node:path";
 import { discoverWorkspaceSourceCandidates } from "./discover-workspace-source-candidates.ts";
 import {
   createDiscoveryTestHarness,
+  EXAMPLE_ROOT_KEY,
   WORKSPACE_ROOT_KEY,
 } from "./discovery-test-helpers.ts";
 import { installDiscoveryTestHookForTest } from "./discovery-test-hook.ts";
@@ -60,6 +61,112 @@ describe("workspace-aware source discovery", () => {
 
     expect(result.candidates).toEqual([]);
     expect(result.diagnostics).toEqual([]);
+  });
+
+  test("bounds aggregate workspace matching work across directory entries", async () => {
+    const root = await harness.createRoot("private-workspace-match-limit");
+    await Promise.all(
+      Array.from({ length: 24 }, (_, index) =>
+        fs.mkdir(path.join(root, `${"a".repeat(40)}-${index}`)),
+      ),
+    );
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: Array.from(
+          { length: 256 },
+          (_, index) => `${"*?".repeat(20)}z${index}`,
+        ),
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-workspace-match-limit",
+        detail: expect.stringContaining("matching"),
+      }),
+    ]);
+    expect(JSON.stringify(result.diagnostics)).not.toContain(
+      path.dirname(root),
+    );
+  });
+
+  test("completes a valid sixty-five-candidate workspace below the matching budget", async () => {
+    const root = await harness.createRoot();
+    const workspaces = Array.from(
+      { length: 65 },
+      (_, index) => `plugins/plugin-${index}`,
+    );
+    await Promise.all(
+      workspaces.map(async (workspace, index) => {
+        const plugin = path.join(root, workspace);
+        await fs.mkdir(plugin, { recursive: true });
+        await harness.writePlugin(plugin, `plugin-${index}`);
+      }),
+    );
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "workspace-root", private: true, workspaces }),
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toHaveLength(65);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  test("marks a later unscanned root partial when the global matching budget is exhausted", async () => {
+    const expensiveRoot = await harness.createRoot("00-expensive");
+    const validRoot = path.join(path.dirname(expensiveRoot), "zz-valid");
+    await fs.mkdir(validRoot);
+    await harness.writePlugin(validRoot, "valid");
+    await Promise.all(
+      Array.from({ length: 24 }, (_, index) =>
+        fs.mkdir(path.join(expensiveRoot, `${"a".repeat(40)}-${index}`)),
+      ),
+    );
+    await fs.writeFile(
+      path.join(expensiveRoot, "package.json"),
+      JSON.stringify({
+        name: "workspace-root",
+        private: true,
+        workspaces: Array.from(
+          { length: 256 },
+          (_, index) => `${"*?".repeat(20)}z${index}`,
+        ),
+      }),
+    );
+    const admission = await admitTrustedRoots([
+      {
+        rootKey: WORKSPACE_ROOT_KEY,
+        kind: "current-project",
+        path: expensiveRoot,
+      },
+      { rootKey: EXAMPLE_ROOT_KEY, kind: "explicit", path: validRoot },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(
+      result.diagnostics.map(({ code, rootKey }) => ({ code, rootKey })),
+    ).toEqual([
+      { code: "workspace-config-invalid", rootKey: WORKSPACE_ROOT_KEY },
+      { code: "workspace-config-invalid", rootKey: EXAMPLE_ROOT_KEY },
+    ]);
   });
 
   test("continues through a package boundary when a declared pattern reaches a nested workspace", async () => {

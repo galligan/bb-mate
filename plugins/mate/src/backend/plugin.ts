@@ -251,7 +251,10 @@ export function createMatePlugin(
             },
           ]),
         );
-        return snapshot(runtime, scannedCatalog(before.catalog, scans));
+        return snapshot(
+          supervisor.status(),
+          scannedCatalog(before.catalog, scans),
+        );
       }
 
       const afterSources = sourceMap(after);
@@ -271,7 +274,10 @@ export function createMatePlugin(
             items: [],
           });
         }
-        return snapshot(runtime, scannedCatalog(before.catalog, scans));
+        return snapshot(
+          supervisor.status(),
+          scannedCatalog(before.catalog, scans),
+        );
       }
       const stableSources = await Promise.all(
         listedSources.map(async (source) => {
@@ -291,7 +297,10 @@ export function createMatePlugin(
             items: [],
           });
         }
-        return snapshot(runtime, scannedCatalog(before.catalog, scans));
+        return snapshot(
+          supervisor.status(),
+          scannedCatalog(before.catalog, scans),
+        );
       }
       const projectKeys = new Set<string>();
       const admitted: {
@@ -318,6 +327,7 @@ export function createMatePlugin(
       }
 
       if (admitted.length !== before.sources.length) {
+        responseRuntime = supervisor.status();
         for (const source of before.sources) {
           scans.set(source.projectId, {
             state: "unavailable",
