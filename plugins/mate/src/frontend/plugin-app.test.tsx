@@ -382,6 +382,49 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
+  test("does not redirect a newer route when the prior project open fails", async () => {
+    const first = deferred<unknown>();
+    const second = deferred<unknown>();
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      return (input as { projectId: string }).projectId === "project_01"
+        ? first.promise
+        : second.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_02/targets/${targetB}`}
+        />,
+      ),
+    );
+    first.reject(new Error("first project failed"));
+    await flush();
+
+    expect(rpcCall).toHaveBeenCalledWith("admit", {
+      projectId: "project_02",
+    });
+    expect(navigateToPluginPanel).not.toHaveBeenCalled();
+    second.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Remote plugin",
+            pluginId: "remote",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+    expect(document.body.textContent).toContain("Remote plugin");
+  });
+
   test("keeps a detail open and reports a failed refresh in place", async () => {
     const targetSnapshot = snapshot({
       state: "ready",

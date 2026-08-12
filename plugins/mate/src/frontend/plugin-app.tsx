@@ -223,6 +223,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       route !== null &&
       admittingProjectId === null &&
       openedProjectId !== route.projectId &&
+      failedAdmissionProjectId.current === route.projectId &&
       selectionMessage === projectOpenFailedMessage;
     if (
       !malformedRoute &&
