@@ -194,6 +194,87 @@ describe("workspace-aware source discovery", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  test("rejects an unquoted pnpm workspace pattern beginning with @", async () => {
+    const root = await harness.createRoot("private-pnpm-at-prefix");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - @scope/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-at-prefix",
+      }),
+    ]);
+  });
+
+  test("rejects an unquoted pnpm workspace pattern beginning with a backtick", async () => {
+    const root = await harness.createRoot("private-pnpm-backtick-prefix");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - `plugins/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-backtick-prefix",
+      }),
+    ]);
+  });
+
+  test("supports quoted pnpm workspace patterns beginning with reserved characters", async () => {
+    const root = await harness.createRoot();
+    const scoped = path.join(root, "@scope", "scoped");
+    const backtick = path.join(root, "`plugins", "backtick");
+    await fs.mkdir(scoped, { recursive: true });
+    await fs.mkdir(backtick, { recursive: true });
+    await harness.writePlugin(scoped, "scoped");
+    await harness.writePlugin(backtick, "backtick");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - '@scope/*'\n  - \"`plugins/*\"\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId).sort()).toEqual([
+      "backtick",
+      "scoped",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("supports an inline comment after a double-quoted pnpm workspace pattern", async () => {
     const root = await harness.createRoot();
     const plugin = path.join(root, "plugins", "included");
