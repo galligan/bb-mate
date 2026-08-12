@@ -701,6 +701,68 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("refreshes a candidate shared by overlapping partial roots only once", async () => {
+    const fixture = await makeFixture();
+    const childRoot = path.join(fixture.sourceRoot, "child");
+    await fs.mkdir(fixture.sourceRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "parent",
+        private: true,
+        workspaces: ["child"],
+      }),
+    );
+    await writePlugin(childRoot, "shared-partial-once");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      discoverCandidates: async (roots, options) => {
+        const discovered = await discoverWorkspaceSourceCandidates(
+          roots,
+          options,
+        );
+        return {
+          ...discovered,
+          diagnostics: roots.map(({ rootKey }) => ({
+            code: "test-partial-root",
+            rootKey,
+            displayPath: null,
+            detail: "The project scan is incomplete.",
+          })),
+        };
+      },
+    });
+    const request = () => ({
+      schemaVersion: 2 as const,
+      inventoryState: "partial" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+        { projectKey: "c".repeat(32), sourcePath: childRoot },
+      ],
+    });
+
+    for (let refresh = 0; refresh < 2; refresh += 1) {
+      const response = await controller.admit(context(), request());
+      const expectedRevision = refresh + 1;
+      expect(
+        response.projects.map(({ targets }) => targets[0]?.revision),
+      ).toEqual([expectedRevision, expectedRevision]);
+      expect((await controller.list(context())).targets[0]?.revision).toBe(
+        expectedRevision,
+      );
+    }
+    catalog.close();
+  });
+
   test("retires a removed target once across overlapping ready roots in a partial inventory", async () => {
     const fixture = await makeFixture();
     const parentRoot = path.join(fixture.sourceRoot, "repo");

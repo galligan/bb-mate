@@ -271,8 +271,9 @@ export function createRuntimeTargetController({
               context,
               candidatesForComponent.map(({ issued }) => issued),
               {
-                authoritativeSourceRoots: component.map(({ rootKey }) =>
-                  canonicalSourceRootByAdmittedRoot.get(rootKey)!,
+                authoritativeSourceRoots: component.map(
+                  ({ rootKey }) =>
+                    canonicalSourceRootByAdmittedRoot.get(rootKey)!,
                 ),
                 uncertainSourceRoots,
                 signal,
@@ -328,6 +329,7 @@ export function createRuntimeTargetController({
                 groups,
               );
             }
+            reconciledCandidateRoots.add(candidate.canonicalRoot);
           } catch {
             signal?.throwIfAborted();
             partial = true;
