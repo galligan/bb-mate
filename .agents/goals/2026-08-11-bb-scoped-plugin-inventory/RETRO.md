@@ -16,14 +16,16 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 - Authority used: preparation goal, packet creation, four read-only delegated
   audits, GitHub issue creation/sub-issue linkage, parent roadmap update.
 - Outcome: milestone A remains independently ready with its exact-head evidence.
-  PR #84 remains draft. Its exact pushed evidence head
-  `6d58faad71f571334cf5c84acad7f3b38257d05a` is locally, artifact, and Live
-  green. Hosted CI and exact-head review proof remains pending. Neither PR is
-  merged.
+  PR #84's exact implementation head is
+  `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a` (`fix: preserve Plugin Studio
+refreshes`, following the `6d58faad` evidence head) with green exact-head
+  hosted CI, two clean round-4 review lanes, and all review threads resolved;
+  it proceeds from draft to ready once this reconciliation commit's hosted CI
+  is green. Neither PR is merged.
 - Tracker/PR/source-control state: #82 open beneath #21; #62 complete; #70/#77
   open and out of scope; PR #73 preserved; PR #83 exact head is `1c897d5`; PR
-  #84's exact pushed evidence head is
-  `6d58faad71f571334cf5c84acad7f3b38257d05a` and remains draft.
+  #84's exact implementation head is
+  `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a`.
 - Verification: prompt/doctor, Mate 80/80 (378 assertions), plugin check/build,
   15 Chromium screenshot/axe cases including 420px, Prettier, and diff checks
   pass on the milestone-A implementation head. Milestone B's current local
@@ -32,25 +34,35 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
   managed package, check, format, and diff gates are green. Current runtime,
   manifest, and private-package identities are recorded below.
 - Review state: milestone-A round-one and round-two findings are dispositioned;
-  both exact-head round-three reviews are clean 5/5. Milestone-B reviews at
-  `a69fe031c43f5eb20f5c0ca43fe394f15f2a4b4a` are historical and superseded;
-  current exact-head reviews and hosted CI remain pending.
+  both exact-head round-three reviews are clean 5/5. Milestone-B rounds at
+  `a69fe031` and docs head `27176c76` are historical and superseded. Both
+  round-4 lanes (standing and targeted batch/UI) are clean 5/5 at exact head
+  `7bdcfc3b` with zero open P0-P2 findings; each recorded one P3 ledger-drift
+  note that this reconciliation commit resolves. An architecture audit at the
+  same head concluded SIMPLIFY IN PLACE with an owner-approved post-landing
+  simplification stack; the sole open review thread (bounded directory
+  enumeration) was answered with measured evidence and resolved as deferred
+  hardening.
 - Remaining risks: artifact identity must be regenerated if executable inputs
   change. Browser bootstrap/live preview and external redistribution remain
-  explicitly out of scope under #70 and #77.
+  explicitly out of scope under #70 and #77. The owner-approved simplification
+  stack (pnpm YAML validator removal, matcher caps-for-accounting, discovery
+  manifest/attestation slimming) lands as separate stacked PRs after readiness.
 
 ## Readiness
 
 - Prompt checked: 3,994/4,000 characters; no placeholders; passed.
 - Goal/prompt alignment checked: passed after one delegated repair round.
-- Review blockers: PR #84 needs fresh standing and targeted reviews at the
-  final exact head, with zero open P0-P3 findings.
-- Verification blockers: obtain exact-head hosted CI. Artifact, preserve-state
-  Live RPC, and current Browser root/detail/Back gates are green.
+- Review blockers: none. Round-4 standing and targeted batch/UI reviews are
+  clean 5/5 at exact head `7bdcfc3b` with zero open P0-P2 findings; both P3
+  ledger notes are resolved by this reconciliation commit.
+- Verification blockers: none. Exact-head hosted CI (run 31611595184),
+  artifact, preserve-state Live RPC, and current Browser root/detail/Back
+  gates are green.
 - Tracker blockers: none; #82 owns the slice and #21 lists it.
 - Authority blockers: merge and release intentionally excluded.
-- Next action: obtain exact-head hosted CI and two clean review lanes, then mark
-  PR #84 ready without merging or releasing.
+- Next action: push this reconciliation commit, confirm hosted CI at the docs
+  successor head, then mark PR #84 ready without merging or releasing.
 
 ## Goal Amendments
 
@@ -259,6 +271,32 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 - Next: Obtain exact-head hosted CI and two clean reviews, then reconcile PR #84
   for ready without merging.
 - Blockers: Hosted CI and exact-head reviews remain pending.
+
+2026-08-12 - Exact-head readiness gates closed at 7bdcfc3b
+- Changed: Pushed implementation head
+  `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a` (catalog-root refreshes survive
+  panel navigation, detail-anchored refreshes stay generation-cancelled,
+  Plugin Studio product copy, seven re-recorded visual snapshots); answered
+  and resolved the final review thread (bounded directory enumeration) as
+  deferred hardening with measured evidence (100k entries: 44 ms read, 32 ms
+  sort, 38 MB transient RSS, isolated runtime, 30 s deadline).
+- Verified: Hosted CI run 31611595184 is green at the exact head (verify,
+  visual, standalone-darwin-arm64, GitGuardian). Round-4 standing and targeted
+  batch/UI reviews are both clean 5/5 with zero open P0-P2 findings. Focused
+  suites: inspection 194, runtime 204, CLI 110 hosted (one known-flaky native
+  timing case locally), Mate 104/461 assertions, scripts 94/351; 20 Mate plus
+  14 Workbench Chromium visual/axe cases pass locally at the head. Frontend-only
+  delta leaves runtime `95ab3719…`, manifest `027cde5e…`, and package
+  `0d2a37d3…` identities unchanged.
+- Result: An architecture audit at this head concluded SIMPLIFY IN PLACE: the
+  bb-allowlist/batch-scan/path-private architecture is sound; owner approved a
+  post-landing simplification stack (pnpm YAML block validator removal,
+  matcher caps-for-accounting swap, discovery manifest/attestation slimming)
+  as separate stacked PRs. Both round-4 P3 ledger notes are resolved by this
+  reconciliation entry.
+- Next: Push this reconciliation commit, confirm hosted CI at the docs
+  successor head, then mark PR #84 ready. No merge is authorized.
+- Blockers: None for readiness; merge and release remain owner-approved.
 ```
 
 ## Review Log
@@ -275,60 +313,65 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 | 1     | Milestone B batch/UI  | `targeted-batch-ui/round-1.json`  | 3/5   | Changes requested | 2 P2       | Both findings fixed on replacement implementation. |
 | 2     | Historical B standing | `standing-batch/round-2.json`     | 5/5   | Superseded        | 0          | Clean at `a69fe031`; not current readiness proof.  |
 | 2     | Historical B batch/UI | `targeted-batch-ui/round-2.json`  | 5/5   | Superseded        | 0          | Clean at `a69fe031`; not current readiness proof.  |
-| 3     | Current B standing    | Pending                           | —     | Pending           | —          | Required at `6d58faa` or its docs successor.       |
-| 3     | Current B batch/UI    | Pending                           | —     | Pending           | —          | Required at `6d58faa` or its docs successor.       |
+| 3     | Docs-head B standing  | `standing-batch/round-3.json`     | 5/5   | Superseded        | 0          | Clean at docs head `27176c76`; superseded.         |
+| 3     | Docs-head B batch/UI  | `targeted-batch-ui/round-3.json`  | 5/5   | Superseded        | 0          | Clean at docs head `27176c76`; superseded.         |
+| 4     | Current B standing    | `standing-batch/round-4.json`     | 5/5   | Clean             | 0          | Exact head `7bdcfc3b`; one P3 ledger note fixed.   |
+| 4     | Current B batch/UI    | `targeted-batch-ui/round-4.json`  | 5/5   | Clean             | 0          | Exact head `7bdcfc3b`; 34 visual cases re-proven.  |
 
 ## Verification Log
 
-| Check                                 | Scope              | Result  | Notes                                                           |
-| ------------------------------------- | ------------------ | ------- | --------------------------------------------------------------- |
-| `check-goal-prompt --no-placeholders` | Prompt             | Pass    | 3,994/4,000 characters; no placeholders.                        |
-| `goal-loop-doctor`                    | Packet             | Pass    | Packet OK; zero reports at execution start.                     |
-| `goal-loop-doctor`                    | Historical state   | Pass    | Passed at the former `a69fe031` readiness checkpoint.           |
-| `goal-loop-doctor`                    | Current packet     | Pass    | Packet OK; 7 reports; current readiness gates remain pending.   |
-| `prettier --check`                    | Packet             | Pass    | All five Markdown files formatted.                              |
-| `git diff --check`                    | Packet             | Pass    | No whitespace errors.                                           |
-| `bun --filter bb-plugin-mate test`    | PR #83             | Pass    | 80 tests; 378 assertions.                                       |
-| `bun --filter bb-plugin-mate check`   | PR #83             | Pass    | Native plugin contracts type-check.                             |
-| `bun --filter bb-plugin-mate build`   | PR #83             | Pass    | Released bb plugin build succeeds.                              |
-| Mate Chromium visual/axe              | PR #83             | Pass    | 15 cases; wide, 420px, light, and dark.                         |
-| `bun run check`                       | B checkpoint       | Pass    | All packages and compatibility before restoration.              |
-| `bun run test`                        | B checkpoint       | Pass    | Aggregate packages, scripts, and clean room before restoration. |
-| `bun run build`                       | B checkpoint       | Pass    | All workspace builds before restoration.                        |
-| `bun run visual:test`                 | B checkpoint       | Pass    | 14 Workbench + 20 Mate Chromium cases.                          |
-| Exact-head archive Mate gates         | PR #84             | Pass    | 84 tests/356 assertions; check/build; 20 visual/axe cases.      |
-| `bun run standalone:test`             | Restored B         | Pass    | Runtime SHA `0cf4a5eb…`, 64,849,634 bytes.                      |
-| `bun run mate:package:test`           | Restored B         | Pass    | Twice; 14 files; package SHA `3196ce94…`.                       |
-| `bun test scripts`                    | Restored B         | Pass    | 88 tests; 282 expectations.                                     |
-| Path plugin build + atomic reload     | Live bb 0.36       | Pass    | Source/settings preserved; app hash `986f67d68b68472e`.         |
-| `status({})` then `refresh({})` RPC   | Live bb 0.36       | Pass    | Schema v3; BB Mate 2 plugins; grid ready-empty; no paths.       |
-| In-app Browser inspection             | Live bb 0.36       | Pass    | Catalog, detail, and Back flow verified on the real remote.     |
-| Hosted verify/visual/standalone       | Historical B       | Pass    | `3162a521`; superseded for current readiness.                   |
-| `bun run test`                        | Historical B       | Pass    | 709 tests at `a69fe031`; superseded for current readiness.      |
-| `bun run build`                       | Historical B       | Pass    | Green at `a69fe031`; superseded for current readiness.          |
-| `bun run visual:test`                 | Historical B       | Pass    | 14 Workbench + 20 Mate cases; superseded for current readiness. |
-| `bun run standalone:test`             | Historical B       | Pass    | Runtime `4b216966…de05`; superseded for current readiness.      |
-| `bun run mate:package:test`           | Historical B       | Pass    | Package `8301ce83…5dc1`; superseded for current readiness.      |
-| Hosted verify/visual/standalone       | Historical B       | Pass    | Green at `a69fe031`; superseded for current readiness.          |
-| Path plugin build + atomic reload     | Historical Live    | Pass    | `a69fe031`; Workbench-era proof, not current readiness proof.   |
-| `status({})` then `refresh({})` RPC   | Historical Live    | Pass    | `a69fe031`; schema v3 and no paths; superseded.                 |
-| In-app Browser catalog/detail/Back    | Historical Live    | Pass    | `a69fe031`; Workbench-era proof; superseded.                    |
-| `bun run test`                        | Current exact head | Pass    | 791 at `6d58faa`: 194/204/110/102/94/66/21.                     |
-| Inspection assertions                 | Current exact head | Pass    | 194 tests and 577 assertions.                                   |
-| Runtime assertions                    | Current exact head | Pass    | 204 tests and 957 assertions.                                   |
-| CLI assertions                        | Current exact head | Pass    | 110 tests and 539 assertions.                                   |
-| Mate assertions                       | Current exact head | Pass    | 102 tests and 446 assertions.                                   |
-| Script assertions                     | Current exact head | Pass    | 94 tests and 351 assertions.                                    |
-| `bun test inspect-mate-package`       | Current guidance   | Pass    | 10 tests; 61 expectations; Plugin Studio prose pinned.          |
-| `tsc -p scripts/tsconfig.json`        | Current guidance   | Pass    | Inspector and regression type-check.                            |
-| `bun run standalone:test`             | Current exact head | Pass    | Runtime `95ab3719…`; 64,882,658 bytes.                          |
-| Runtime manifest                      | Current exact head | Pass    | SHA `027cde5e…`; 6,494 bytes.                                   |
-| `bun run mate:package:test`           | Current exact head | Pass    | Package `0d2a37d3…`; 24,686,636 bytes.                          |
-| `bun run check` / format / diff       | Current exact head | Pass    | All green at `6d58faa`.                                         |
-| Preserve-state path-plugin reload     | Current Live       | Pass    | Source unchanged; runtime running; app hash `de3682…`.          |
-| `status({})` then `refresh({})` RPC   | Current Live       | Pass    | Schema 3 ready; rev15/rev16; grid empty; no `/Users`; no logs.  |
-| Browser root/detail/Back              | Current Live       | Pass    | Expanded root, rev16 detail/OS-648, Back returned to root.      |
-| Hosted verify/visual/standalone       | Current readiness  | Pending | Required on the final exact head.                               |
+| Check                                 | Scope              | Result | Notes                                                            |
+| ------------------------------------- | ------------------ | ------ | ---------------------------------------------------------------- |
+| `check-goal-prompt --no-placeholders` | Prompt             | Pass   | 3,994/4,000 characters; no placeholders.                         |
+| `goal-loop-doctor`                    | Packet             | Pass   | Packet OK; zero reports at execution start.                      |
+| `goal-loop-doctor`                    | Historical state   | Pass   | Passed at the former `a69fe031` readiness checkpoint.            |
+| `goal-loop-doctor`                    | Current packet     | Pass   | Packet OK; 7 reports; current readiness gates remain pending.    |
+| `prettier --check`                    | Packet             | Pass   | All five Markdown files formatted.                               |
+| `git diff --check`                    | Packet             | Pass   | No whitespace errors.                                            |
+| `bun --filter bb-plugin-mate test`    | PR #83             | Pass   | 80 tests; 378 assertions.                                        |
+| `bun --filter bb-plugin-mate check`   | PR #83             | Pass   | Native plugin contracts type-check.                              |
+| `bun --filter bb-plugin-mate build`   | PR #83             | Pass   | Released bb plugin build succeeds.                               |
+| Mate Chromium visual/axe              | PR #83             | Pass   | 15 cases; wide, 420px, light, and dark.                          |
+| `bun run check`                       | B checkpoint       | Pass   | All packages and compatibility before restoration.               |
+| `bun run test`                        | B checkpoint       | Pass   | Aggregate packages, scripts, and clean room before restoration.  |
+| `bun run build`                       | B checkpoint       | Pass   | All workspace builds before restoration.                         |
+| `bun run visual:test`                 | B checkpoint       | Pass   | 14 Workbench + 20 Mate Chromium cases.                           |
+| Exact-head archive Mate gates         | PR #84             | Pass   | 84 tests/356 assertions; check/build; 20 visual/axe cases.       |
+| `bun run standalone:test`             | Restored B         | Pass   | Runtime SHA `0cf4a5eb…`, 64,849,634 bytes.                       |
+| `bun run mate:package:test`           | Restored B         | Pass   | Twice; 14 files; package SHA `3196ce94…`.                        |
+| `bun test scripts`                    | Restored B         | Pass   | 88 tests; 282 expectations.                                      |
+| Path plugin build + atomic reload     | Live bb 0.36       | Pass   | Source/settings preserved; app hash `986f67d68b68472e`.          |
+| `status({})` then `refresh({})` RPC   | Live bb 0.36       | Pass   | Schema v3; BB Mate 2 plugins; grid ready-empty; no paths.        |
+| In-app Browser inspection             | Live bb 0.36       | Pass   | Catalog, detail, and Back flow verified on the real remote.      |
+| Hosted verify/visual/standalone       | Historical B       | Pass   | `3162a521`; superseded for current readiness.                    |
+| `bun run test`                        | Historical B       | Pass   | 709 tests at `a69fe031`; superseded for current readiness.       |
+| `bun run build`                       | Historical B       | Pass   | Green at `a69fe031`; superseded for current readiness.           |
+| `bun run visual:test`                 | Historical B       | Pass   | 14 Workbench + 20 Mate cases; superseded for current readiness.  |
+| `bun run standalone:test`             | Historical B       | Pass   | Runtime `4b216966…de05`; superseded for current readiness.       |
+| `bun run mate:package:test`           | Historical B       | Pass   | Package `8301ce83…5dc1`; superseded for current readiness.       |
+| Hosted verify/visual/standalone       | Historical B       | Pass   | Green at `a69fe031`; superseded for current readiness.           |
+| Path plugin build + atomic reload     | Historical Live    | Pass   | `a69fe031`; Workbench-era proof, not current readiness proof.    |
+| `status({})` then `refresh({})` RPC   | Historical Live    | Pass   | `a69fe031`; schema v3 and no paths; superseded.                  |
+| In-app Browser catalog/detail/Back    | Historical Live    | Pass   | `a69fe031`; Workbench-era proof; superseded.                     |
+| `bun run test`                        | Current exact head | Pass   | 791 at `6d58faa`: 194/204/110/102/94/66/21.                      |
+| Inspection assertions                 | Current exact head | Pass   | 194 tests and 577 assertions.                                    |
+| Runtime assertions                    | Current exact head | Pass   | 204 tests and 957 assertions.                                    |
+| CLI assertions                        | Current exact head | Pass   | 110 tests and 539 assertions.                                    |
+| Mate assertions                       | Current exact head | Pass   | 102 tests and 446 assertions.                                    |
+| Script assertions                     | Current exact head | Pass   | 94 tests and 351 assertions.                                     |
+| `bun test inspect-mate-package`       | Current guidance   | Pass   | 10 tests; 61 expectations; Plugin Studio prose pinned.           |
+| `tsc -p scripts/tsconfig.json`        | Current guidance   | Pass   | Inspector and regression type-check.                             |
+| `bun run standalone:test`             | Current exact head | Pass   | Runtime `95ab3719…`; 64,882,658 bytes.                           |
+| Runtime manifest                      | Current exact head | Pass   | SHA `027cde5e…`; 6,494 bytes.                                    |
+| `bun run mate:package:test`           | Current exact head | Pass   | Package `0d2a37d3…`; 24,686,636 bytes.                           |
+| `bun run check` / format / diff       | Current exact head | Pass   | All green at `6d58faa`.                                          |
+| Preserve-state path-plugin reload     | Current Live       | Pass   | Source unchanged; runtime running; app hash `de3682…`.           |
+| `status({})` then `refresh({})` RPC   | Current Live       | Pass   | Schema 3 ready; rev15/rev16; grid empty; no `/Users`; no logs.   |
+| Browser root/detail/Back              | Current Live       | Pass   | Expanded root, rev16 detail/OS-648, Back returned to root.       |
+| Hosted verify/visual/standalone       | Current exact head | Pass   | Run 31611595184 green at `7bdcfc3b`.                             |
+| Round-4 standing review lane          | Current exact head | Pass   | Clean 5/5; zero open P0-P2; one P3 ledger note fixed here.       |
+| Round-4 targeted batch/UI review lane | Current exact head | Pass   | Clean 5/5; 104 Mate tests/461 assertions; 34 visual cases.       |
+| Review-thread resolution              | PR #84             | Pass   | Directory-enumeration thread answered with measurements; 0 open. |
 
 ## Prompt / Goal Alignment
 
@@ -356,13 +399,16 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 
 ## Final State
 
-- Completion proof: pending. Exact pushed head `6d58faa` is locally, artifact,
-  and Live green. Exact-head hosted CI and exact-head reviews remain.
+- Completion proof: exact implementation head `7bdcfc3b` has green hosted CI
+  (run 31611595184), two clean round-4 review lanes with zero open P0-P2
+  findings, all review threads resolved, and unchanged artifact identities.
+  PR #84 moves to ready once this reconciliation commit's hosted CI is green.
 - Prompt length: 3,994/4,000; no placeholders; passed.
 - Review report summary: milestone-A rounds one and two and milestone-B round
   one are archived historical evidence. Milestone-A round three remains clean
-  5/5. Milestone-B round two is clean only at historical head `a69fe031` and is
-  superseded; fresh current exact-head reviews are pending.
+  5/5. Milestone-B round two (`a69fe031`) and round three (docs head
+  `27176c76`) are superseded. Round-4 standing and targeted batch/UI lanes are
+  the active readiness set: both clean 5/5 at exact head `7bdcfc3b`.
 - Verification summary: milestone A passes 80 Mate tests/378 assertions,
   plugin check/build, and 15 Chromium cases. Current milestone B passes 791
   tests with the package/assertion breakdown above, standalone runtime
@@ -371,9 +417,12 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 - Forbidden actions audit: no merge, queue, publication, release, upstream edit,
   plugin removal/reinstall, or PR #73 mutation has occurred; confirm once more
   before readiness.
-- Remaining findings / risks: no current findings are accepted or deferred;
-  fresh review is pending. Preview/browser bootstrap remains #70; external
-  runtime redistribution remains #77.
+- Remaining findings / risks: the bounded directory-enumeration observation is
+  explicitly deferred hardening, resolved on the PR with measured evidence. An
+  owner-approved simplification stack (pnpm YAML block validator removal,
+  matcher caps-for-accounting, discovery manifest/attestation slimming) lands
+  as separate stacked PRs after readiness. Preview/browser bootstrap remains
+  #70; external runtime redistribution remains #77.
 - Final transcript proof: current Plugin Studio status/refresh RPC proof passed
   at the final artifact lineage, including schema 3, Linear revision 15, Plugin
   Studio revision 16, ready-empty grid, no `/Users`, and empty logs. Current

@@ -1,8 +1,8 @@
 # bb-scoped Plugin Studio inventory
 
 Date: 2026-08-11
-Status: In progress; the current scanner and Plugin Studio fixes are locally
-green, while fresh artifact, Live, hosted, and exact-head review proof remains.
+Status: Ready-PR reconciliation; exact head `7bdcfc3b` has green hosted CI,
+two clean round-4 review lanes, and a resolved final review thread.
 Issue: [#82](https://github.com/galligan/bb-mate/issues/82)
 Goal: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/`
 
@@ -188,10 +188,11 @@ process/environment facts, unknown keys, and impossible runtime/project states.
 - Ready-empty: `No development plugins found.`
 - Partial with results: `Scan incomplete. Available plugins are shown.`
 - Partial empty: `Scan incomplete. No plugins were found within the safety limits.`
-- Per-project unavailable: `Plugins unavailable. Reload Workbench data to try again.`
+- Per-project unavailable: `Plugins unavailable. Reload Plugin Studio data to try again.`
 - One project's state never hides a successful sibling.
 - Reload retains the prior catalog while busy and generation-guards stale
-  responses.
+  responses. Catalog-root refreshes survive panel navigation; detail-anchored
+  refreshes remain generation-cancelled when the panel navigates away.
 - Detail distinguishes task loading, ready-empty, and unavailable; a vanished
   deep-linked plugin gets finite Back/reload recovery instead of silently
   falling through to the root.
@@ -211,28 +212,39 @@ process/environment facts, unknown keys, and impossible runtime/project states.
        lifecycle after the latest executable and shipped-skill changes.
 8. [x] Rebuild/reload the path plugin with state preserved and verify current
        Plugin Studio status/refresh behavior in released bb.
-9. [ ] Obtain exact-head hosted CI and two clean review lanes, then reconcile
+9. [x] Obtain exact-head hosted CI and two clean review lanes, then reconcile
        tracker/PR truth before moving PR #84 from draft to ready. No merge is
        authorized.
 
-PR #84 remains draft. Its exact pushed evidence head
-`6d58faad71f571334cf5c84acad7f3b38257d05a` is stacked on PR #83 head
-`1c897d5`. The current local matrix passes 791 tests: inspection 194/577
-assertions, runtime 204/957, CLI 110/539, Mate 102/446, scripts 94/351,
-Workbench 66, and Linear 21. Standalone, managed
-package, check, format, and diff gates are green. The runtime is
-`95ab3719…` (64,882,658 bytes), its manifest is `027cde5e…` (6,494 bytes), and
-the private package is `0d2a37d3…` (24,686,636 bytes).
+The exact implementation head is `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a`
+(`fix: preserve Plugin Studio refreshes`), stacked on PR #83 head `1c897d5`.
+That commit follows the `6d58faad` evidence head: catalog-root refreshes now
+survive panel navigation while detail-anchored refreshes remain
+generation-cancelled, product copy uses Plugin Studio, and seven visual
+snapshots were re-recorded for the changed copy. Hosted CI run 31611595184 is
+green at that exact head (verify, visual, standalone-darwin-arm64,
+GitGuardian). Both round-4 review lanes are clean 5/5 at the same head with
+zero open P0-P2 findings; focused suites report inspection 194, runtime 204,
+CLI 110 (hosted; one known-flaky native timing case locally), Mate 104/461
+assertions, scripts 94/351, plus 20 Mate and 14 Workbench Chromium visual/axe
+cases. Runtime `95ab3719…` (64,882,658 bytes), manifest `027cde5e…` (6,494
+bytes), and package `0d2a37d3…` (24,686,636 bytes) identities are unchanged by
+the frontend-only commit.
 
-Preserve-state Live proof passed at that exact head: the source remained
-unchanged, the runtime stayed running, app hash `de3682…` served Plugin Studio,
-schema 3 was ready, BB Mate exposed Linear revision 15 plus Plugin Studio
-revision 16, grid was ready-empty, responses contained no `/Users`, and logs
-were empty. Current Browser proof also passed: every project was expanded; BB
-Mate listed Linear plus Plugin Studio; grid was ready-empty; Plugin Studio
-revision 16 detail showed preview-unavailable truth and the OS-648 Project task;
-Back returned to the catalog. Current exact-head hosted CI and reviews remain
-pending.
+Preserve-state Live proof passed at the same artifact lineage: the source
+remained unchanged, the runtime stayed running, app hash `de3682…` served
+Plugin Studio, schema 3 was ready, BB Mate exposed Linear revision 15 plus
+Plugin Studio revision 16, grid was ready-empty, responses contained no
+`/Users`, and logs were empty. Current Browser proof also passed: every project
+was expanded; BB Mate listed Linear plus Plugin Studio; grid was ready-empty;
+Plugin Studio revision 16 detail showed preview-unavailable truth and the
+OS-648 Project task; Back returned to the catalog. The sole remaining review
+thread (bounded directory enumeration) was answered with measured evidence and
+resolved as deferred hardening. PR #84 moves from draft to ready once this
+reconciliation commit's hosted CI is green; merge remains owner-approved. An
+owner-approved simplification stack (pnpm YAML validator removal, matcher
+caps-for-accounting, discovery manifest/attestation slimming) follows as
+separate stacked PRs after readiness.
 
 ## Verification and stop lines
 
