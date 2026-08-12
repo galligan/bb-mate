@@ -83,6 +83,23 @@ describe("Plugin Workbench nav panel", () => {
     expect(html).not.toContain("Admit project");
   });
 
+  test("names every project action with its project context", () => {
+    const value = snapshot({
+      projects: {
+        state: "ready",
+        items: [
+          { id: "project_01", label: "BB Mate", admission: "available" },
+          { id: "project_02", label: "Remote", admission: "available" },
+        ],
+      },
+    });
+    expect(render(value)).toContain('aria-label="Open BB Mate"');
+    expect(render(value)).toContain('aria-label="Open Remote"');
+    expect(render(value, { openedProjectId: "project_01" })).toContain(
+      'aria-label="Refresh BB Mate"',
+    );
+  });
+
   test("lists detected plugins inside the opened project", () => {
     const html = render(
       snapshot({

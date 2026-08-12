@@ -344,6 +344,7 @@ export function PluginWorkbenchView({
                         type="button"
                         variant="outline"
                         size="sm"
+                        aria-label={`${opened ? "Refresh" : "Open"} ${project.label}`}
                         disabled={admittingProjectId !== null}
                         onClick={() => onOpenProject(project.id)}
                       >
