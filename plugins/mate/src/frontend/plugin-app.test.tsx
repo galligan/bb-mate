@@ -382,7 +382,7 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
-  test("does not redirect a newer route when the prior project open fails", async () => {
+  test("supersedes a pending project open when the detail route changes", async () => {
     const first = deferred<unknown>();
     const second = deferred<unknown>();
     rpcImplementation = (method, input) => {
@@ -401,12 +401,15 @@ describe("Plugin Workbench app registration", () => {
         />,
       ),
     );
-    first.reject(new Error("first project failed"));
     await flush();
 
     expect(rpcCall).toHaveBeenCalledWith("admit", {
       projectId: "project_02",
     });
+
+    first.reject(new Error("first project failed"));
+    await flush();
+
     expect(navigateToPluginPanel).not.toHaveBeenCalled();
     second.resolve(
       snapshot({

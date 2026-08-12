@@ -181,20 +181,12 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
     if (
       snapshot?.projects.state === "ready" &&
       openedProjectId !== route.projectId &&
-      admittingProjectId === null &&
       attemptedRouteSubPath.current !== subPath
     ) {
       attemptedRouteSubPath.current = subPath;
       openProject(route.projectId);
     }
-  }, [
-    admittingProjectId,
-    openProject,
-    openedProjectId,
-    route,
-    snapshot,
-    subPath,
-  ]);
+  }, [openProject, openedProjectId, route, snapshot, subPath]);
 
   const target =
     route !== null &&
