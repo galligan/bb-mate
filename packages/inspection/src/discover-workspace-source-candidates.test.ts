@@ -73,19 +73,32 @@ describe("workspace-aware source discovery", () => {
     const root = await harness.createRoot();
     const distPlugin = path.join(root, "dist", "plugins", "dist-plugin");
     const hiddenPlugin = path.join(root, ".plugins", "hidden-plugin");
+    const wildcardHiddenPlugin = path.join(
+      root,
+      "packages",
+      ".plugins-dev",
+      "wildcard-hidden-plugin",
+    );
     const implicitPlugin = path.join(root, "node_modules", "implicit-plugin");
     await fs.mkdir(distPlugin, { recursive: true });
     await fs.mkdir(hiddenPlugin, { recursive: true });
+    await fs.mkdir(wildcardHiddenPlugin, { recursive: true });
     await fs.mkdir(implicitPlugin, { recursive: true });
     await harness.writePlugin(distPlugin, "dist-plugin");
     await harness.writePlugin(hiddenPlugin, "hidden-plugin");
+    await harness.writePlugin(wildcardHiddenPlugin, "wildcard-hidden-plugin");
     await harness.writePlugin(implicitPlugin, "implicit-plugin");
     await fs.writeFile(
       path.join(root, "package.json"),
       JSON.stringify({
         name: "workspace-root",
         private: true,
-        workspaces: ["dist/plugins/*", ".plugins/*", "**"],
+        workspaces: [
+          "dist/plugins/*",
+          ".plugins/*",
+          "packages/.plugins-*/*",
+          "**",
+        ],
       }),
     );
     const admission = await admitTrustedRoots([
@@ -97,6 +110,7 @@ describe("workspace-aware source discovery", () => {
     expect(result.candidates.map(({ pluginId }) => pluginId).sort()).toEqual([
       "dist-plugin",
       "hidden-plugin",
+      "wildcard-hidden-plugin",
     ]);
     expect(result.diagnostics).toEqual([]);
   });

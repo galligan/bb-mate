@@ -748,13 +748,15 @@ function isExplicitlyIncludedIgnoredDirectory(
   relative: string,
   name: string,
 ): boolean {
+  if (name === "node_modules") return false;
   const segments = relative.split("/");
   return patterns.some(
     (pattern) =>
       !pattern.negative &&
       pattern.segments.some(
         (segment, index) =>
-          segment === name &&
+          segment !== "**" &&
+          matchesSegment(segment, name) &&
           matchesSegments(pattern.segments.slice(0, index + 1), segments),
       ),
   );
