@@ -72,7 +72,7 @@ export function createRuntimeTargetController({
         signal,
       );
       signal?.throwIfAborted();
-      let partial = false;
+      let partial = inventoryState === "partial";
       let rootlessUncertainty = false;
       const projectKeysByAdmittedRoot = new Map<string, string[]>();
       const canonicalSourceRootByAdmittedRoot = new Map<string, string>();

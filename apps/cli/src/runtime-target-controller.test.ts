@@ -194,7 +194,7 @@ describe("runtime target controller", () => {
     });
 
     expect(partial).toMatchObject({
-      state: "ready",
+      state: "partial",
       projects: [{ projectKey: "v".repeat(32), state: "ready" }],
     });
     expect(
