@@ -327,6 +327,45 @@ describe("Plugin Workbench app registration", () => {
     }
   });
 
+  test("returns to the root before opening another project from an uncertain detail", async () => {
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      const projectId = (input as { projectId: string }).projectId;
+      return Promise.resolve(
+        snapshot(
+          projectId === "project_01"
+            ? { state: "partial", items: [] }
+            : {
+                state: "ready",
+                items: [
+                  {
+                    id: targetB,
+                    label: "Remote plugin",
+                    pluginId: "remote",
+                    revision: 1,
+                  },
+                ],
+              },
+        ),
+      );
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () =>
+      Array.from(document.querySelectorAll("button"))
+        .filter((candidate) => candidate.textContent === "Open")
+        .at(-1)
+        ?.click(),
+    );
+    await flush();
+
+    expect(navigateToPluginPanel).toHaveBeenCalledWith("workbench", {
+      replace: true,
+    });
+    expect(document.body.textContent).toContain("Remote plugin");
+  });
+
   test("attempts a routed project once and recovers when opening fails", async () => {
     rpcImplementation = (method) =>
       method === "status"
@@ -501,6 +540,37 @@ describe("Plugin Workbench app registration", () => {
     expect(document.body.textContent).toContain("The plugin list changed.");
     expect(document.body.textContent).toContain("Linear");
     expect(document.body.textContent).not.toContain("mate · revision 1");
+  });
+
+  test("reports plugins added after a recorded empty catalog", async () => {
+    let admission = 0;
+    rpcImplementation = (method) =>
+      Promise.resolve(
+        method === "status"
+          ? snapshot()
+          : snapshot({
+              state: "ready",
+              items:
+                admission++ === 0
+                  ? []
+                  : [
+                      {
+                        id: targetA,
+                        label: "Mate",
+                        pluginId: "mate",
+                        revision: 1,
+                      },
+                    ],
+            }),
+      );
+    await renderPanel();
+    await act(async () => button("Open")?.click());
+    await flush();
+    await act(async () => button("Refresh")?.click());
+    await flush();
+
+    expect(document.body.textContent).toContain("The plugin list changed.");
+    expect(document.body.textContent).toContain("Mate");
   });
 
   test("preserves the prior plugin list across an unavailable refresh", async () => {

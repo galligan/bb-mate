@@ -70,11 +70,11 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
         : [];
       const previous =
         openedProject === null
-          ? []
-          : (previousTargetIds.current.get(openedProject) ?? []);
+          ? undefined
+          : previousTargetIds.current.get(openedProject);
       setSelectionMessage(
         hasUsableCatalog &&
-          previous.length > 0 &&
+          previous !== undefined &&
           (previous.length !== nextTargetIds.length ||
             previous.some((id, index) => id !== nextTargetIds[index]))
           ? listChangedMessage
@@ -299,7 +299,13 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       openedProjectId={openedProjectId}
       admittingProjectId={admittingProjectId}
       selectionMessage={selectionMessage}
-      onOpenProject={openProject}
+      onOpenProject={(projectId) => {
+        if (route !== null && route.projectId !== projectId) {
+          attemptedRouteSubPath.current = subPath;
+          navigate.toPluginPanel("workbench", { replace: true });
+        }
+        openProject(projectId);
+      }}
       onOpenTarget={(projectId, targetId) =>
         navigate.toPluginPanel("workbench", {
           subPath: `projects/${encodeURIComponent(projectId)}/targets/${encodeURIComponent(targetId)}`,
