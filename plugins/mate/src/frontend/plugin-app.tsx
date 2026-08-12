@@ -62,23 +62,25 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
     (value: unknown, openedProject: string | null) => {
       const next = parsePluginWorkbenchSnapshot(value);
       failedAdmissionProjectId.current = null;
-      const nextTargetIds =
+      const hasUsableCatalog =
         openedProject !== null &&
-        (next.targets.state === "ready" || next.targets.state === "partial")
-          ? next.targets.items.map(({ id }) => id)
-          : [];
+        (next.targets.state === "ready" || next.targets.state === "partial");
+      const nextTargetIds = hasUsableCatalog
+        ? next.targets.items.map(({ id }) => id)
+        : [];
       const previous =
         openedProject === null
           ? []
           : (previousTargetIds.current.get(openedProject) ?? []);
       setSelectionMessage(
-        previous.length > 0 &&
+        hasUsableCatalog &&
+          previous.length > 0 &&
           (previous.length !== nextTargetIds.length ||
             previous.some((id, index) => id !== nextTargetIds[index]))
           ? listChangedMessage
           : null,
       );
-      if (openedProject !== null) {
+      if (openedProject !== null && hasUsableCatalog) {
         previousTargetIds.current.set(openedProject, nextTargetIds);
       }
       setSnapshot(next);
@@ -96,7 +98,9 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       (value) => {
         if (request !== generation.current) return;
         try {
+          const retryRoute = failedAdmissionProjectId.current !== null;
           acceptSnapshot(value, null);
+          if (retryRoute) attemptedRouteSubPath.current = null;
         } catch {
           if (snapshot === null) setStatusFailed(true);
           else

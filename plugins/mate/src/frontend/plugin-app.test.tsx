@@ -351,9 +351,9 @@ describe("Plugin Workbench app registration", () => {
     let calls = 0;
     rpcImplementation = () => {
       calls += 1;
-      return calls < 3
-        ? Promise.resolve(targetSnapshot)
-        : Promise.reject(new Error("reload failed"));
+      if (calls < 3 || calls === 5) return Promise.resolve(targetSnapshot);
+      if (calls === 4) return Promise.resolve(snapshot());
+      return Promise.reject(new Error("reload failed"));
     };
 
     await renderPanel(`projects/project_01/targets/${targetA}`);
@@ -380,6 +380,10 @@ describe("Plugin Workbench app registration", () => {
     await flush();
 
     expect(rpcCall).toHaveBeenNthCalledWith(4, "status", {});
+    expect(rpcCall).toHaveBeenNthCalledWith(5, "admit", {
+      projectId: "project_01",
+    });
+    expect(document.body.textContent).toContain("Mate");
   });
 
   test("reloads status when an opened project's catalog becomes unavailable", async () => {
@@ -497,6 +501,55 @@ describe("Plugin Workbench app registration", () => {
     expect(document.body.textContent).toContain("The plugin list changed.");
     expect(document.body.textContent).toContain("Linear");
     expect(document.body.textContent).not.toContain("mate · revision 1");
+  });
+
+  test("preserves the prior plugin list across an unavailable refresh", async () => {
+    let admission = 0;
+    rpcImplementation = (method) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      admission += 1;
+      if (admission === 2) {
+        return Promise.resolve(
+          snapshot({
+            state: "unavailable",
+            reason: "catalog_unavailable",
+            items: [],
+          }),
+        );
+      }
+      return Promise.resolve(
+        snapshot({
+          state: "ready",
+          items: [
+            admission === 1
+              ? {
+                  id: targetA,
+                  label: "Mate",
+                  pluginId: "mate",
+                  revision: 1,
+                }
+              : {
+                  id: targetB,
+                  label: "Linear",
+                  pluginId: "linear",
+                  revision: 2,
+                },
+          ],
+        }),
+      );
+    };
+
+    await renderPanel();
+    await act(async () => button("Open")?.click());
+    await flush();
+    await act(async () => button("Refresh")?.click());
+    await flush();
+    expect(document.body.textContent).not.toContain("The plugin list changed.");
+
+    await act(async () => button("Refresh")?.click());
+    await flush();
+    expect(document.body.textContent).toContain("The plugin list changed.");
+    expect(document.body.textContent).toContain("Linear");
   });
 
   test("compares plugin-list changes within a project instead of across projects", async () => {
