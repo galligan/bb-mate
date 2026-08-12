@@ -521,6 +521,54 @@ describe("Plugin Workbench app registration", () => {
     expect(rpcCall).toHaveBeenCalledTimes(2);
   });
 
+  test("supersedes a pending detail refresh when returning to the project list", async () => {
+    const pending = deferred<unknown>();
+    const targetSnapshot = snapshot({
+      state: "ready",
+      items: [{ id: targetA, label: "Mate", pluginId: "mate", revision: 1 }],
+    });
+    let calls = 0;
+    rpcImplementation = () => {
+      calls += 1;
+      if (calls <= 2) return Promise.resolve(targetSnapshot);
+      return pending.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    await flush();
+    await act(async () =>
+      document
+        .querySelector('[aria-label="Reload Workbench data"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+    await act(async () => button("Back to projects")?.click());
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+
+    const projectOpen = button("Open");
+    expect(projectOpen).toBeInstanceOf(HTMLButtonElement);
+    expect((projectOpen as HTMLButtonElement).disabled).toBe(false);
+
+    pending.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Late plugin",
+            pluginId: "late",
+            revision: 2,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).not.toContain("Late plugin");
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
   test("keeps a detail open and reports a failed refresh in place", async () => {
     const targetSnapshot = snapshot({
       state: "ready",

@@ -165,8 +165,15 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
         ({ id, admission }) =>
           id === openedProjectId && admission === "available",
       );
-    if (openedProjectIsAvailable) openProject(openedProjectId);
-    else requestStatus();
+    if (openedProjectIsAvailable) {
+      const activeRoute = parseTargetRoute(activeSubPath.current);
+      openProject(
+        openedProjectId,
+        activeRoute?.projectId === openedProjectId
+          ? activeSubPath.current
+          : null,
+      );
+    } else requestStatus();
   }, [openProject, openedProjectId, requestStatus, snapshot]);
 
   useEffect(() => {
