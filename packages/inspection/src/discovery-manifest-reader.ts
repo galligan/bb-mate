@@ -60,13 +60,7 @@ export async function readBoundedManifestSnapshot(
     throw new DiscoveryFailure("manifest-unreadable", "manifest is unreadable");
   }
   try {
-    const before = await handle.stat();
-    if (!sameIdentity(leaf, before)) {
-      throw new DiscoveryFailure(
-        "manifest-changed",
-        "package.json changed before it could be read",
-      );
-    }
+    const stat = await handle.stat();
     await runDiscoveryTestHook({
       point: "after-manifest-stat",
       path: packagePath,
@@ -90,21 +84,6 @@ export async function readBoundedManifestSnapshot(
       );
     }
     const bytes = buffer.subarray(0, bytesRead);
-    const [after, leafAfter] = await Promise.all([
-      handle.stat(),
-      fs.lstat(packagePath).catch(() => null),
-    ]);
-    if (
-      !sameIdentity(before, after) ||
-      leafAfter === null ||
-      !sameIdentity(after, leafAfter) ||
-      after.size !== bytesRead
-    ) {
-      throw new DiscoveryFailure(
-        "manifest-changed",
-        "package.json changed while it was read",
-      );
-    }
     let source: string;
     try {
       source = decodeUtf8Strict(bytes);
@@ -113,20 +92,13 @@ export async function readBoundedManifestSnapshot(
     }
     return {
       source,
-      device: after.dev,
-      inode: after.ino,
+      device: stat.dev,
+      inode: stat.ino,
       sha256: createHash("sha256").update(bytes).digest("hex"),
     };
   } finally {
     await handle.close();
   }
-}
-
-function sameIdentity(
-  left: { dev: number; ino: number },
-  right: { dev: number; ino: number },
-): boolean {
-  return left.dev === right.dev && left.ino === right.ino;
 }
 
 function hasErrorCode(error: unknown, code: string): boolean {

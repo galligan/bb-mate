@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import type { Stats } from "node:fs";
 import path from "node:path";
 import type { TrustedRoot } from "./discovery-types.ts";
 import { DiscoveryFailure } from "./discovery-errors.ts";
@@ -17,20 +18,20 @@ export async function attestScanDirectory(
   trustedCanonicalRoot: string,
   expected?: ScanDirectoryAttestation,
 ): Promise<ScanDirectoryAttestation> {
-  const before = await fs.lstat(directory).catch(() => null);
-  if (!before) {
+  const stat = await fs.lstat(directory).catch(() => null);
+  if (!stat) {
     throw new DiscoveryFailure(
       "scan-directory-changed",
       "source directory is no longer available",
     );
   }
-  if (before.isSymbolicLink()) {
+  if (stat.isSymbolicLink()) {
     throw new DiscoveryFailure(
       "scan-directory-symlink",
       "source directory became a symlink",
     );
   }
-  if (!before.isDirectory()) {
+  if (!stat.isDirectory()) {
     throw new DiscoveryFailure(
       "scan-directory-changed",
       "source directory changed filesystem type",
@@ -38,17 +39,7 @@ export async function attestScanDirectory(
   }
 
   const canonicalPath = await fs.realpath(directory).catch(() => null);
-  const after = await fs.lstat(directory).catch(() => null);
-  const canonicalPathAfter = await fs.realpath(directory).catch(() => null);
-  if (
-    canonicalPath === null ||
-    canonicalPathAfter !== canonicalPath ||
-    !after ||
-    after.isSymbolicLink() ||
-    !after.isDirectory() ||
-    before.dev !== after.dev ||
-    before.ino !== after.ino
-  ) {
+  if (canonicalPath === null) {
     throw new DiscoveryFailure(
       "scan-directory-changed",
       "source directory changed while it was validated",
@@ -62,8 +53,8 @@ export async function attestScanDirectory(
   }
   if (
     expected &&
-    (expected.dev !== after.dev ||
-      expected.ino !== after.ino ||
+    (expected.dev !== stat.dev ||
+      expected.ino !== stat.ino ||
       expected.canonicalPath !== canonicalPath)
   ) {
     throw new DiscoveryFailure(
@@ -71,7 +62,7 @@ export async function attestScanDirectory(
       "source directory identity changed during discovery",
     );
   }
-  return { dev: after.dev, ino: after.ino, canonicalPath };
+  return { dev: stat.dev, ino: stat.ino, canonicalPath };
 }
 
 export async function validateDeclaredPath(
@@ -107,7 +98,7 @@ export async function validateDeclaredPath(
   }
 
   let current = candidateRoot;
-  const identities: Array<{ path: string; identity: FileIdentity }> = [];
+  let finalStat: Stats | null = null;
   for (const segment of usableSegments) {
     current = path.join(current, segment);
     const stat = await fs.lstat(current).catch(() => null);
@@ -123,11 +114,11 @@ export async function validateDeclaredPath(
         `${label} contains a symlink`,
       );
     }
-    identities.push({ path: current, identity: stat });
+    finalStat = stat;
   }
 
-  const finalStat = await fs.lstat(current);
   if (
+    finalStat === null ||
     (expected === "file" && !finalStat.isFile()) ||
     (expected === "directory" && !finalStat.isDirectory())
   ) {
@@ -142,20 +133,6 @@ export async function validateDeclaredPath(
       "manifest-path-invalid",
       `${label} escapes the candidate root`,
     );
-  }
-  for (const entry of identities) {
-    const after = await fs.lstat(entry.path).catch(() => null);
-    if (
-      !after ||
-      after.isSymbolicLink() ||
-      after.dev !== entry.identity.dev ||
-      after.ino !== entry.identity.ino
-    ) {
-      throw new DiscoveryFailure(
-        "manifest-path-changed",
-        `${label} changed while it was validated`,
-      );
-    }
   }
 }
 

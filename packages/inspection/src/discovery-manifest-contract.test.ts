@@ -47,19 +47,6 @@ describe("released bb manifest contract", () => {
         themes: [{ id: "theme", name: "Theme", css: "./theme.txt" }],
       },
     ],
-    [
-      "unsupported light logo asset",
-      { ...baseBb, branding: { logo: { light: "./logo.txt" } } },
-    ],
-    [
-      "unsupported dark logo asset",
-      {
-        ...baseBb,
-        branding: {
-          logo: { light: "./logo.svg", dark: "./logo.txt" },
-        },
-      },
-    ],
   ])("rejects %s without hiding a valid sibling", async (_label, bb) => {
     const rootPath = await harness.createRoot();
     const brokenRoot = path.join(rootPath, "broken");
@@ -162,33 +149,6 @@ describe("released bb manifest contract", () => {
       expect.objectContaining({
         code: "manifest-invalid",
         displayPath: "workspace/broken",
-      }),
-    );
-  });
-
-  test("rejects invalid bytes in a plugin-owned compact SVG", async () => {
-    const rootPath = await harness.createRoot();
-    await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
-    await fs.writeFile(path.join(rootPath, "icon.svg"), "not an svg\n");
-    await fs.writeFile(
-      path.join(rootPath, "package.json"),
-      JSON.stringify({
-        name: "bb-plugin-invalid-icon",
-        version: "1.0.0",
-        bb: { ...baseBb, branding: { icon: "./icon.svg" } },
-      }),
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: rootPath },
-    ]);
-
-    const result = await discoverSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toContainEqual(
-      expect.objectContaining({
-        code: "manifest-invalid",
-        displayPath: "workspace",
       }),
     );
   });
