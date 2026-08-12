@@ -259,6 +259,7 @@ function validatePnpmPackagesBlockSyntax(source: string): void {
   for (const line of source.split(/\r?\n/u)) {
     const trimmed = line.trim();
     if (trimmed === "" || trimmed.startsWith("#")) continue;
+    if (isUnsupportedTopLevelKeyReference(line)) throw new Error();
     const packagesKey = topLevelPackagesKey(line);
     if (packagesKey !== null) {
       if (
@@ -316,7 +317,10 @@ function validateNoExplicitTopLevelPackagesKey(source: string): void {
     if (awaitingMultilineKey) {
       if (trimmed === "" || trimmed.startsWith("#")) continue;
       awaitingMultilineKey = false;
-      if (line.startsWith(" ") && isSemanticPackagesScalar(trimmed))
+      if (
+        line.startsWith(" ") &&
+        (isYamlNodeReference(trimmed) || isSemanticPackagesScalar(trimmed))
+      )
         throw new Error();
       if (line.startsWith(" ")) continue;
     }
@@ -328,8 +332,20 @@ function validateNoExplicitTopLevelPackagesKey(source: string): void {
       awaitingMultilineKey = true;
       continue;
     }
-    if (isSemanticPackagesScalar(key)) throw new Error();
+    if (isYamlNodeReference(key) || isSemanticPackagesScalar(key))
+      throw new Error();
   }
+}
+
+function isUnsupportedTopLevelKeyReference(line: string): boolean {
+  if (line.startsWith(" ")) return false;
+  const mapping = /^(.+):(.*)$/u.exec(line);
+  return mapping !== null && isYamlNodeReference(mapping[1]!);
+}
+
+function isYamlNodeReference(source: string): boolean {
+  const first = source.trimStart()[0];
+  return first === "*" || first === "&";
 }
 
 function isSemanticPackagesScalar(source: string): boolean {

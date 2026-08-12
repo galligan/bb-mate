@@ -682,6 +682,64 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("rejects anchors and aliases used as top-level pnpm packages keys", async () => {
+    for (const [name, keySource] of [
+      ["explicit-alias", "? *workspace-key\n:"],
+      ["multiline-explicit-alias", "?\n  *workspace-key\n:"],
+      ["implicit-alias", "*workspace-key:"],
+      ["anchored", "&workspace-key packages:"],
+    ] as const) {
+      const root = await harness.createRoot(`private-pnpm-key-${name}`);
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `workspace-key: &workspace-key packages\npackages:\n  - plugins/*\n${keySource}\n  - extensions/*\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-pnpm-key-${name}`,
+        }),
+      ]);
+    }
+  });
+
+  test("supports an alias used only as a pnpm workspace item value", async () => {
+    const root = await harness.createRoot();
+    const plugin = path.join(root, "plugins", "included");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "included");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "workspace-pattern: &workspace-pattern plugins/*\npackages:\n  - *workspace-pattern\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "included",
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
   test("rejects tagged semantic duplicate pnpm packages keys", async () => {
     for (const [name, taggedKey] of [
       ["non-specific-tag", "! packages"],
