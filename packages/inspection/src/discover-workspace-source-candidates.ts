@@ -756,6 +756,7 @@ function matchesSegments(
     const key = `${patternIndex}:${inputIndex}`;
     if (seen.has(key)) return false;
     seen.add(key);
+    chargeWorkspaceMatchWork(budget, 1);
     if (patternIndex === pattern.length) return inputIndex === input.length;
     const segment = pattern[patternIndex]!;
     if (segment === "**")
@@ -783,7 +784,7 @@ function prefixCanMatch(
   let states = new Set([0]);
   for (const inputSegment of input) {
     const next = new Set<number>();
-    for (const state of closeGlobstars(pattern, states)) {
+    for (const state of closeGlobstars(pattern, states, budget)) {
       if (pattern[state] === "**" && !inputSegment.startsWith("."))
         next.add(state);
       else if (
@@ -795,7 +796,7 @@ function prefixCanMatch(
     states = next;
     if (states.size === 0) return false;
   }
-  const reachable = closeGlobstars(pattern, states);
+  const reachable = closeGlobstars(pattern, states, budget);
   return options.strictDescendant
     ? [...reachable].some((state) => state < pattern.length)
     : reachable.size > 0;
@@ -804,6 +805,7 @@ function prefixCanMatch(
 function closeGlobstars(
   pattern: readonly string[],
   input: ReadonlySet<number>,
+  budget: WorkspaceMatchBudget,
 ): Set<number> {
   const result = new Set(input);
   for (const state of [...result]) {
@@ -813,6 +815,7 @@ function closeGlobstars(
       result.add(index);
     }
   }
+  chargeWorkspaceMatchWork(budget, result.size);
   return result;
 }
 
