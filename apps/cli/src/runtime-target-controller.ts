@@ -13,6 +13,7 @@ import {
   type RequestContext,
   type RuntimeTargetController,
 } from "@bb-mate/runtime";
+import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
 import {
   admitTrustedRoots,
   discoverWorkspaceSourceCandidates,
@@ -357,15 +358,19 @@ function batchResponse(
   >,
   partial: boolean,
 ): BatchProjectTargetAdmissionResponse {
+  let remainingTargetEntries = TARGET_LIST_MAX_TARGETS;
   const projected = projects.map(({ projectKey }) => {
     const group = groups.get(projectKey);
     if (group === undefined) {
       return { projectKey, state: "partial" as const, targets: [] };
     }
+    const targets = group.targets.slice(0, remainingTargetEntries);
+    remainingTargetEntries -= targets.length;
+    const truncated = targets.length !== group.targets.length;
     return {
       projectKey,
-      state: group.state,
-      targets: [...group.targets],
+      state: truncated ? ("partial" as const) : group.state,
+      targets,
     };
   });
   return Object.freeze({

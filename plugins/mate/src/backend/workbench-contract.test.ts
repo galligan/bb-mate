@@ -190,7 +190,7 @@ describe("Plugin Studio v3 contract", () => {
     ).toBe(false);
   });
 
-  test("counts duplicate-root fan-out targets once against the global cap", () => {
+  test("bounds duplicate-root fan-out by total serialized target entries", () => {
     const targets = Array.from({ length: 65 }, (_, index) => ({
       id: String(index).padStart(32, "0"),
       label: `Plugin ${index}`,
@@ -216,6 +216,6 @@ describe("Plugin Studio v3 contract", () => {
           ],
         },
       }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 });

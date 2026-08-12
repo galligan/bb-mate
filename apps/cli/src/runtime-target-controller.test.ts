@@ -547,6 +547,65 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("bounds duplicate-root fan-out by total serialized target entries", async () => {
+    const fixture = await makeFixture();
+    const workspaces = Array.from({ length: 65 }, (_, index) =>
+      path.join("plugins", `plugin-${index}`),
+    );
+    await fs.mkdir(fixture.sourceRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({ name: "fixture", private: true, workspaces }),
+    );
+    await Promise.all(
+      workspaces.map((workspace, index) =>
+        writePlugin(
+          path.join(fixture.sourceRoot, workspace),
+          `plugin-${index}`,
+        ),
+      ),
+    );
+    let objectIndex = 0;
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () =>
+        ObjectIdSchema.parse((objectIndex++).toString(36).padStart(32, "0")),
+      clock: () => 1_000,
+    });
+    const rootKeys = ["r".repeat(32), "q".repeat(32)];
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse(rootKeys.shift()),
+      clock: () => 1_000,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "a".repeat(32), sourcePath: fixture.sourceRoot },
+        { projectKey: "b".repeat(32), sourcePath: fixture.sourceRoot },
+      ],
+    });
+
+    expect(response.state).toBe("partial");
+    expect(
+      response.projects.reduce(
+        (count, project) => count + project.targets.length,
+        0,
+      ),
+    ).toBe(TARGET_LIST_MAX_TARGETS);
+    expect(response.projects.map(({ state }) => state)).toEqual([
+      "ready",
+      "partial",
+    ]);
+    expect(response.projects[0]?.targets).toHaveLength(65);
+    expect(response.projects[1]?.targets).toHaveLength(63);
+    catalog.close();
+  });
+
   test("reports bounded discovery diagnostics without leaking them or skipping valid candidates", async () => {
     const fixture = await makeFixture();
     await writePlugin(fixture.sourceRoot, "valid");

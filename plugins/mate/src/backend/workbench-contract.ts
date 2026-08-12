@@ -82,8 +82,7 @@ const projectItemsSchema = z
   .refine(uniqueIds)
   .refine(
     (items) =>
-      new Set(items.flatMap((item) => item.scan.items.map(({ id }) => id)))
-        .size <= 128,
+      items.reduce((count, item) => count + item.scan.items.length, 0) <= 128,
   );
 
 export const projectCatalogSchema = z.discriminatedUnion("state", [

@@ -89,9 +89,10 @@ export const BatchProjectTargetAdmissionResponseSchema = z
         path: ["projects"],
       });
     }
-    const targetCount = new Set(
-      projects.flatMap((project) => project.targets.map((target) => target.id)),
-    ).size;
+    const targetCount = projects.reduce(
+      (count, project) => count + project.targets.length,
+      0,
+    );
     if (targetCount > TARGET_LIST_MAX_TARGETS) {
       context.addIssue({
         code: "too_big",

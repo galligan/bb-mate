@@ -8,7 +8,7 @@ import {
   type DevelopmentTargetListResponse,
 } from "@bb-mate/runtime/supervision";
 
-const MAX_RESPONSE_BYTES = 256 * 1024;
+const MAX_RESPONSE_BYTES = 1024 * 1024;
 
 export interface RuntimeJsonRequest {
   readonly url: string;

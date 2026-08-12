@@ -247,6 +247,23 @@ describe("supervised target transport", () => {
     }
   });
 
+  test("bounds duplicate-root fan-out by total serialized target entries", () => {
+    const sharedTargets = Array.from({ length: 65 }, (_, index) => ({
+      ...projection,
+      id: TargetIdSchema.parse(index.toString(36).padStart(32, "0")),
+    }));
+    expect(
+      BatchProjectTargetAdmissionResponseSchema.safeParse({
+        schemaVersion: 2,
+        state: "ready",
+        projects: [
+          { projectKey: projectA, state: "ready", targets: sharedTargets },
+          { projectKey: projectB, state: "ready", targets: sharedTargets },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
   test("parses the strict path-free ready or partial target projection wrapper", () => {
     for (const state of ["ready", "partial"] as const) {
       const response = {

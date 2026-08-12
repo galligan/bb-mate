@@ -159,6 +159,59 @@ describe("private runtime target client", () => {
     client.dispose();
   });
 
+  test("accepts the largest schema-bounded batch response", async () => {
+    const boundedText = "\u0001";
+    const targets = Array.from({ length: 128 }, (_, index) => ({
+      ...response.targets[0]!,
+      id: index.toString(36).padStart(32, "0"),
+      displayName: boundedText.repeat(128),
+      displayPath: boundedText.repeat(256),
+      manifest: {
+        ...response.targets[0]!.manifest,
+        packageName: boundedText.repeat(214),
+        version: boundedText.repeat(64),
+      },
+    }));
+    const largest = BatchProjectTargetAdmissionResponseSchema.parse({
+      schemaVersion: 2,
+      state: "ready",
+      projects: [{ projectKey: "p".repeat(32), state: "ready", targets }],
+    });
+    expect(Buffer.byteLength(JSON.stringify(largest))).toBeGreaterThan(
+      256 * 1024,
+    );
+    const server = createServer((_request, responseWriter) => {
+      responseWriter.writeHead(200, {
+        "content-type": "application/json;charset=utf-8",
+      });
+      responseWriter.end(JSON.stringify(largest));
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve),
+    );
+    try {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error();
+      const client = createRuntimeTargetClient({
+        baseUrl: `http://127.0.0.1:${address.port}`,
+        token: Buffer.alloc(32, 6),
+      });
+      await expect(
+        client.admitProjects({
+          inventoryState: "complete",
+          projects: [
+            { projectKey: "p".repeat(32), sourcePath: "/Users/test/plugin" },
+          ],
+        }),
+      ).resolves.toEqual(largest);
+      client.dispose();
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
   test("rejects unknown response fields and erases its retained token", async () => {
     const token = Buffer.alloc(32, 9);
     const retained = Buffer.from(token);
