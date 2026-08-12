@@ -46,6 +46,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const generation = useRef(0);
   const recoveredSubPath = useRef<string | null>(null);
   const attemptedRouteSubPath = useRef<string | null>(null);
+  const activeSubPath = useRef(subPath);
   const failedAdmissionProjectId = useRef<string | null>(null);
   const previousTargetIds = useRef(new Map<string, readonly string[]>());
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
@@ -174,9 +175,19 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const route = useMemo(() => parseTargetRoute(subPath), [subPath]);
 
   useEffect(() => {
+    const routeChanged = activeSubPath.current !== subPath;
+    activeSubPath.current = subPath;
     if (route === null) {
       attemptedRouteSubPath.current = null;
       return;
+    }
+    if (
+      routeChanged &&
+      admittingProjectId !== null &&
+      admittingProjectId !== route.projectId
+    ) {
+      generation.current += 1;
+      setAdmittingProjectId(null);
     }
     if (
       snapshot?.projects.state === "ready" &&
@@ -186,7 +197,14 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       attemptedRouteSubPath.current = subPath;
       openProject(route.projectId);
     }
-  }, [openProject, openedProjectId, route, snapshot, subPath]);
+  }, [
+    admittingProjectId,
+    openProject,
+    openedProjectId,
+    route,
+    snapshot,
+    subPath,
+  ]);
 
   const target =
     route !== null &&

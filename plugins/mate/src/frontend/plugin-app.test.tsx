@@ -428,6 +428,66 @@ describe("Plugin Workbench app registration", () => {
     expect(document.body.textContent).toContain("Remote plugin");
   });
 
+  test("supersedes a pending foreign project when history returns to the open detail", async () => {
+    const remote = deferred<unknown>();
+    rpcImplementation = (method, input) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      return (input as { projectId: string }).projectId === "project_01"
+        ? Promise.resolve(
+            snapshot({
+              state: "ready",
+              items: [
+                {
+                  id: targetA,
+                  label: "Mate",
+                  pluginId: "mate",
+                  revision: 1,
+                },
+              ],
+            }),
+          )
+        : remote.promise;
+    };
+
+    await renderPanel(`projects/project_01/targets/${targetA}`);
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_02/targets/${targetB}`}
+        />,
+      ),
+    );
+    await flush();
+    await act(async () =>
+      root?.render(
+        <PluginWorkbenchPanel
+          subPath={`projects/project_01/targets/${targetA}`}
+        />,
+      ),
+    );
+    await flush();
+
+    remote.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetB,
+            label: "Remote plugin",
+            pluginId: "remote",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).toContain("Mate");
+    expect(document.body.textContent).not.toContain("Remote plugin");
+    expect(rpcCall).toHaveBeenCalledTimes(3);
+  });
+
   test("keeps a detail open and reports a failed refresh in place", async () => {
     const targetSnapshot = snapshot({
       state: "ready",
