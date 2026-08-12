@@ -255,7 +255,7 @@ function parseYamlPatternScalar(input: string): string {
     /:(?:$|\s)/u.test(withoutComment) ||
     /^(?:-|\?)(?:$|\s)/u.test(withoutComment) ||
     /^[\[\]{|>&*]/u.test(withoutComment) ||
-    /^!(?:!|<)/u.test(withoutComment)
+    /^!/u.test(withoutComment)
   )
     throw new Error();
   return withoutComment;

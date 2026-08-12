@@ -268,6 +268,37 @@ describe("workspace-aware source discovery", () => {
     );
   });
 
+  test("rejects non-specific and local YAML tags as pnpm workspace patterns", async () => {
+    for (const [name, scalar] of [
+      ["non-specific-tag", "! plugins/*"],
+      ["local-tag", "!workspace plugins/*"],
+    ] as const) {
+      const root = await harness.createRoot(`private-pnpm-${name}`);
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `packages:\n  - ${scalar}\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-pnpm-${name}`,
+        }),
+      ]);
+    }
+  });
+
   test("rejects nested YAML collections as pnpm workspace patterns", async () => {
     for (const scalar of ["- plugins/*", "? plugins/*"]) {
       const root = await harness.createRoot("private-pnpm-nested");
