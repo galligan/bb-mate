@@ -106,10 +106,10 @@ describe("plugin surface declaration coverage", () => {
     ).toThrow("Uncataloged declaration groups: slots.inherited");
   });
 
-  test("covers the committed Linear plugin SDK declaration in the normal test gate", async () => {
+  test("covers the committed Mate plugin SDK declaration in the normal test gate", async () => {
     const snapshot = Bun.file(
       new URL(
-        "../../../plugins/linear/types/bb-plugin-sdk.d.ts",
+        "../../../plugins/mate/types/bb-plugin-sdk.d.ts",
         import.meta.url,
       ),
     );

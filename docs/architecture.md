@@ -125,10 +125,16 @@ repair generated packages after the fact;
 
 ## Plugins
 
-Each directory under `plugins/` is an independent package. A plugin owns its manifest, backend entry, optional frontend entry, tests, assets, and version. Local development uses path installation so bb loads the package in place.
+`plugins/mate` is the Studio-owned integration package. It proves the live bb,
+packaging, and visual boundaries used by this repository without making Plugin
+Studio the home of independently distributed plugins.
 
 Plugin UI can share host-neutral components with the workbench once a second consumer proves the boundary. Code that imports `@bb/plugin-sdk/app` stays inside the plugin adapter or entrypoint because that runtime only exists inside bb.
 
 ## Distribution
 
-bb supports managed npm installation with `bb plugin install npm:<package>@<range>`. The intended release model is independent npm packages published from `plugins/*` by CI. Git monorepo subdirectory installation is proposed upstream in [get-bb/bb#1097](https://github.com/get-bb/bb/issues/1097).
+[bb-plugins](https://github.com/galligan/bb-plugins) owns independently
+versioned, distributable plugins and their release lifecycle. Plugin Studio can
+inspect those packages from an explicit local path, but it does not depend on
+that sibling checkout. The Mate plugin is packaged only as part of Plugin
+Studio's own integration workflow.

@@ -45,8 +45,10 @@ bun run bb-mate inspect /absolute/path/to/plugin
 
 - `apps/workbench` is browser-only Fixture tooling and must work without a bb
   server.
-- `plugins/<name>` packages are independently versioned native bb plugins and
-  use only public plugin contracts.
+- `plugins/mate` is the Studio-owned native integration plugin and uses only
+  public plugin contracts. Independently distributed plugins belong in
+  [bb-plugins](https://github.com/galligan/bb-plugins) and can be inspected
+  here by path.
 - Native bb owns scaffold, declaration refresh, build, install, update,
   dev/reload, host UI, and runtime behavior.
 - BB Mate may inspect, explain, orchestrate native commands, render deterministic

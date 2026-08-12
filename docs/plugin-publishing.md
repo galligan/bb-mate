@@ -1,13 +1,17 @@
-# Plugin publishing
+# Mate plugin packaging
 
-BB Mate will publish plugin workspaces independently when the first plugin is ready for external installation.
+Plugin Studio packages the Mate plugin to validate its own live integration and
+clean-room behavior. Independently distributed plugins and their release
+automation live in [bb-plugins](https://github.com/galligan/bb-plugins).
 
 The expected pipeline is:
 
 1. Validate the selected plugin with type checks, tests, and `bb plugin build`.
 2. Verify the package version and `engines.bb` / `engines.bbPluginSdk` ranges.
-3. Publish the workspace package to npm with provenance from GitHub Actions.
-4. Install the published artifact into a clean bb profile with `bb plugin install npm:<package>@<version>`.
-5. Promote a release only after activation and its primary interaction work.
+3. Build the Mate package artifact in a clean room.
+4. Install the artifact into an isolated bb profile.
+5. Accept packaging changes only after activation and its primary interaction work.
 
-Do not add release automation until a real plugin establishes package naming, access level, versioning, and release-channel requirements. Changesets is the likely versioning layer if multiple plugins need independent releases.
+Do not add a general plugin release system here. Plugin collection versioning,
+access, provenance, and release channels belong in `bb-plugins` once its first
+external release requires them.
