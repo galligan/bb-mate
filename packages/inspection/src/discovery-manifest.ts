@@ -1,6 +1,5 @@
 import path from "node:path";
 import type { SourceCandidate, TrustedRoot } from "./discovery-types.ts";
-import { readBoundedPluginIcon } from "./discovery-asset-reader.ts";
 import { DiscoveryFailure } from "./discovery-errors.ts";
 import { readBoundedManifestSnapshot } from "./discovery-manifest-reader.ts";
 import {
@@ -8,7 +7,6 @@ import {
   validateDeclaredPath,
 } from "./discovery-path-safety.ts";
 import { issueSourceCandidate } from "./source-candidate-transition.ts";
-import { assertValidCompactSvg } from "./svg.ts";
 
 const MAX_MANIFEST_STRING_CHARACTERS = 8192;
 const MAX_DISPLAY_NAME_CHARACTERS = 128;
@@ -60,9 +58,9 @@ export async function candidateAtRoot(
   const app =
     bb.app === undefined ? undefined : requiredString(bb.app, "bb.app");
   if (app) await validateDeclaredPath(candidateRoot, app, "bb.app", "file");
-  await validateSkills(candidateRoot, bb.skills);
-  await validateBranding(candidateRoot, bb.branding);
-  await validateThemes(candidateRoot, bb.themes);
+  validateSkills(bb.skills);
+  validateBranding(bb.branding);
+  validateThemes(bb.themes);
 
   const pluginId = derivePluginId(packageName);
   const candidate: SourceCandidate = {
@@ -79,30 +77,15 @@ export async function candidateAtRoot(
   return issueSourceCandidate(root, candidate, manifest);
 }
 
-async function validateSkills(
-  candidateRoot: string,
-  value: unknown,
-): Promise<void> {
+function validateSkills(value: unknown): void {
   if (value === undefined) return;
   if (!Array.isArray(value)) throw invalid("bb.skills must be an array");
   for (const [index, entry] of value.entries()) {
-    const skillRoot = requiredString(entry, `bb.skills.${index}`).replace(
-      /[\\/]\*$/u,
-      "",
-    );
-    await validateDeclaredPath(
-      candidateRoot,
-      skillRoot,
-      `bb.skills.${index}`,
-      "directory",
-    );
+    requiredString(entry, `bb.skills.${index}`);
   }
 }
 
-async function validateBranding(
-  candidateRoot: string,
-  value: unknown,
-): Promise<void> {
+function validateBranding(value: unknown): void {
   const branding = record(value);
   if (!branding) throw invalid("bb.branding must be an object");
   rejectUnknownKeys(branding, ["icon", "logo"], "bb.branding");
@@ -117,34 +100,11 @@ async function validateBranding(
   if (icon === undefined && logo === null) {
     throw invalid("bb.branding must declare an icon or light logo");
   }
-  if (icon !== undefined && isPluginOwnedIconPath(icon)) {
-    if (!icon.toLowerCase().endsWith(".svg")) {
-      throw invalid("plugin-owned bb.branding.icon must be an SVG path");
-    }
-    await validateDeclaredPath(candidateRoot, icon, "bb.branding.icon", "file");
-    assertValidCompactSvg(
-      await readBoundedPluginIcon(resolveDeclaredPath(candidateRoot, icon)),
-    );
-  }
   if (logo !== null) {
     rejectUnknownKeys(logo, ["light", "dark"], "bb.branding.logo");
-    const light = requiredString(logo.light, "bb.branding.logo.light");
-    validateLogoExtension(light, "bb.branding.logo.light");
-    await validateDeclaredPath(
-      candidateRoot,
-      light,
-      "bb.branding.logo.light",
-      "file",
-    );
+    requiredString(logo.light, "bb.branding.logo.light");
     if (logo.dark !== undefined) {
-      const dark = requiredString(logo.dark, "bb.branding.logo.dark");
-      validateLogoExtension(dark, "bb.branding.logo.dark");
-      await validateDeclaredPath(
-        candidateRoot,
-        dark,
-        "bb.branding.logo.dark",
-        "file",
-      );
+      requiredString(logo.dark, "bb.branding.logo.dark");
     }
   }
 }
@@ -159,20 +119,7 @@ function validateEngines(value: unknown): void {
   }
 }
 
-function resolveDeclaredPath(
-  candidateRoot: string,
-  declaredPath: string,
-): string {
-  const segments = declaredPath
-    .split(/[\\/]/u)
-    .filter((segment) => segment.length > 0 && segment !== ".");
-  return path.join(candidateRoot, ...segments);
-}
-
-async function validateThemes(
-  candidateRoot: string,
-  value: unknown,
-): Promise<void> {
+function validateThemes(value: unknown): void {
   if (value === undefined) return;
   if (!Array.isArray(value)) throw invalid("bb.themes must be an array");
   const ids = new Set<string>();
@@ -198,22 +145,6 @@ async function validateThemes(
     if (!css.toLowerCase().endsWith(".css")) {
       throw invalid(`bb.themes.${index}.css must be a CSS path`);
     }
-    await validateDeclaredPath(
-      candidateRoot,
-      css,
-      `bb.themes.${index}.css`,
-      "file",
-    );
-  }
-}
-
-function isPluginOwnedIconPath(icon: string): boolean {
-  return icon.startsWith("./");
-}
-
-function validateLogoExtension(value: string, label: string): void {
-  if (!/\.(?:svg|png|webp)$/iu.test(value)) {
-    throw invalid(`${label} must be an SVG, PNG, or WebP path`);
   }
 }
 

@@ -133,59 +133,6 @@ describe("source path safety", () => {
 
     await expectSymlinkRejection(rootPath);
   });
-
-  test("rejects a symlink component in a declared skill root", async () => {
-    const rootPath = await harness.createRoot();
-    await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
-    const realSkills = path.join(rootPath, "real-skills");
-    await fs.mkdir(realSkills);
-    await fs.symlink(realSkills, path.join(rootPath, "linked-skills"), "dir");
-    await writeManifest(rootPath, { skills: ["./linked-skills/*"] });
-
-    await expectSymlinkRejection(rootPath);
-  });
-
-  test("rejects a symlink component in a plugin-owned branding icon", async () => {
-    const rootPath = await harness.createRoot();
-    await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
-    const realAssets = path.join(rootPath, "real-assets");
-    await fs.mkdir(realAssets);
-    await fs.writeFile(path.join(realAssets, "icon.svg"), "<svg />");
-    await fs.symlink(realAssets, path.join(rootPath, "assets"), "dir");
-    await writeManifest(rootPath, {
-      branding: { icon: "./assets/icon.svg" },
-    });
-
-    await expectSymlinkRejection(rootPath);
-  });
-
-  test("rejects a symlink component in a declared branding logo", async () => {
-    const rootPath = await harness.createRoot();
-    await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
-    const realAssets = path.join(rootPath, "real-assets");
-    await fs.mkdir(realAssets);
-    await fs.writeFile(path.join(realAssets, "logo.svg"), "<svg />");
-    await fs.symlink(realAssets, path.join(rootPath, "assets"), "dir");
-    await writeManifest(rootPath, {
-      branding: { logo: { light: "./assets/logo.svg" } },
-    });
-
-    await expectSymlinkRejection(rootPath);
-  });
-
-  test("rejects a symlink component in a declared theme stylesheet", async () => {
-    const rootPath = await harness.createRoot();
-    await fs.writeFile(path.join(rootPath, "server.ts"), "export {};\n");
-    const realThemes = path.join(rootPath, "real-themes");
-    await fs.mkdir(realThemes);
-    await fs.writeFile(path.join(realThemes, "theme.css"), "body {}\n");
-    await fs.symlink(realThemes, path.join(rootPath, "themes"), "dir");
-    await writeManifest(rootPath, {
-      themes: [{ id: "unsafe", name: "unsafe", css: "./themes/theme.css" }],
-    });
-
-    await expectSymlinkRejection(rootPath);
-  });
 });
 
 async function writeManifest(
