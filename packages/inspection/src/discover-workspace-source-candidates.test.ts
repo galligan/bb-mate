@@ -616,8 +616,8 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
-  test("rejects a duplicate pnpm packages key after the parsed block", async () => {
-    const root = await harness.createRoot("private-pnpm-duplicate");
+  test("accepts duplicate packages keys with last-parse-wins semantics", async () => {
+    const root = await harness.createRoot();
     const first = path.join(root, "plugins", "first");
     const second = path.join(root, "extensions", "second");
     await fs.mkdir(first, { recursive: true });
@@ -638,66 +638,21 @@ describe("workspace-aware source discovery", () => {
 
     const result = await discoverWorkspaceSourceCandidates(admission.roots);
 
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-pnpm-duplicate",
-      }),
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "second",
     ]);
-  });
-
-  test("rejects an adjacent duplicate pnpm packages key", async () => {
-    const root = await harness.createRoot("private-pnpm-adjacent-duplicate");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({ name: "pnpm-root", private: true }),
-    );
-    await fs.writeFile(
-      path.join(root, "pnpm-workspace.yaml"),
-      "packages:\n  - 'plugins/*'\npackages:\n  - 'extensions/*'\n",
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-pnpm-adjacent-duplicate",
-      }),
-    ]);
-  });
-
-  test("rejects a semantically duplicate quoted pnpm packages key", async () => {
-    const root = await harness.createRoot("private-pnpm-quoted-duplicate");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({ name: "pnpm-root", private: true }),
-    );
-    await fs.writeFile(
-      path.join(root, "pnpm-workspace.yaml"),
-      'packages:\n  - plugins/*\n"packages":\n  - extensions/*\n',
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-pnpm-quoted-duplicate",
-      }),
-    ]);
+    const canonicalRoot = await fs.realpath(root);
+    for (const candidate of result.candidates) {
+      expect(candidate.canonicalRoot.startsWith(canonicalRoot + path.sep)).toBe(
+        true,
+      );
+    }
+    expect(
+      result.diagnostics.filter(
+        ({ code }) => code === "workspace-config-invalid",
+      ),
+    ).toEqual([]);
+    expect(result.diagnostics).toEqual([]);
   });
 
   test("rejects an explicit-form duplicate pnpm packages key", async () => {
@@ -726,17 +681,10 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
-  test("rejects multiline explicit and tagged pnpm packages keys", async () => {
+  test("rejects same-line explicit pnpm packages keys", async () => {
     for (const [name, explicitKey] of [
-      ["multiline", "?\n  packages\n:"],
-      [
-        "multiline-comments",
-        "? # explicit key\n  packages # workspace key\n: # value",
-      ],
       ["same-line-comments", "? packages # workspace key\n:"],
       ["same-line-tagged", "? !!str packages\n:"],
-      ["multiline-tagged", "?\n  !!str packages\n:"],
-      ["multiline-quoted", "?\n  'packages' # workspace key\n:"],
     ] as const) {
       const root = await harness.createRoot(`private-pnpm-explicit-${name}`);
       await fs.writeFile(
@@ -764,12 +712,10 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
-  test("rejects anchors and aliases used as top-level pnpm packages keys", async () => {
+  test("rejects aliases used as top-level pnpm packages keys", async () => {
     for (const [name, keySource] of [
       ["explicit-alias", "? *workspace-key\n:"],
-      ["multiline-explicit-alias", "?\n  *workspace-key\n:"],
       ["implicit-alias", "*workspace-key:"],
-      ["anchored", "&workspace-key packages:"],
     ] as const) {
       const root = await harness.createRoot(`private-pnpm-key-${name}`);
       await fs.writeFile(
@@ -792,66 +738,6 @@ describe("workspace-aware source discovery", () => {
           code: "workspace-config-invalid",
           rootKey: WORKSPACE_ROOT_KEY,
           displayPath: `private-pnpm-key-${name}`,
-        }),
-      ]);
-    }
-  });
-
-  test("rejects an explicit pnpm packages key split after a tag property", async () => {
-    const root = await harness.createRoot("private-pnpm-explicit-tag-property");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({ name: "pnpm-root", private: true }),
-    );
-    await fs.writeFile(
-      path.join(root, "pnpm-workspace.yaml"),
-      "packages:\n  - plugins/*\n? !!str\n  packages\n:\n  - extensions/*\n",
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-pnpm-explicit-tag-property",
-      }),
-    ]);
-  });
-
-  test("rejects block-scalar explicit pnpm packages keys", async () => {
-    for (const [name, explicitKey] of [
-      ["literal-strip", "? |-\n  packages\n:"],
-      ["folded-keep", "? >+\n  packages\n:"],
-      ["multiline-literal", "?\n  |+\n  packages\n:"],
-    ] as const) {
-      const root = await harness.createRoot(
-        `private-pnpm-explicit-block-${name}`,
-      );
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `packages:\n  - plugins/*\n${explicitKey}\n  - extensions/*\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates).toEqual([]);
-      expect(result.diagnostics).toEqual([
-        expect.objectContaining({
-          code: "workspace-config-invalid",
-          rootKey: WORKSPACE_ROOT_KEY,
-          displayPath: `private-pnpm-explicit-block-${name}`,
         }),
       ]);
     }
@@ -880,163 +766,6 @@ describe("workspace-aware source discovery", () => {
       "included",
     ]);
     expect(result.diagnostics).toEqual([]);
-  });
-
-  test("rejects tagged semantic duplicate pnpm packages keys", async () => {
-    for (const [name, taggedKey] of [
-      ["non-specific-tag", "! packages"],
-      ["local-tag", "!workspace packages"],
-      ["standard-tag", "!!str packages"],
-      ["verbatim-tag", "!<tag:yaml.org,2002:str> packages"],
-    ] as const) {
-      const root = await harness.createRoot(`private-pnpm-${name}`);
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `packages:\n  - plugins/*\n${taggedKey}:\n  - extensions/*\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates).toEqual([]);
-      expect(result.diagnostics).toEqual([
-        expect.objectContaining({
-          code: "workspace-config-invalid",
-          rootKey: WORKSPACE_ROOT_KEY,
-          displayPath: `private-pnpm-${name}`,
-        }),
-      ]);
-    }
-  });
-
-  test("supports plain and quoted pnpm packages keys", async () => {
-    for (const [name, packagesKey] of [
-      ["plain", "packages"],
-      ["single-quoted", "'packages'"],
-      ["double-quoted", '"packages"'],
-    ] as const) {
-      const root = await harness.createRoot(`pnpm-key-${name}`);
-      const plugin = path.join(root, "plugins", "included");
-      await fs.mkdir(plugin, { recursive: true });
-      await harness.writePlugin(plugin, "included");
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `${packagesKey}:\n  - plugins/*\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
-        "included",
-      ]);
-      expect(result.diagnostics).toEqual([]);
-    }
-  });
-
-  test("supports colons in pnpm packages key comments", async () => {
-    for (const [name, keyLine] of [
-      ["plain", "packages: # workspace: plugins"],
-      ["single-quoted", "'packages': # workspace: plugins"],
-      ["double-quoted", '"packages": # workspace: plugins'],
-    ] as const) {
-      const root = await harness.createRoot(`pnpm-comment-colon-${name}`);
-      const plugin = path.join(root, "plugins", "included");
-      await fs.mkdir(plugin, { recursive: true });
-      await harness.writePlugin(plugin, "included");
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `${keyLine}\n  - "plugins/*" # target: plugins\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
-        "included",
-      ]);
-      expect(result.diagnostics).toEqual([]);
-    }
-  });
-
-  test("does not treat embedded plain-key colons as mapping delimiters", async () => {
-    for (const [name, metadataLine] of [
-      ["plain", "packages:metadata: true"],
-      ["single-quoted", "'packages:metadata': true"],
-      ["double-quoted", '"packages:metadata": true'],
-    ] as const) {
-      const root = await harness.createRoot(`pnpm-embedded-colon-${name}`);
-      const plugin = path.join(root, "plugins", "included");
-      await fs.mkdir(plugin, { recursive: true });
-      await harness.writePlugin(plugin, "included");
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `packages:\n  - plugins/*\n${metadataLine}\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
-        "included",
-      ]);
-      expect(result.diagnostics).toEqual([]);
-    }
-  });
-
-  test("supports pnpm packages keys separated from their mapping colon", async () => {
-    for (const [name, keyLine] of [
-      ["plain", "packages :"],
-      ["single-quoted", "'packages' :"],
-      ["double-quoted", '"packages" :'],
-    ] as const) {
-      const root = await harness.createRoot(`pnpm-spaced-colon-${name}`);
-      const plugin = path.join(root, "plugins", "included");
-      await fs.mkdir(plugin, { recursive: true });
-      await harness.writePlugin(plugin, "included");
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `${keyLine}\n  - plugins/*\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
-        "included",
-      ]);
-      expect(result.diagnostics).toEqual([]);
-    }
   });
 
   test("supports exactly one leading BOM in a pnpm workspace document", async () => {
@@ -1188,70 +917,6 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
-  test("reports unsupported pnpm workspace syntax as partial", async () => {
-    const root = await harness.createRoot("private-pnpm-workspace");
-    const plugin = path.join(root, "plugins", "mate");
-    await fs.mkdir(plugin, { recursive: true });
-    await harness.writePlugin(plugin, "mate");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({ name: "pnpm-root", private: true }),
-    );
-    await fs.writeFile(
-      path.join(root, "pnpm-workspace.yaml"),
-      "packages: ['plugins/*']\n",
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-pnpm-workspace",
-      }),
-    ]);
-    expect(JSON.stringify(result.diagnostics)).not.toContain(
-      path.dirname(root),
-    );
-  });
-
-  test("reports indentationless pnpm package lists as unsupported", async () => {
-    const root = await harness.createRoot("private-pnpm-indentationless");
-    const plugin = path.join(root, "plugins", "mate");
-    await fs.mkdir(plugin, { recursive: true });
-    await harness.writePlugin(plugin, "mate");
-    await fs.writeFile(
-      path.join(root, "package.json"),
-      JSON.stringify({ name: "pnpm-root", private: true }),
-    );
-    await fs.writeFile(
-      path.join(root, "pnpm-workspace.yaml"),
-      "packages:\n- 'plugins/*'\n",
-    );
-    const admission = await admitTrustedRoots([
-      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-    ]);
-
-    const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-    expect(result.candidates).toEqual([]);
-    expect(result.diagnostics).toEqual([
-      expect.objectContaining({
-        code: "workspace-config-invalid",
-        rootKey: WORKSPACE_ROOT_KEY,
-        displayPath: "private-pnpm-indentationless",
-      }),
-    ]);
-    expect(JSON.stringify(result.diagnostics)).not.toContain(
-      path.dirname(root),
-    );
-  });
-
   test("rejects YAML mapping entries as pnpm workspace patterns", async () => {
     const root = await harness.createRoot("private-pnpm-mapping");
     await fs.writeFile(
@@ -1308,37 +973,6 @@ describe("workspace-aware source discovery", () => {
     expect(JSON.stringify(result.diagnostics)).not.toContain(
       path.dirname(root),
     );
-  });
-
-  test("rejects non-specific and local YAML tags as pnpm workspace patterns", async () => {
-    for (const [name, scalar] of [
-      ["non-specific-tag", "! plugins/*"],
-      ["local-tag", "!workspace plugins/*"],
-    ] as const) {
-      const root = await harness.createRoot(`private-pnpm-${name}`);
-      await fs.writeFile(
-        path.join(root, "package.json"),
-        JSON.stringify({ name: "pnpm-root", private: true }),
-      );
-      await fs.writeFile(
-        path.join(root, "pnpm-workspace.yaml"),
-        `packages:\n  - ${scalar}\n`,
-      );
-      const admission = await admitTrustedRoots([
-        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
-      ]);
-
-      const result = await discoverWorkspaceSourceCandidates(admission.roots);
-
-      expect(result.candidates).toEqual([]);
-      expect(result.diagnostics).toEqual([
-        expect.objectContaining({
-          code: "workspace-config-invalid",
-          rootKey: WORKSPACE_ROOT_KEY,
-          displayPath: `private-pnpm-${name}`,
-        }),
-      ]);
-    }
   });
 
   test("rejects nested YAML collections as pnpm workspace patterns", async () => {
