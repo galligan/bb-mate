@@ -7,10 +7,10 @@ export const RUNTIME_ARTIFACT_STAMP = Object.freeze({
   architecture: "arm64",
   mode: "0755",
   size: 64882658,
-  sha256: "82430afa6b247fb5bb1de2e467a13a29b12f2fbda7bca30fdf2f663cec9f5608",
+  sha256: "f8ee7d81b551124e148b7b27e54535b9cb14076e1303d7d12aec3411457605a0",
   runtimeVersion: "0.1.0-alpha.3",
   manifestSize: 6494,
   manifestSha256:
-    "070cdac584525ca52c718507c90250b1b7c2c05e0a5182b86a12bfeb65a1c44c",
+    "613c6b3d2508518e9ab211085c8fd00c136f3e64bd6103e0bb692d481b99dac9",
   expectedApiVersion: 2,
 } as const);
