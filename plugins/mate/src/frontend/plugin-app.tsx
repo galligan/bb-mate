@@ -125,6 +125,9 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       );
       if (project?.admission !== "available") return;
       const request = ++generation.current;
+      if (failedAdmissionProjectId.current === projectId) {
+        failedAdmissionProjectId.current = null;
+      }
       routedAdmissionSubPath.current = routedSubPath;
       setAdmittingProjectId(projectId);
       setStatusFailed(false);

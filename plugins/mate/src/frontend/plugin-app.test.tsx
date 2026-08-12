@@ -424,6 +424,50 @@ describe("Plugin Workbench app registration", () => {
     });
   });
 
+  test("retries a previously failed detail route without redirecting again", async () => {
+    const retry = deferred<unknown>();
+    let admissionAttempts = 0;
+    rpcImplementation = (method) => {
+      if (method === "status") return Promise.resolve(snapshot());
+      admissionAttempts += 1;
+      return admissionAttempts === 1
+        ? Promise.reject(new Error("open failed"))
+        : retry.promise;
+    };
+
+    const detailSubPath = `projects/project_01/targets/${targetA}`;
+    await renderPanel(detailSubPath);
+    await flush();
+    const { PluginWorkbenchPanel } = await import("./plugin-app");
+    await act(async () => root?.render(<PluginWorkbenchPanel subPath="" />));
+    await flush();
+    await act(async () =>
+      root?.render(<PluginWorkbenchPanel subPath={detailSubPath} />),
+    );
+    await flush();
+
+    expect(admissionAttempts).toBe(2);
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+
+    retry.resolve(
+      snapshot({
+        state: "ready",
+        items: [
+          {
+            id: targetA,
+            label: "Plugin Workbench",
+            pluginId: "mate",
+            revision: 1,
+          },
+        ],
+      }),
+    );
+    await flush();
+
+    expect(document.body.textContent).toContain("Plugin Workbench");
+    expect(navigateToPluginPanel).toHaveBeenCalledTimes(1);
+  });
+
   test("supersedes a pending project open when the detail route changes", async () => {
     const first = deferred<unknown>();
     const second = deferred<unknown>();
