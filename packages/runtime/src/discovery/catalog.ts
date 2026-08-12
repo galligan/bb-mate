@@ -242,7 +242,7 @@ export async function openDevelopmentTargetCatalog(
                     (registeredScope) =>
                       !authoritativeSourceRoots.has(registeredScope) &&
                       [...authoritativeSourceRoots].some((sourceRoot) =>
-                        isWithinSourceRoot(registeredScope, sourceRoot),
+                        sourceScopesOverlap(registeredScope, sourceRoot),
                       ),
                   ),
               ])
@@ -537,4 +537,8 @@ function shouldReconcileSource(
 
 function isWithinSourceRoot(sourceRoot: string, scope: string): boolean {
   return sourceRoot === scope || sourceRoot.startsWith(`${scope}${path.sep}`);
+}
+
+function sourceScopesOverlap(left: string, right: string): boolean {
+  return isWithinSourceRoot(left, right) || isWithinSourceRoot(right, left);
 }

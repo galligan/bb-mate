@@ -692,6 +692,67 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("preserves targets discovered only through an omitted ancestor project", async () => {
+    const fixture = await makeFixture();
+    const childRoot = path.join(fixture.sourceRoot, "child");
+    const pluginRoot = path.join(childRoot, "plugins", "parent-only");
+    await fs.mkdir(childRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "parent",
+        private: true,
+        workspaces: ["child/plugins/*"],
+      }),
+    );
+    await fs.writeFile(
+      path.join(childRoot, "package.json"),
+      JSON.stringify({ name: "child", private: true }),
+    );
+    await writePlugin(pluginRoot, "parent-only");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("a".repeat(32)),
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+
+    const initial = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete",
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+        { projectKey: "c".repeat(32), sourcePath: childRoot },
+      ],
+    });
+    expect(
+      initial.projects.map(({ targets }) =>
+        targets.map((target) => target.manifest.pluginId),
+      ),
+    ).toEqual([["parent-only"], []]);
+
+    const partial = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "c".repeat(32), sourcePath: childRoot }],
+    });
+
+    expect(partial.projects).toMatchObject([{ state: "ready", targets: [] }]);
+    expect(
+      (await controller.list(context())).targets.map(
+        (target) => target.manifest.pluginId,
+      ),
+    ).toEqual(["parent-only"]);
+    catalog.close();
+  });
+
   test("bounds duplicate-root fan-out by total serialized target entries", async () => {
     const fixture = await makeFixture();
     const workspaces = Array.from({ length: 65 }, (_, index) =>
