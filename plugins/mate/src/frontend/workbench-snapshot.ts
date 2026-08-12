@@ -40,7 +40,11 @@ export interface ProjectOption {
 }
 
 export type ProjectCatalog =
-  | { state: "ready" | "partial"; items: ProjectOption[] }
+  | {
+      state: "ready" | "partial";
+      truncated: boolean;
+      items: ProjectOption[];
+    }
   | { state: "unavailable"; items: [] };
 
 export interface PluginWorkbenchSnapshot {
@@ -206,7 +210,8 @@ function parseProjects(value: unknown): ProjectCatalog | null {
   }
   if (
     (value.state !== "ready" && value.state !== "partial") ||
-    !isExactRecord(value, ["state", "items"]) ||
+    !isExactRecord(value, ["state", "truncated", "items"]) ||
+    typeof value.truncated !== "boolean" ||
     value.items.length > 128
   ) {
     return null;
@@ -244,8 +249,10 @@ function parseProjects(value: unknown): ProjectCatalog | null {
   );
   return hasUniqueIds(items) &&
     targetCount <= 128 &&
-    (value.state === "partial" || !incomplete)
-    ? { state: value.state, items }
+    (value.state === "partial"
+      ? value.truncated || incomplete
+      : !value.truncated && !incomplete)
+    ? { state: value.state, truncated: value.truncated, items }
     : null;
 }
 

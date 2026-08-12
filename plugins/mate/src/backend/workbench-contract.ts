@@ -89,6 +89,7 @@ export const projectCatalogSchema = z.discriminatedUnion("state", [
   z
     .object({
       state: z.enum(["ready", "partial"]),
+      truncated: z.boolean(),
       items: projectItemsSchema,
     })
     .strict()
@@ -96,7 +97,9 @@ export const projectCatalogSchema = z.discriminatedUnion("state", [
       const incomplete = catalog.items.some(
         ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
       );
-      return catalog.state === "partial" || !incomplete;
+      return (
+        (catalog.truncated || incomplete) === (catalog.state === "partial")
+      );
     }),
   z.object({ state: z.literal("unavailable"), items: z.tuple([]) }).strict(),
 ]);

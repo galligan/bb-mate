@@ -130,13 +130,17 @@ function scannedCatalog(
     },
   }));
   const state =
-    catalog.state === "partial" ||
+    catalog.truncated ||
     items.some(
       ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
     )
       ? "partial"
       : "ready";
-  return projectCatalogSchema.parse({ state, items });
+  return projectCatalogSchema.parse({
+    state,
+    truncated: catalog.truncated,
+    items,
+  });
 }
 
 function sourceMap(inventory: Extract<ProjectInventory, { state: "ready" }>) {

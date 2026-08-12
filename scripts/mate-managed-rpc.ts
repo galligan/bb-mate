@@ -54,6 +54,7 @@ export interface MateProjectOption {
 export type MateProjectCatalog =
   | {
       readonly state: "ready" | "partial";
+      readonly truncated: boolean;
       readonly items: readonly MateProjectOption[];
     }
   | { readonly state: "unavailable"; readonly items: readonly [] };
@@ -162,7 +163,6 @@ function projectOption(value: unknown): MateProjectOption {
 
 function projectCatalog(value: unknown): MateProjectCatalog {
   const catalog = record(value, "project catalog");
-  exactKeys(catalog, ["state", "items"], "project catalog");
   assert(
     Array.isArray(catalog.items),
     "Mate RPC project items are not an array.",
@@ -178,21 +178,24 @@ function projectCatalog(value: unknown): MateProjectCatalog {
     "Mate RPC returned too many target entries.",
   );
   if (catalog.state === "unavailable") {
+    exactKeys(catalog, ["state", "items"], "project catalog");
     assert(
       items.length === 0,
       "Unavailable Mate project catalog is not empty.",
     );
     return { state: "unavailable", items: [] };
   }
+  exactKeys(catalog, ["state", "truncated", "items"], "project catalog");
   const incomplete = items.some(
     ({ scan }) => scan.state === "partial" || scan.state === "unavailable",
   );
   assert(
     (catalog.state === "ready" || catalog.state === "partial") &&
-      (!incomplete || catalog.state === "partial"),
+      typeof catalog.truncated === "boolean" &&
+      (catalog.state === "partial") === (catalog.truncated || incomplete),
     "Mate RPC project catalog values are invalid.",
   );
-  return { state: catalog.state, items };
+  return { state: catalog.state, truncated: catalog.truncated, items };
 }
 
 export function parseMateSnapshot(value: unknown): MateSnapshot {

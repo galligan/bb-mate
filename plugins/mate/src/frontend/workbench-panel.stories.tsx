@@ -28,6 +28,7 @@ function snapshot(
     browserLaunch: "unavailable",
     projects: {
       state: "ready",
+      truncated: false,
       items: [
         {
           id: "project_01",
@@ -79,6 +80,7 @@ export function HostileVersion() {
       value={snapshot("ready", {
         projects: {
           state: "ready",
+          truncated: false,
           items: [
             {
               id: "project_01",

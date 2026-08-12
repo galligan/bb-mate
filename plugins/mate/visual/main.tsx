@@ -58,6 +58,7 @@ function readySnapshot(
   )
     ? "partial"
     : "ready",
+  truncated = false,
 ): PluginWorkbenchSnapshot {
   return parsePluginWorkbenchSnapshot({
     schemaVersion: 3,
@@ -67,7 +68,7 @@ function readySnapshot(
     apiVersion: 2,
     canStart: false,
     browserLaunch: "unavailable",
-    projects: { state, items },
+    projects: { state, truncated, items },
   });
 }
 
@@ -120,6 +121,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       canStart: true,
       projects: {
         state: "ready",
+        truncated: false,
         items: allProjects.projects.items.map((item) => ({
           ...item,
           scan: { state: "not_scanned", items: [] },
@@ -137,6 +139,7 @@ const fixtures: Record<FixtureName, Fixture> = {
       canStart: true,
       projects: {
         state: "partial",
+        truncated: false,
         items: [
           project("project_01", "bb Plugin Studio", {
             state: "unavailable",
@@ -152,18 +155,22 @@ const fixtures: Record<FixtureName, Fixture> = {
   "no-projects": { snapshot: readySnapshot([]) },
   "all-projects": { snapshot: allProjects },
   partial: {
-    snapshot: readySnapshot([
-      project("project_01", "bb Plugin Studio", {
-        state: "partial",
-        items: [target],
-      }),
-      project("project_02", "Linear Tools", {
-        state: "ready",
-        items: [
-          { id: targetB, label: "Linear", pluginId: "linear", revision: 2 },
-        ],
-      }),
-    ]),
+    snapshot: readySnapshot(
+      [
+        project("project_01", "bb Plugin Studio", {
+          state: "partial",
+          items: [target],
+        }),
+        project("project_02", "Linear Tools", {
+          state: "ready",
+          items: [
+            { id: targetB, label: "Linear", pluginId: "linear", revision: 2 },
+          ],
+        }),
+      ],
+      "partial",
+      true,
+    ),
   },
   "partial-empty": {
     snapshot: readySnapshot([

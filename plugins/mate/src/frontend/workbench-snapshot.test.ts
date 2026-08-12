@@ -24,6 +24,7 @@ const readySnapshot: PluginWorkbenchSnapshot = {
   browserLaunch: "unavailable",
   projects: {
     state: "partial",
+    truncated: false,
     items: [
       {
         id: "project_01",
@@ -55,6 +56,7 @@ describe("Plugin Studio frontend snapshot", () => {
       canStart: true,
       projects: {
         state: "ready",
+        truncated: false,
         items: [
           {
             ...readySnapshot.projects.items[0],
@@ -79,6 +81,7 @@ describe("Plugin Studio frontend snapshot", () => {
           ...readySnapshot,
           projects: {
             state: "partial",
+            truncated: false,
             items: [
               {
                 ...readySnapshot.projects.items[0],
@@ -103,6 +106,7 @@ describe("Plugin Studio frontend snapshot", () => {
         ...readySnapshot,
         projects: {
           state: "partial",
+          truncated: true,
           items: [
             {
               ...readySnapshot.projects.items[0],
@@ -112,6 +116,45 @@ describe("Plugin Studio frontend snapshot", () => {
         },
       }).projects.state,
     ).toBe("partial");
+    expect(() =>
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        projects: {
+          state: "partial",
+          truncated: false,
+          items: [
+            {
+              ...readySnapshot.projects.items[0],
+              scan: { state: "ready", items: [target] },
+            },
+          ],
+        },
+      }),
+    ).toThrow("Plugin Studio returned an invalid snapshot.");
+    expect(() =>
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        projects: {
+          state: "ready",
+          truncated: true,
+          items: [
+            {
+              ...readySnapshot.projects.items[0],
+              scan: { state: "ready", items: [target] },
+            },
+          ],
+        },
+      }),
+    ).toThrow("Plugin Studio returned an invalid snapshot.");
+    expect(() =>
+      parsePluginWorkbenchSnapshot({
+        ...readySnapshot,
+        projects: {
+          state: "partial",
+          items: readySnapshot.projects.items,
+        },
+      }),
+    ).toThrow("Plugin Studio returned an invalid snapshot.");
   });
 
   test("bounds duplicate-root fan-out by total serialized target entries", () => {

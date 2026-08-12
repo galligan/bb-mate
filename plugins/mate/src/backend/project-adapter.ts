@@ -179,6 +179,7 @@ export async function loadProjectInventory(
     const truncated = eligible.length > TARGET_ADMISSION_MAX_PROJECTS;
     const catalog = projectCatalogSchema.parse({
       state: truncated ? "partial" : "ready",
+      truncated,
       items: admitted.map(({ option }) => option),
     });
     if (catalog.state === "unavailable") throw new Error();

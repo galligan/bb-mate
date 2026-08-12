@@ -137,6 +137,7 @@ describe("released bb project adapter", () => {
     const api = sdk();
     expect(await listProjectOptions(api)).toEqual({
       state: "ready",
+      truncated: false,
       items: [
         {
           id: "project-1",
@@ -167,6 +168,7 @@ describe("released bb project adapter", () => {
       const api = sdk([project({ sources })]);
       expect(await listProjectOptions(api)).toEqual({
         state: "ready",
+        truncated: false,
         items: [],
       });
       await expect(resolveProjectSource(api, "project-1")).rejects.toThrow(
@@ -184,6 +186,7 @@ describe("released bb project adapter", () => {
     ]);
     expect(await listProjectOptions(api)).toEqual({
       state: "ready",
+      truncated: false,
       items: [],
     });
   });
@@ -210,6 +213,7 @@ describe("released bb project adapter", () => {
     const result = await listProjectOptions(sdk([...ineligible, eligible]));
     expect(result).toEqual({
       state: "ready",
+      truncated: false,
       items: [
         {
           id: "project-zulu",
@@ -241,6 +245,7 @@ describe("released bb project adapter", () => {
     expect(inventory.inventoryState).toBe("partial");
     const result = inventory.catalog;
     expect(result.state).toBe("partial");
+    expect(result.truncated).toBe(true);
     expect(result.items).toHaveLength(128);
     expect(result.items[0]?.id).toBe("project-000");
     expect(result.items.at(-1)?.id).toBe("project-127");

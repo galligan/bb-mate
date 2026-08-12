@@ -57,6 +57,22 @@ for (const fixture of fixtures) {
       await expect(targets.first()).toBeFocused();
       await page.keyboard.press("Enter");
     }
+    if (fixture.state === "partial") {
+      await expect(
+        panel.getByText("Project inventory incomplete."),
+      ).toBeVisible();
+      await expect(
+        panel.getByText("Incomplete scan", { exact: true }),
+      ).toBeVisible();
+    }
+    if (fixture.state === "partial-empty") {
+      await expect(
+        panel.getByText("Project inventory incomplete."),
+      ).toHaveCount(0);
+      await expect(
+        panel.getByText("Incomplete scan", { exact: true }),
+      ).toBeVisible();
+    }
     if (fixture.width === 420) {
       const horizontallyClipped = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth,

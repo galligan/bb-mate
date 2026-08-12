@@ -14,7 +14,7 @@ const idle: PluginWorkbenchSnapshotV3 = {
   apiVersion: null,
   canStart: true,
   browserLaunch: "unavailable",
-  projects: { state: "ready", items: [] },
+  projects: { state: "ready", truncated: false, items: [] },
 };
 
 const project = {
@@ -30,12 +30,37 @@ describe("Plugin Studio v3 contract", () => {
     expect(
       workbenchSnapshotSchema.parse({
         ...idle,
-        projects: { state: "ready", items: [project] },
+        projects: { state: "ready", truncated: false, items: [project] },
       }),
     ).toEqual({
       ...idle,
-      projects: { state: "ready", items: [project] },
+      projects: { state: "ready", truncated: false, items: [project] },
     });
+  });
+
+  test("requires explicit inventory truncation independently of scan completeness", () => {
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: { state: "ready", items: [] },
+      }).success,
+    ).toBe(false);
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: {
+          state: "partial",
+          truncated: false,
+          items: [{ ...project, scan: { state: "partial", items: [] } }],
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      workbenchSnapshotSchema.safeParse({
+        ...idle,
+        projects: { state: "partial", truncated: true, items: [project] },
+      }).success,
+    ).toBe(true);
   });
 
   test("rejects path-shaped ids, labels, and nested private facts", () => {
@@ -98,6 +123,7 @@ describe("Plugin Studio v3 contract", () => {
           canStart: false,
           projects: {
             state,
+            truncated: false,
             items: [{ ...project, scan: { state, items: [target] } }],
           },
         }).success,
@@ -117,6 +143,7 @@ describe("Plugin Studio v3 contract", () => {
           canStart: false,
           projects: {
             state: "partial",
+            truncated: false,
             items: [
               {
                 ...project,
@@ -148,9 +175,9 @@ describe("Plugin Studio v3 contract", () => {
     expect(
       workbenchSnapshotSchema.safeParse({
         ...idle,
-        projects: { state: "partial", items: [project] },
+        projects: { state: "partial", truncated: false, items: [project] },
       }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   test("requires coherent runtime identity, activity, state, and unique bounded items", () => {

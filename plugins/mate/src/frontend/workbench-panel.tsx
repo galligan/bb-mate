@@ -387,7 +387,7 @@ export function PluginWorkbenchView({
             </div>
           ) : (
             <>
-              {snapshot.projects.state === "partial" ? (
+              {snapshot.projects.truncated ? (
                 <p
                   className="px-4 py-3 text-xs leading-snug text-subtle-foreground"
                   role="status"

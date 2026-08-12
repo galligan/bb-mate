@@ -157,6 +157,7 @@ describe("Plugin Studio backend v3", () => {
       runtimeState: "idle",
       projects: {
         state: "ready",
+        truncated: false,
         items: [
           { id: "project-1", scan: { state: "not_scanned" } },
           { id: "project-2", scan: { state: "not_scanned" } },
@@ -171,6 +172,7 @@ describe("Plugin Studio backend v3", () => {
       runtimeState: "ready",
       projects: {
         state: "ready",
+        truncated: false,
         items: [
           {
             id: "project-1",
@@ -221,9 +223,9 @@ describe("Plugin Studio backend v3", () => {
           return {
             schemaVersion: 2,
             state: "ready",
-            projects: input.projects.map(({ projectKey }) => ({
+            projects: input.projects.map(({ projectKey }, index) => ({
               projectKey,
-              state: "ready" as const,
+              state: index === 0 ? ("partial" as const) : ("ready" as const),
               targets: [],
             })),
           };
@@ -234,17 +236,23 @@ describe("Plugin Studio backend v3", () => {
       { projects },
     );
 
+    expect(await host.handlers().status({} as never)).toMatchObject({
+      projects: { state: "partial", truncated: true },
+    });
+
     const result = (await host.handlers().refresh({} as never)) as {
       projects: {
         state: string;
+        truncated: boolean;
         items: { scan: { state: string; items: unknown[] } }[];
       };
     };
 
     expect(result.projects.items).toHaveLength(128);
     expect(result.projects.state).toBe("partial");
+    expect(result.projects.truncated).toBe(true);
     expect(result.projects.items[0]?.scan).toEqual({
-      state: "ready",
+      state: "partial",
       items: [],
     });
     const admitted = admission as {
@@ -275,7 +283,7 @@ describe("Plugin Studio backend v3", () => {
     const empty = hostFixture(supervisor, { projects: [] });
     expect(await empty.handlers().refresh({} as never)).toMatchObject({
       runtimeState: "ready",
-      projects: { state: "ready", items: [] },
+      projects: { state: "ready", truncated: false, items: [] },
     });
     expect(ensures).toBe(1);
     expect(admissions).toEqual([{ inventoryState: "complete", projects: [] }]);
@@ -373,6 +381,7 @@ describe("Plugin Studio backend v3", () => {
       canStart: true,
       projects: {
         state: "partial",
+        truncated: false,
         items: [
           {
             id: "project-1",
@@ -438,6 +447,7 @@ describe("Plugin Studio backend v3", () => {
     expect(result).toMatchObject({
       projects: {
         state: "partial",
+        truncated: false,
         items: [
           { scan: { state: "unavailable", reason: "source_changed" } },
           { scan: { state: "unavailable", reason: "source_changed" } },
@@ -498,6 +508,7 @@ describe("Plugin Studio backend v3", () => {
       canStart: true,
       projects: {
         state: "partial",
+        truncated: false,
         items: [
           {
             scan: {
@@ -592,6 +603,7 @@ describe("Plugin Studio backend v3", () => {
     expect(result).toMatchObject({
       projects: {
         state: "ready",
+        truncated: false,
         items: [
           {
             id: "project-unsafe-name",

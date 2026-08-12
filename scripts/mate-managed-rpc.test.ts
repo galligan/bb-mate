@@ -19,6 +19,7 @@ function snapshot(): MateSnapshot {
     browserLaunch: "unavailable",
     projects: {
       state: "ready",
+      truncated: false,
       items: [
         {
           id: "bb_mate",
@@ -104,6 +105,7 @@ describe("managed Mate RPC proof codec", () => {
       canStart: true,
       projects: {
         state: "ready",
+        truncated: false,
         items: snapshot().projects.items.map((project) => ({
           ...project,
           scan: { state: "not_scanned", items: [] },
@@ -122,6 +124,7 @@ describe("managed Mate RPC proof codec", () => {
       ...snapshot(),
       projects: {
         state: "ready",
+        truncated: false,
         items: snapshot().projects.items.map((project) =>
           project.id === "bb_mate"
             ? {
@@ -148,6 +151,7 @@ describe("managed Mate RPC proof codec", () => {
           ...snapshot(),
           projects: {
             state: "ready",
+            truncated: false,
             items: snapshot().projects.items.map((project) =>
               project.id === "bb_mate"
                 ? {
@@ -169,17 +173,47 @@ describe("managed Mate RPC proof codec", () => {
     ).toThrow("identity");
   });
 
-  test("accepts truncated partial catalogs and requires partial rows to propagate", () => {
+  test("distinguishes inventory truncation from project scan failure", () => {
     const truncated = {
       ...snapshot(),
-      projects: { ...snapshot().projects, state: "partial" },
+      projects: {
+        ...snapshot().projects,
+        state: "partial" as const,
+        truncated: true,
+      },
     };
-    expect(parseMateSnapshot(truncated).projects.state).toBe("partial");
+    expect(parseMateSnapshot(truncated).projects).toEqual(truncated.projects);
+    expect(() =>
+      parseMateSnapshot({
+        ...snapshot(),
+        projects: {
+          state: "ready",
+          items: snapshot().projects.items,
+        },
+      }),
+    ).toThrow("project catalog keys");
+    expect(() =>
+      parseMateSnapshot({
+        ...snapshot(),
+        projects: { ...snapshot().projects, truncated: true },
+      }),
+    ).toThrow("project catalog values");
+    expect(() =>
+      parseMateSnapshot({
+        ...snapshot(),
+        projects: {
+          ...snapshot().projects,
+          state: "partial",
+          truncated: false,
+        },
+      }),
+    ).toThrow("project catalog values");
 
     const partial = {
       ...snapshot(),
       projects: {
         state: "partial",
+        truncated: false,
         items: snapshot().projects.items.map((project) =>
           project.id === "grid"
             ? {
@@ -201,6 +235,19 @@ describe("managed Mate RPC proof codec", () => {
         projects: { ...partial.projects, state: "ready" },
       }),
     ).toThrow("project catalog values");
+
+    expect(
+      parseMateSnapshot({
+        ...snapshot(),
+        projects: { state: "unavailable", items: [] },
+      }).projects,
+    ).toEqual({ state: "unavailable", items: [] });
+    expect(() =>
+      parseMateSnapshot({
+        ...snapshot(),
+        projects: { state: "unavailable", truncated: false, items: [] },
+      }),
+    ).toThrow("project catalog keys");
   });
 
   test("bounds total projected target entries across duplicate project fan-out", () => {
@@ -208,6 +255,7 @@ describe("managed Mate RPC proof codec", () => {
       ...snapshot(),
       projects: {
         state: "ready",
+        truncated: false,
         items: ["project_1", "project_2"].map((id) => ({
           id,
           label: id,

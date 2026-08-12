@@ -29,7 +29,13 @@ function project(
 }
 
 function snapshot(
-  projects: PluginWorkbenchSnapshot["projects"] = {
+  projects:
+    | { state: "unavailable"; items: [] }
+    | {
+        state: "ready" | "partial";
+        truncated?: boolean;
+        items: ProjectOption[];
+      } = {
     state: "ready",
     items: [
       project({
@@ -50,7 +56,10 @@ function snapshot(
     apiVersion: 2,
     canStart: false,
     browserLaunch: "unavailable",
-    projects,
+    projects:
+      projects.state === "unavailable"
+        ? projects
+        : { ...projects, truncated: projects.truncated ?? false },
   };
 }
 
@@ -213,6 +222,7 @@ describe("Plugin Studio nav panel", () => {
     expect(html).toContain("The project changed during scanning.");
     expect(html).toContain("The shared scan limit was reached");
     expect(html).toContain("Finding development plugins…");
+    expect(html).not.toContain("Project inventory incomplete");
     expect(html).not.toContain("Some plugins could not be opened");
   });
 
@@ -220,6 +230,7 @@ describe("Plugin Studio nav panel", () => {
     const html = render(
       snapshot({
         state: "partial",
+        truncated: true,
         items: [
           project({ id: "project_a", label: "Project A" }),
           project({ id: "project_b", label: "Project B" }),
@@ -231,6 +242,26 @@ describe("Plugin Studio nav panel", () => {
     expect(html).toContain("Some bb projects may not be shown.");
     expect(html).toContain('role="status"');
     expect(html).not.toContain("Incomplete scan");
+  });
+
+  test("keeps inventory truncation and project scan warnings independently visible", () => {
+    const html = render(
+      snapshot({
+        state: "partial",
+        truncated: true,
+        items: [
+          project({
+            id: "project_a",
+            label: "Project A",
+            scan: { state: "partial", items: [target] },
+          }),
+        ],
+      }),
+    );
+
+    expect(html).toContain("Project inventory incomplete");
+    expect(html).toContain("Incomplete scan");
+    expect(html).toContain("Scan incomplete. Available plugins are shown.");
   });
 
   test("renders honest global unavailable, empty, reload failure, and busy states", () => {

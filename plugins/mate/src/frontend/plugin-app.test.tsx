@@ -48,7 +48,7 @@ function snapshot(
     apiVersion: 2,
     canStart: false,
     browserLaunch: "unavailable",
-    projects: { state, items: projects },
+    projects: { state, truncated: false, items: projects },
   };
 }
 
