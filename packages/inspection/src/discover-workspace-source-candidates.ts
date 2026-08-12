@@ -223,6 +223,7 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
     if (!line.startsWith(" ")) {
       if (line.startsWith("-")) throw new Error();
       inPackages = false;
+      if (/^packages:/u.test(line)) throw new Error();
       continue;
     }
     const item = /^ +-[ ]+(.+?)\s*$/u.exec(line);

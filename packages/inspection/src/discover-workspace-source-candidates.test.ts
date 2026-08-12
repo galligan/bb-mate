@@ -227,6 +227,32 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
+  test("rejects an adjacent duplicate pnpm packages key", async () => {
+    const root = await harness.createRoot("private-pnpm-adjacent-duplicate");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - 'plugins/*'\npackages:\n  - 'extensions/*'\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-adjacent-duplicate",
+      }),
+    ]);
+  });
+
   test("reports unsupported pnpm workspace syntax as partial", async () => {
     const root = await harness.createRoot("private-pnpm-workspace");
     const plugin = path.join(root, "plugins", "mate");
