@@ -207,28 +207,31 @@ process/environment facts, unknown keys, and impossible runtime/project states.
 5. [x] Implement project activity/source revalidation and snapshot-v3 backend.
 6. [x] Implement always-expanded grouped frontend and deterministic visual/axe
        states.
-7. [ ] Regenerate current runtime/package identities and rerun the isolated
+7. [x] Regenerate current runtime/package identities and rerun the isolated
        lifecycle after the latest executable and shipped-skill changes.
-8. [ ] Rebuild/reload the path plugin and verify current Plugin Studio behavior
-       in released bb.
-9. [ ] Obtain exact-head hosted CI and two clean review lanes, then reconcile
-       tracker/PR truth before moving PR #84 from draft to ready. No merge is
-       authorized.
+8. [x] Rebuild/reload the path plugin with state preserved and verify current
+       Plugin Studio status/refresh behavior in released bb.
+9. [ ] Rerun current root/detail/Back browser click-through when binding is
+       available, obtain exact-head hosted CI and two clean review lanes, then
+       reconcile tracker/PR truth before moving PR #84 from draft to ready. No
+       merge is authorized.
 
-PR #84 remains draft. Its current scanner/fix code head
-`89a38e0ff5cf67d423d80c88cb2c8e1993b3a9a0` is stacked on PR #83 head
-`06ee8ae4943bcbc61fb2302196ef370d12f18726`. Before this documentation and
-shipped-skill reconciliation, the current local matrix passed 790 tests:
-inspection 193, runtime 204, CLI 110, Mate 102, scripts 94, Workbench 66, and
-Linear 21. Mate reported 446 assertions, inspection 574, and CLI 539. These
-counts prove the current code checkpoint, not final artifact readiness.
+PR #84 remains draft. Its exact pushed evidence head
+`23b14cb09cbba3551941af9ce254a365a66213f9` is stacked on PR #83 head
+`06ee8ae4943bcbc61fb2302196ef370d12f18726`. The current local matrix passes
+790 tests: inspection 193/574 assertions, runtime 204/957, CLI 110/539, Mate
+102/446, scripts 94/351, Workbench 66, and Linear 21. Standalone, managed
+package, check, format, and diff gates are green. The runtime is
+`9493df9e…` (64,882,658 bytes), its manifest is `4ba4ce42…` (6,494 bytes), and
+the private package is `fee4508a…` (24,686,639 bytes).
 
-The current runtime and private-package identities were invalidated by the
-latest executable and shipped-skill changes and must be regenerated. Current
-Plugin Studio Live proof, exact-head hosted CI, and exact-head reviews remain
-pending. The former `a69fe031c43f5eb20f5c0ca43fe394f15f2a4b4a`
-Workbench-era package, Live, hosted, and review proof is preserved in the retro
-as historical evidence only; it is superseded for current readiness.
+Preserve-state Live proof passed at that exact head: the source remained
+unchanged, the runtime stayed running, app hash `de3682…` served Plugin Studio,
+schema 3 was ready, BB Mate exposed Linear revision 15 plus Plugin Studio
+revision 16, grid was ready-empty, responses contained no `/Users`, and logs
+were empty. Browser binding was unavailable, so current root/detail/Back visual
+click-through was not rerun; only its older Workbench-era proof is historical.
+Current exact-head hosted CI and reviews also remain pending.
 
 ## Verification and stop lines
 
