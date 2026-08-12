@@ -252,6 +252,7 @@ function parseYamlPatternScalar(input: string): string {
     withoutComment === "" ||
     isYamlCoreNonStringScalar(withoutComment) ||
     /:(?:$|\s)/u.test(withoutComment) ||
+    /^(?:-|\?)(?:$|\s)/u.test(withoutComment) ||
     /^[\[\]{|>&*]/u.test(withoutComment) ||
     /^!(?:!|<)/u.test(withoutComment)
   )
