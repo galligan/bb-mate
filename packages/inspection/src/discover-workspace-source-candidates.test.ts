@@ -618,6 +618,65 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
+  test("rejects an explicit-form duplicate pnpm packages key", async () => {
+    const root = await harness.createRoot("private-pnpm-explicit-duplicate");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      "packages:\n  - plugins/*\n? packages\n:\n  - extensions/*\n",
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-explicit-duplicate",
+      }),
+    ]);
+  });
+
+  test("rejects tagged semantic duplicate pnpm packages keys", async () => {
+    for (const [name, taggedKey] of [
+      ["non-specific-tag", "! packages"],
+      ["local-tag", "!workspace packages"],
+      ["standard-tag", "!!str packages"],
+      ["verbatim-tag", "!<tag:yaml.org,2002:str> packages"],
+    ] as const) {
+      const root = await harness.createRoot(`private-pnpm-${name}`);
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `packages:\n  - plugins/*\n${taggedKey}:\n  - extensions/*\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-pnpm-${name}`,
+        }),
+      ]);
+    }
+  });
+
   test("supports a single-quoted pnpm packages key", async () => {
     const root = await harness.createRoot();
     const plugin = path.join(root, "plugins", "included");

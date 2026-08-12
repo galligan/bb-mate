@@ -258,9 +258,14 @@ function validatePnpmPackagesBlockSyntax(source: string): void {
   for (const line of source.split(/\r?\n/u)) {
     const trimmed = line.trim();
     if (trimmed === "" || trimmed.startsWith("#")) continue;
-    const packagesRemainder = topLevelPackagesKeyRemainder(line);
-    if (packagesRemainder !== null) {
-      if (sawPackages || !/^\s*(?:#.*)?$/u.test(packagesRemainder))
+    if (isExplicitTopLevelPackagesKey(line)) throw new Error();
+    const packagesKey = topLevelPackagesKey(line);
+    if (packagesKey !== null) {
+      if (
+        !packagesKey.supported ||
+        sawPackages ||
+        !/^\s*(?:#.*)?$/u.test(packagesKey.remainder)
+      )
         throw new Error();
       sawPackages = true;
       inPackages = true;
@@ -282,16 +287,37 @@ function validatePnpmPackagesBlockSyntax(source: string): void {
   if (!sawPackages || itemCount === 0) throw new Error();
 }
 
-function topLevelPackagesKeyRemainder(line: string): string | null {
-  const mapping =
-    /^(packages|'(?:[^']|'')*'|"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*"):(.*)$/u.exec(
-      line,
-    );
+function topLevelPackagesKey(
+  line: string,
+): { readonly remainder: string; readonly supported: boolean } | null {
+  if (line.startsWith(" ")) return null;
+  const mapping = /^(.+):(.*)$/u.exec(line);
   if (!mapping) return null;
-  const parsed = Bun.YAML.parse(`${mapping[1]!}: null`) as unknown;
-  return isRecord(parsed) && Object.hasOwn(parsed, "packages")
-    ? mapping[2]!
-    : null;
+  let parsed: unknown;
+  try {
+    parsed = Bun.YAML.parse(`${mapping[1]!}: null`) as unknown;
+  } catch {
+    return null;
+  }
+  if (!isRecord(parsed) || !Object.hasOwn(parsed, "packages")) return null;
+  return {
+    remainder: mapping[2]!,
+    supported:
+      /^(?:packages|'(?:[^']|'')*'|"(?:[^"\\\u0000-\u001f]|\\(?:["\\/bfnrt]|u[\da-fA-F]{4}))*")$/u.test(
+        mapping[1]!,
+      ),
+  };
+}
+
+function isExplicitTopLevelPackagesKey(line: string): boolean {
+  const explicit = /^\?\s+(.+?)\s*$/u.exec(line);
+  if (!explicit) return false;
+  try {
+    const parsed = Bun.YAML.parse(`? ${explicit[1]!}\n: null`) as unknown;
+    return isRecord(parsed) && Object.hasOwn(parsed, "packages");
+  } catch {
+    return false;
+  }
 }
 
 function parseWorkspacePatterns(
