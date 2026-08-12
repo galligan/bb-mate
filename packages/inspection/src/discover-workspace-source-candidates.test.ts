@@ -644,6 +644,44 @@ describe("workspace-aware source discovery", () => {
     ]);
   });
 
+  test("rejects multiline explicit and tagged pnpm packages keys", async () => {
+    for (const [name, explicitKey] of [
+      ["multiline", "?\n  packages\n:"],
+      [
+        "multiline-comments",
+        "? # explicit key\n  packages # workspace key\n: # value",
+      ],
+      ["same-line-comments", "? packages # workspace key\n:"],
+      ["same-line-tagged", "? !!str packages\n:"],
+      ["multiline-tagged", "?\n  !!str packages\n:"],
+      ["multiline-quoted", "?\n  'packages' # workspace key\n:"],
+    ] as const) {
+      const root = await harness.createRoot(`private-pnpm-explicit-${name}`);
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `packages:\n  - plugins/*\n${explicitKey}\n  - extensions/*\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates).toEqual([]);
+      expect(result.diagnostics).toEqual([
+        expect.objectContaining({
+          code: "workspace-config-invalid",
+          rootKey: WORKSPACE_ROOT_KEY,
+          displayPath: `private-pnpm-explicit-${name}`,
+        }),
+      ]);
+    }
+  });
+
   test("rejects tagged semantic duplicate pnpm packages keys", async () => {
     for (const [name, taggedKey] of [
       ["non-specific-tag", "! packages"],

@@ -251,6 +251,7 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
 
 function validatePnpmPackagesBlockSyntax(source: string): void {
   if (source.includes("\t")) throw new Error();
+  validateNoExplicitTopLevelPackagesKey(source);
   let inPackages = false;
   let sawPackages = false;
   let itemIndent: number | null = null;
@@ -258,7 +259,6 @@ function validatePnpmPackagesBlockSyntax(source: string): void {
   for (const line of source.split(/\r?\n/u)) {
     const trimmed = line.trim();
     if (trimmed === "" || trimmed.startsWith("#")) continue;
-    if (isExplicitTopLevelPackagesKey(line)) throw new Error();
     const packagesKey = topLevelPackagesKey(line);
     if (packagesKey !== null) {
       if (
@@ -309,12 +309,32 @@ function topLevelPackagesKey(
   };
 }
 
-function isExplicitTopLevelPackagesKey(line: string): boolean {
-  const explicit = /^\?\s+(.+?)\s*$/u.exec(line);
-  if (!explicit) return false;
+function validateNoExplicitTopLevelPackagesKey(source: string): void {
+  let awaitingMultilineKey = false;
+  for (const line of source.split(/\r?\n/u)) {
+    const trimmed = line.trim();
+    if (awaitingMultilineKey) {
+      if (trimmed === "" || trimmed.startsWith("#")) continue;
+      awaitingMultilineKey = false;
+      if (line.startsWith(" ") && isSemanticPackagesScalar(trimmed))
+        throw new Error();
+      if (line.startsWith(" ")) continue;
+    }
+    if (line.startsWith(" ")) continue;
+    const explicit = /^\?(?: +(.*))?$/u.exec(line);
+    if (!explicit) continue;
+    const key = explicit[1]?.trim();
+    if (!key || key.startsWith("#")) {
+      awaitingMultilineKey = true;
+      continue;
+    }
+    if (isSemanticPackagesScalar(key)) throw new Error();
+  }
+}
+
+function isSemanticPackagesScalar(source: string): boolean {
   try {
-    const parsed = Bun.YAML.parse(`? ${explicit[1]!}\n: null`) as unknown;
-    return isRecord(parsed) && Object.hasOwn(parsed, "packages");
+    return Bun.YAML.parse(source) === "packages";
   } catch {
     return false;
   }
