@@ -1092,6 +1092,38 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("rejects a BOM embedded in a quoted pnpm workspace item", async () => {
+    const root = await harness.createRoot("private-pnpm-embedded-bom");
+    const plugin = path.join(root, `plugins\uFEFF`, "included");
+    await fs.mkdir(plugin, { recursive: true });
+    await harness.writePlugin(plugin, "included");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      'packages:\n  - "plugins\uFEFF/*"\n',
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-embedded-bom",
+      }),
+    ]);
+    expect(JSON.stringify(result.diagnostics)).not.toContain(
+      path.dirname(root),
+    );
+  });
+
   test("rejects malformed UTF-8 in pnpm workspace and package configuration", async () => {
     for (const [name, fileName, prefix] of [
       ["pnpm", "pnpm-workspace.yaml", "packages:\n  - plugins/"],
