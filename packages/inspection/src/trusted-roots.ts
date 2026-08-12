@@ -243,3 +243,7 @@ export function trustedRootDetails(root: TrustedRoot): TrustedRootDetails {
     throw new TypeError("trusted root was not admitted by the server");
   return details;
 }
+
+export function trustedRootCanonicalRoot(root: TrustedRoot): string {
+  return trustedRootDetails(root).canonicalRoot;
+}

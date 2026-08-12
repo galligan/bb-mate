@@ -1007,6 +1007,63 @@ describe("workspace-aware source discovery", () => {
     }
   });
 
+  test("supports pnpm packages keys separated from their mapping colon", async () => {
+    for (const [name, keyLine] of [
+      ["plain", "packages :"],
+      ["single-quoted", "'packages' :"],
+      ["double-quoted", '"packages" :'],
+    ] as const) {
+      const root = await harness.createRoot(`pnpm-spaced-colon-${name}`);
+      const plugin = path.join(root, "plugins", "included");
+      await fs.mkdir(plugin, { recursive: true });
+      await harness.writePlugin(plugin, "included");
+      await fs.writeFile(
+        path.join(root, "package.json"),
+        JSON.stringify({ name: "pnpm-root", private: true }),
+      );
+      await fs.writeFile(
+        path.join(root, "pnpm-workspace.yaml"),
+        `${keyLine}\n  - plugins/*\n`,
+      );
+      const admission = await admitTrustedRoots([
+        { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+      ]);
+
+      const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+      expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+        "included",
+      ]);
+      expect(result.diagnostics).toEqual([]);
+    }
+  });
+
+  test("does not normalize spaces inside a quoted pnpm key", async () => {
+    const root = await harness.createRoot("private-pnpm-internal-key-spaces");
+    await fs.writeFile(
+      path.join(root, "package.json"),
+      JSON.stringify({ name: "pnpm-root", private: true }),
+    );
+    await fs.writeFile(
+      path.join(root, "pnpm-workspace.yaml"),
+      '" packages " :\n  - plugins/*\n',
+    );
+    const admission = await admitTrustedRoots([
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "current-project", path: root },
+    ]);
+
+    const result = await discoverWorkspaceSourceCandidates(admission.roots);
+
+    expect(result.candidates).toEqual([]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "workspace-config-invalid",
+        rootKey: WORKSPACE_ROOT_KEY,
+        displayPath: "private-pnpm-internal-key-spaces",
+      }),
+    ]);
+  });
+
   test("reports unsupported pnpm workspace syntax as partial", async () => {
     const root = await harness.createRoot("private-pnpm-workspace");
     const plugin = path.join(root, "plugins", "mate");

@@ -1,4 +1,3 @@
-import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
 import {
@@ -18,6 +17,7 @@ import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
 import {
   admitTrustedRoots,
   discoverWorkspaceSourceCandidates,
+  trustedRootCanonicalRoot,
 } from "@bb-mate/inspection";
 import {
   consumeIssuedSourceCandidate,
@@ -30,6 +30,7 @@ export interface CreateRuntimeTargetControllerOptions {
   readonly bbContextId: BbContextId;
   readonly createRootKey?: () => OpaqueId;
   readonly clock?: () => number;
+  readonly admitRoots?: typeof admitTrustedRoots;
   readonly discoverCandidates?: typeof discoverWorkspaceSourceCandidates;
 }
 
@@ -39,6 +40,7 @@ export function createRuntimeTargetController({
   bbContextId,
   createRootKey = createOpaqueId,
   clock,
+  admitRoots = admitTrustedRoots,
   discoverCandidates = discoverWorkspaceSourceCandidates,
 }: CreateRuntimeTargetControllerOptions): RuntimeTargetController {
   const targets = createDevelopmentTargetService(catalog);
@@ -61,16 +63,14 @@ export function createRuntimeTargetController({
         }
       >();
       const projectByRootKey = new Map<string, string>();
-      const sourcePathByRootKey = new Map<string, string>();
       const rootInputs = projects.map(({ projectKey, sourcePath }) => {
         const rootKey = createRootKey();
         groups.set(projectKey, { state: "ready", targets: [] });
         projectByRootKey.set(rootKey, projectKey);
-        sourcePathByRootKey.set(rootKey, sourcePath);
         return { rootKey, kind: "current-project" as const, path: sourcePath };
       });
       const admission = await abortable(
-        admitTrustedRoots(rootInputs, { signal }),
+        admitRoots(rootInputs, { signal }),
         signal,
       );
       signal?.throwIfAborted();
@@ -83,19 +83,10 @@ export function createRuntimeTargetController({
         if (projectKey !== undefined) {
           projectKeysByAdmittedRoot.set(root.rootKey, [projectKey]);
         }
-        const sourcePath = sourcePathByRootKey.get(root.rootKey);
-        if (sourcePath !== undefined) {
-          try {
-            canonicalSourceRootByAdmittedRoot.set(
-              root.rootKey,
-              await abortable(fs.realpath(sourcePath), signal),
-            );
-          } catch {
-            signal?.throwIfAborted();
-            partial = true;
-            markPartial(projectKey, groups);
-          }
-        }
+        canonicalSourceRootByAdmittedRoot.set(
+          root.rootKey,
+          trustedRootCanonicalRoot(root),
+        );
       }
       for (const alias of admission.aliases) {
         const projectKey = projectByRootKey.get(alias.rootKey);

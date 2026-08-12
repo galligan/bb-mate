@@ -294,7 +294,7 @@ function topLevelPackagesKey(
   if (line.startsWith(" ")) return null;
   const delimiter = topLevelMappingDelimiter(line);
   if (delimiter < 0) return null;
-  const keySource = line.slice(0, delimiter);
+  const keySource = line.slice(0, delimiter).trim();
   let parsed: unknown;
   try {
     parsed = Bun.YAML.parse(`${keySource}: null`) as unknown;

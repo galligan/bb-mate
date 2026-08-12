@@ -13,7 +13,10 @@ import {
 } from "@bb-mate/runtime";
 import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
 import { createRuntimeTargetController } from "./runtime-target-controller.ts";
-import { discoverWorkspaceSourceCandidates } from "@bb-mate/inspection";
+import {
+  admitTrustedRoots,
+  discoverWorkspaceSourceCandidates,
+} from "@bb-mate/inspection";
 
 const temporaryRoots: string[] = [];
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
@@ -881,6 +884,64 @@ describe("runtime target controller", () => {
         ({ manifest }) => manifest.pluginId,
       ),
     ).toEqual(["protected-child"]);
+    catalog.close();
+  });
+
+  test("reconciles a partial inventory against the root attested during admission", async () => {
+    const fixture = await makeFixture();
+    const firstContainer = path.join(fixture.sourceRoot, "first-container");
+    const secondContainer = path.join(fixture.sourceRoot, "second-container");
+    const firstProject = path.join(firstContainer, "project");
+    const secondProject = path.join(secondContainer, "project");
+    const selectedContainer = path.join(fixture.sourceRoot, "selected");
+    const selectedProject = path.join(selectedContainer, "project");
+    await writePlugin(firstProject, "attested-first");
+    await writePlugin(secondProject, "unrelated-second");
+    await fs.symlink(firstContainer, selectedContainer, "dir");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+    });
+    const seed = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    await seed.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "s".repeat(32), sourcePath: secondProject }],
+    });
+    let swapped = false;
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      admitRoots: async (inputs, options) => {
+        const admission = await admitTrustedRoots(inputs, options);
+        await fs.unlink(selectedContainer);
+        await fs.symlink(secondContainer, selectedContainer, "dir");
+        swapped = true;
+        return admission;
+      },
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "partial",
+      projects: [{ projectKey: "p".repeat(32), sourcePath: selectedProject }],
+    });
+
+    expect(swapped).toBe(true);
+    expect(response.projects[0]).toMatchObject({
+      state: "ready",
+      targets: [{ manifest: { pluginId: "attested-first" } }],
+    });
+    expect(
+      (await controller.list(context())).targets.map(
+        ({ manifest }) => manifest.pluginId,
+      ),
+    ).toEqual(["unrelated-second", "attested-first"]);
+    expect(JSON.stringify(response)).not.toContain(fixture.sourceRoot);
     catalog.close();
   });
 
