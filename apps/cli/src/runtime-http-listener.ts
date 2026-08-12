@@ -160,7 +160,16 @@ export async function listenRuntimeHttp(
       }
       const requestAbort = new AbortController();
       const abort = () => requestAbort.abort();
-      const deadline = setTimeout(abort, requestTimeoutMs);
+      const expire = () => {
+        abort();
+        if (
+          request.method !== "GET" &&
+          request.method !== "HEAD" &&
+          !request.complete
+        )
+          request.destroy();
+      };
+      const deadline = setTimeout(expire, requestTimeoutMs);
       deadline.unref();
       const abortIncompleteResponse = () => {
         if (!response.writableFinished) abort();

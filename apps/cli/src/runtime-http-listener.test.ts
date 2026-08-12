@@ -125,6 +125,36 @@ describe("runtime HTTP listener", () => {
     }
   });
 
+  test("force-closes an incomplete mutation body at the runtime deadline", async () => {
+    let handlerSettled = false;
+    const listener = await listenRuntimeHttp(
+      async (request) => {
+        try {
+          await request.text();
+          return Response.json({ reached: true });
+        } finally {
+          handlerSettled = true;
+        }
+      },
+      { requestTimeoutMs: 10 },
+    );
+    const attack = await openSlowRequest(
+      listener.port,
+      `POST /v2/capabilities HTTP/1.1\r\nHost: 127.0.0.1:${listener.port}\r\nContent-Length: 10\r\n\r\nabc`,
+    );
+    try {
+      expect(
+        await Promise.race([attack.closed, Bun.sleep(250).then(() => false)]),
+      ).toBe(true);
+      const deadline = Date.now() + 250;
+      while (!handlerSettled && Date.now() < deadline) await Bun.sleep(1);
+      expect(handlerSettled).toBe(true);
+    } finally {
+      attack.socket.destroy();
+      await listener.stop();
+    }
+  });
+
   test("force-closes a slow framed invalid target without dispatch", async () => {
     let handlerCalls = 0;
     const listener = await listenRuntimeHttp(async () => {
