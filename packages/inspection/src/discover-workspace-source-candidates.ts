@@ -208,6 +208,7 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
   const values: string[] = [];
   let inPackages = false;
   let sawPackages = false;
+  let packageItemIndent: number | null = null;
   for (const line of source.split(/\r?\n/u)) {
     const trimmed = line.trim();
     if (!inPackages) {
@@ -226,9 +227,12 @@ function parsePnpmWorkspacePackages(source: string): readonly string[] {
       if (/^packages:/u.test(line)) throw new Error();
       continue;
     }
-    const item = /^ +-[ ]+(.+?)\s*$/u.exec(line);
+    const item = /^( +)-[ ]+(.+?)\s*$/u.exec(line);
     if (!item) throw new Error();
-    values.push(parseYamlPatternScalar(item[1]!));
+    const indentation = item[1]!.length;
+    if (packageItemIndent === null) packageItemIndent = indentation;
+    else if (indentation !== packageItemIndent) throw new Error();
+    values.push(parseYamlPatternScalar(item[2]!));
   }
   if (!sawPackages || values.length === 0) throw new Error();
   return values;
