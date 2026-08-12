@@ -47,6 +47,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   const recoveredSubPath = useRef<string | null>(null);
   const attemptedRouteSubPath = useRef<string | null>(null);
   const activeSubPath = useRef(subPath);
+  const routedAdmissionSubPath = useRef<string | null>(null);
   const failedAdmissionProjectId = useRef<string | null>(null);
   const previousTargetIds = useRef(new Map<string, readonly string[]>());
   const [snapshot, setSnapshot] = useState<PluginWorkbenchSnapshot | null>(
@@ -117,13 +118,14 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   }, [acceptSnapshot, rpc, snapshot]);
 
   const openProject = useCallback(
-    (projectId: string) => {
+    (projectId: string, routedSubPath: string | null = null) => {
       if (snapshot?.projects.state !== "ready") return;
       const project = snapshot.projects.items.find(
         ({ id }) => id === projectId,
       );
       if (project?.admission !== "available") return;
       const request = ++generation.current;
+      routedAdmissionSubPath.current = routedSubPath;
       setAdmittingProjectId(projectId);
       setStatusFailed(false);
       setSelectionMessage(null);
@@ -136,11 +138,15 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
             failedAdmissionProjectId.current = projectId;
             setSelectionMessage(projectOpenFailedMessage);
           } finally {
-            if (request === generation.current) setAdmittingProjectId(null);
+            if (request === generation.current) {
+              routedAdmissionSubPath.current = null;
+              setAdmittingProjectId(null);
+            }
           }
         },
         () => {
           if (request !== generation.current) return;
+          routedAdmissionSubPath.current = null;
           failedAdmissionProjectId.current = projectId;
           setAdmittingProjectId(null);
           setSelectionMessage(projectOpenFailedMessage);
@@ -177,6 +183,15 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
   useEffect(() => {
     const routeChanged = activeSubPath.current !== subPath;
     activeSubPath.current = subPath;
+    if (
+      routeChanged &&
+      routedAdmissionSubPath.current !== null &&
+      routedAdmissionSubPath.current !== subPath
+    ) {
+      generation.current += 1;
+      routedAdmissionSubPath.current = null;
+      setAdmittingProjectId(null);
+    }
     if (route === null) {
       attemptedRouteSubPath.current = null;
       return;
@@ -195,7 +210,7 @@ export function PluginWorkbenchPanel({ subPath }: PluginNavPanelProps) {
       attemptedRouteSubPath.current !== subPath
     ) {
       attemptedRouteSubPath.current = subPath;
-      openProject(route.projectId);
+      openProject(route.projectId, subPath);
     }
   }, [
     admittingProjectId,
