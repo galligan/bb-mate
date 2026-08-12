@@ -1,4 +1,5 @@
 import * as fs from "node:fs/promises";
+import * as path from "node:path";
 
 import {
   createDevelopmentTargetService,
@@ -214,52 +215,72 @@ export function createRuntimeTargetController({
         }
         return batchResponse(projects, groups, partial);
       }
-      for (const root of admission.roots) {
-        const candidatesForRoot = issuedCandidates.filter(({ rootKeys }) =>
-          rootKeys.includes(root.rootKey),
-        );
+      const authoritativeRoots = admission.roots.filter((root) => {
         const projectKeys = projectKeysByAdmittedRoot.get(root.rootKey) ?? [];
         const sourceRoot = canonicalSourceRootByAdmittedRoot.get(root.rootKey);
-        const authoritative =
+        return (
           !rootlessUncertainty &&
           sourceRoot !== undefined &&
           projectKeys.every(
             (projectKey) => groups.get(projectKey)?.state === "ready",
+          )
+        );
+      });
+      const reconciledRootKeys = new Set<string>();
+      for (const component of overlappingRootComponents(
+        authoritativeRoots,
+        canonicalSourceRootByAdmittedRoot,
+      )) {
+        const componentRootKeys = new Set(
+          component.map(({ rootKey }) => rootKey),
+        );
+        const candidatesForComponent = issuedCandidates.filter(({ rootKeys }) =>
+          rootKeys.some((rootKey) => componentRootKeys.has(rootKey)),
+        );
+        try {
+          const refreshed = await abortable(
+            targets.refreshFromCompleteSnapshot(
+              context,
+              candidatesForComponent.map(({ issued }) => issued),
+              {
+                authoritativeSourceRoots: component.map(({ rootKey }) =>
+                  canonicalSourceRootByAdmittedRoot.get(rootKey)!,
+                ),
+                uncertainSourceRoots,
+                signal,
+              },
+            ),
+            signal,
           );
-        if (authoritative) {
-          try {
-            const refreshed = await abortable(
-              targets.refreshFromCompleteSnapshot(
-                context,
-                candidatesForRoot.map(({ issued }) => issued),
-                {
-                  authoritativeSourceRoots: [sourceRoot],
-                  uncertainSourceRoots,
-                  signal,
-                },
-              ),
-              signal,
-            );
-            for (const [index, target] of refreshed.entries()) {
-              for (const rootKey of candidatesForRoot[index]?.rootKeys ?? [
-                root.rootKey,
-              ]) {
-                addTargetToGroups(
-                  rootKey,
-                  target,
-                  projectKeysByAdmittedRoot,
-                  groups,
-                );
-              }
+          for (const [index, target] of refreshed.entries()) {
+            for (const rootKey of candidatesForComponent[index]?.rootKeys ??
+              []) {
+              addTargetToGroups(
+                rootKey,
+                target,
+                projectKeysByAdmittedRoot,
+                groups,
+              );
             }
-          } catch {
-            signal?.throwIfAborted();
-            partial = true;
-            for (const projectKey of projectKeys)
-              markPartial(projectKey, groups);
           }
-          continue;
+          for (const { rootKey } of component) reconciledRootKeys.add(rootKey);
+        } catch {
+          signal?.throwIfAborted();
+          partial = true;
+          for (const { rootKey } of component) {
+            for (const projectKey of projectKeysByAdmittedRoot.get(rootKey) ??
+              []) {
+              markPartial(projectKey, groups);
+            }
+          }
         }
+      }
+      for (const root of admission.roots) {
+        if (reconciledRootKeys.has(root.rootKey)) continue;
+        const candidatesForRoot = issuedCandidates.filter(({ rootKeys }) =>
+          rootKeys.includes(root.rootKey),
+        );
+        const projectKeys = projectKeysByAdmittedRoot.get(root.rootKey) ?? [];
         for (const { issued, rootKeys } of candidatesForRoot) {
           try {
             signal?.throwIfAborted();
@@ -313,6 +334,47 @@ function preferMostSpecificProjectCandidates<
     }
   }
   return [...selected.values()];
+}
+
+function overlappingRootComponents<T extends { readonly rootKey: string }>(
+  roots: readonly T[],
+  sourceRootByRootKey: ReadonlyMap<string, string>,
+): readonly (readonly T[])[] {
+  const remaining = new Set(roots);
+  const components: T[][] = [];
+  while (remaining.size > 0) {
+    const first = remaining.values().next().value as T;
+    remaining.delete(first);
+    const component = [first];
+    for (let index = 0; index < component.length; index += 1) {
+      const sourceRoot = sourceRootByRootKey.get(component[index]!.rootKey);
+      for (const candidate of [...remaining]) {
+        const candidateRoot = sourceRootByRootKey.get(candidate.rootKey);
+        if (
+          sourceRoot !== undefined &&
+          candidateRoot !== undefined &&
+          sourceRootsOverlap(sourceRoot, candidateRoot)
+        ) {
+          remaining.delete(candidate);
+          component.push(candidate);
+        }
+      }
+    }
+    components.push(component);
+  }
+  return components;
+}
+
+function sourceRootsOverlap(first: string, second: string): boolean {
+  const relative = path.relative(first, second);
+  if (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  ) {
+    return true;
+  }
+  const reverse = path.relative(second, first);
+  return !reverse.startsWith("..") && !path.isAbsolute(reverse);
 }
 
 function discoveringRootKeys<

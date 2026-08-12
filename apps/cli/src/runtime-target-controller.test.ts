@@ -648,6 +648,75 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("retires a removed target once across overlapping ready roots in a partial inventory", async () => {
+    const fixture = await makeFixture();
+    const parentRoot = path.join(fixture.sourceRoot, "repo");
+    const childRoot = path.join(parentRoot, "child");
+    const partialRoot = path.join(fixture.sourceRoot, "partial");
+    await fs.mkdir(parentRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(parentRoot, "package.json"),
+      JSON.stringify({
+        name: "parent",
+        private: true,
+        workspaces: ["child"],
+      }),
+    );
+    await writePlugin(childRoot, "removed-overlap");
+    await writePlugin(partialRoot, "retained-peer");
+    const partialManifest = JSON.parse(
+      await fs.readFile(path.join(partialRoot, "package.json"), "utf8"),
+    ) as Record<string, unknown>;
+    partialManifest.workspaces = 42;
+    await fs.writeFile(
+      path.join(partialRoot, "package.json"),
+      JSON.stringify(partialManifest),
+    );
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      clock: (() => {
+        let value = 1_000;
+        return () => (value += 1);
+      })(),
+    });
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+    });
+    const request = () => ({
+      schemaVersion: 2 as const,
+      inventoryState: "partial" as const,
+      projects: [
+        { projectKey: "p".repeat(32), sourcePath: parentRoot },
+        { projectKey: "c".repeat(32), sourcePath: childRoot },
+        { projectKey: "u".repeat(32), sourcePath: partialRoot },
+      ],
+    });
+    expect(
+      (await controller.admit(context(), request())).projects
+        .slice(0, 2)
+        .map(({ targets }) => targets.map(({ manifest }) => manifest.pluginId)),
+    ).toEqual([["removed-overlap"], ["removed-overlap"]]);
+
+    await fs.rm(childRoot, { recursive: true });
+    await fs.mkdir(childRoot);
+
+    for (let refresh = 0; refresh < 2; refresh += 1) {
+      const response = await controller.admit(context(), request());
+      expect(response.state).toBe("partial");
+      expect(
+        response.projects.slice(0, 2).map(({ targets }) => targets),
+      ).toEqual([[], []]);
+      expect(
+        (await controller.list(context())).targets.map(
+          ({ manifest }) => manifest.pluginId,
+        ),
+      ).toEqual(["retained-peer"]);
+    }
+    catalog.close();
+  });
+
   test("registers a nested project first seen in a partial inventory", async () => {
     const fixture = await makeFixture();
     const childRoot = path.join(fixture.sourceRoot, "child");
