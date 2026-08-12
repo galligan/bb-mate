@@ -536,6 +536,20 @@ export function createDevelopmentTargetCatalogStorage(
       candidate: TrustedDevelopmentTargetCandidate,
       expectedRevision: number,
     ) => {
+      const retired = selectRetirement.get(
+        envelope.id,
+        envelope.bindings.principalId,
+        envelope.bindings.bbContextId,
+      );
+      if (retired) {
+        const existingCount = selectCount.get(
+          envelope.bindings.principalId,
+          envelope.bindings.bbContextId,
+        );
+        if (!existingCount || existingCount.count >= TARGET_LIST_MAX_TARGETS) {
+          throw new RuntimeError("conflict");
+        }
+      }
       const result = updateObject.run(
         envelope.revision,
         envelope.updatedAt,
@@ -557,11 +571,6 @@ export function createDevelopmentTargetCatalogStorage(
       if (privateResult.changes !== 1) {
         throw new RuntimeError("corrupt_data");
       }
-      const retired = selectRetirement.get(
-        envelope.id,
-        envelope.bindings.principalId,
-        envelope.bindings.bbContextId,
-      );
       if (retired) {
         const retirementResult = deleteRetirement.run(
           envelope.id,

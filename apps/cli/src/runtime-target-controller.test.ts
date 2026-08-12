@@ -547,6 +547,54 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("fans a nested workspace candidate out to every project that discovered it", async () => {
+    const fixture = await makeFixture();
+    const nestedRoot = path.join(fixture.sourceRoot, "plugins", "shared");
+    await fs.mkdir(fixture.sourceRoot, { recursive: true });
+    await fs.writeFile(
+      path.join(fixture.sourceRoot, "package.json"),
+      JSON.stringify({
+        name: "parent",
+        private: true,
+        workspaces: ["plugins/*"],
+      }),
+    );
+    await writePlugin(nestedRoot, "shared");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("n".repeat(32)),
+      clock: () => 1_000,
+    });
+    const keys = ["r".repeat(32), "q".repeat(32), "s".repeat(32)];
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse(keys.shift()),
+      clock: () => 1_000,
+    });
+
+    const response = await controller.admit(context(), {
+      schemaVersion: 2,
+      inventoryState: "complete" as const,
+      projects: [
+        { projectKey: "a".repeat(32), sourcePath: fixture.sourceRoot },
+        { projectKey: "b".repeat(32), sourcePath: nestedRoot },
+      ],
+    });
+
+    expect(
+      response.projects.map(({ state, targets }) => ({
+        state,
+        ids: targets.map((target) => String(target.id)),
+      })),
+    ).toEqual([
+      { state: "ready", ids: ["n".repeat(32)] },
+      { state: "ready", ids: ["n".repeat(32)] },
+    ]);
+    catalog.close();
+  });
+
   test("bounds duplicate-root fan-out by total serialized target entries", async () => {
     const fixture = await makeFixture();
     const workspaces = Array.from({ length: 65 }, (_, index) =>

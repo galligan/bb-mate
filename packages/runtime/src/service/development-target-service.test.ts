@@ -400,6 +400,17 @@ describe("DevelopmentTargetService", () => {
         refreshed.some((target) => target.manifest.pluginId === "plugin-128"),
       ).toBe(true);
 
+      await expect(
+        service.refreshFromTrustedCandidate(
+          context(),
+          await indexedCandidate(roots[0]!, 0),
+        ),
+      ).rejects.toMatchObject({ code: "conflict" });
+      expect(service.listTargets(context())).toHaveLength(128);
+      expect(() => service.getTarget(context(), created[0]!.id)).toThrow(
+        new RuntimeError("not_found"),
+      );
+
       const database = new Database(
         path.join(fixture.dataRoot, "workbench.sqlite3"),
       );

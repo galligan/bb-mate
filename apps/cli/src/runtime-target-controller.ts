@@ -136,7 +136,9 @@ export function createRuntimeTargetController({
       const issuedCandidates: Array<{
         readonly candidate: (typeof discovery.candidates)[number];
         readonly issued: Awaited<ReturnType<typeof bridge.issue>>;
+        readonly rootKeys: readonly string[];
       }> = [];
+      const rootKeysByCanonicalRoot = discoveringRootKeys(discovery.candidates);
       for (const candidate of preferMostSpecificProjectCandidates(
         discovery.candidates,
         canonicalSourceRootByAdmittedRoot,
@@ -145,14 +147,23 @@ export function createRuntimeTargetController({
           signal?.throwIfAborted();
           const issued = await abortable(bridge.issue(candidate), signal);
           signal?.throwIfAborted();
-          issuedCandidates.push({ candidate, issued });
+          issuedCandidates.push({
+            candidate,
+            issued,
+            rootKeys: rootKeysByCanonicalRoot.get(candidate.canonicalRoot) ?? [
+              candidate.rootKey,
+            ],
+          });
         } catch {
           signal?.throwIfAborted();
           partial = true;
-          for (const projectKey of projectKeysByAdmittedRoot.get(
-            candidate.rootKey,
-          ) ?? []) {
-            markPartial(projectKey, groups);
+          for (const rootKey of rootKeysByCanonicalRoot.get(
+            candidate.canonicalRoot,
+          ) ?? [candidate.rootKey]) {
+            for (const projectKey of projectKeysByAdmittedRoot.get(rootKey) ??
+              []) {
+              markPartial(projectKey, groups);
+            }
           }
         }
       }
@@ -187,12 +198,14 @@ export function createRuntimeTargetController({
             signal,
           );
           for (const [index, target] of refreshed.entries()) {
-            addTargetToGroups(
-              issuedCandidates[index]?.candidate.rootKey,
-              target,
-              projectKeysByAdmittedRoot,
-              groups,
-            );
+            for (const rootKey of issuedCandidates[index]?.rootKeys ?? []) {
+              addTargetToGroups(
+                rootKey,
+                target,
+                projectKeysByAdmittedRoot,
+                groups,
+              );
+            }
           }
         } catch {
           signal?.throwIfAborted();
@@ -227,13 +240,17 @@ export function createRuntimeTargetController({
               ),
               signal,
             );
-            for (const target of refreshed) {
-              addTargetToGroups(
+            for (const [index, target] of refreshed.entries()) {
+              for (const rootKey of candidatesForRoot[index]?.rootKeys ?? [
                 root.rootKey,
-                target,
-                projectKeysByAdmittedRoot,
-                groups,
-              );
+              ]) {
+                addTargetToGroups(
+                  rootKey,
+                  target,
+                  projectKeysByAdmittedRoot,
+                  groups,
+                );
+              }
             }
           } catch {
             signal?.throwIfAborted();
@@ -243,19 +260,21 @@ export function createRuntimeTargetController({
           }
           continue;
         }
-        for (const { issued } of candidatesForRoot) {
+        for (const { issued, rootKeys } of candidatesForRoot) {
           try {
             signal?.throwIfAborted();
             const refreshed = await abortable(
               targets.refreshFromTrustedCandidate(context, issued, { signal }),
               signal,
             );
-            addTargetToGroups(
-              root.rootKey,
-              refreshed,
-              projectKeysByAdmittedRoot,
-              groups,
-            );
+            for (const rootKey of rootKeys) {
+              addTargetToGroups(
+                rootKey,
+                refreshed,
+                projectKeysByAdmittedRoot,
+                groups,
+              );
+            }
           } catch {
             signal?.throwIfAborted();
             partial = true;
@@ -294,6 +313,20 @@ function preferMostSpecificProjectCandidates<
     }
   }
   return [...selected.values()];
+}
+
+function discoveringRootKeys<
+  T extends { readonly rootKey: string; readonly canonicalRoot: string },
+>(candidates: readonly T[]): ReadonlyMap<string, readonly string[]> {
+  const rootKeys = new Map<string, string[]>();
+  for (const candidate of candidates) {
+    const discovered = rootKeys.get(candidate.canonicalRoot) ?? [];
+    if (!discovered.includes(candidate.rootKey)) {
+      discovered.push(candidate.rootKey);
+      rootKeys.set(candidate.canonicalRoot, discovered);
+    }
+  }
+  return rootKeys;
 }
 
 async function abortable<T>(operation: PromiseLike<T>, signal?: AbortSignal) {
