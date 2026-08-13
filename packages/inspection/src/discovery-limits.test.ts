@@ -59,9 +59,7 @@ describe("source discovery limits", () => {
 
   test("bounds visited entries while preserving an earlier safe candidate", async () => {
     const rootPath = await harness.createRoot();
-    const safeRoot = path.join(rootPath, "00-safe");
-    await fs.mkdir(safeRoot);
-    await harness.writePlugin(safeRoot, "safe");
+    await harness.writePlugin(rootPath, "safe");
     await Promise.all(
       Array.from({ length: 2048 }, (_, index) =>
         fs.writeFile(
@@ -81,7 +79,7 @@ describe("source discovery limits", () => {
     ]);
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
-        code: "scan-entry-limit",
+        code: "scan-directory-limit",
         displayPath: "workspace",
       }),
     );
@@ -138,10 +136,54 @@ describe("source discovery limits", () => {
     );
     expect(result.diagnostics).toContainEqual(
       expect.objectContaining({
-        code: "scan-entry-limit",
+        code: "scan-directory-limit",
         displayPath: "noisy",
       }),
     );
+  });
+
+  test("bounds one directory before materialization without hiding a healthy root", async () => {
+    const pathologicalRoot = await harness.createRoot("pathological-private");
+    const generatedRoot = path.join(pathologicalRoot, "generated");
+    await fs.mkdir(generatedRoot);
+    const healthyRoot = await harness.createRoot("healthy-root");
+    const healthyPlugin = path.join(healthyRoot, "plugin");
+    await fs.mkdir(healthyPlugin);
+    await harness.writePlugin(healthyPlugin, "healthy");
+    await Promise.all(
+      Array.from({ length: 3_000 }, (_, index) =>
+        fs.writeFile(
+          path.join(
+            generatedRoot,
+            `entry-${index.toString().padStart(4, "0")}`,
+          ),
+          "",
+        ),
+      ),
+    );
+    const admission = await admitTrustedRoots([
+      {
+        rootKey: EXAMPLE_ROOT_KEY,
+        kind: "explicit",
+        path: pathologicalRoot,
+        displayName: "large project",
+      },
+      { rootKey: WORKSPACE_ROOT_KEY, kind: "explicit", path: healthyRoot },
+    ]);
+
+    const result = await discoverSourceCandidates(admission.roots);
+
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toContain(
+      "healthy",
+    );
+    expect(result.diagnostics).toContainEqual({
+      code: "scan-directory-limit",
+      rootKey: EXAMPLE_ROOT_KEY,
+      displayPath: "large project/generated",
+      detail:
+        "A source directory reached its bounded enumeration limit; results are partial.",
+    });
+    expect(JSON.stringify(result.diagnostics)).not.toContain(pathologicalRoot);
   });
 
   test("borrows an unused entry share after every root receives its reservation", async () => {
