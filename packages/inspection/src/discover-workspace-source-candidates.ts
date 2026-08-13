@@ -2,6 +2,8 @@ import { constants, promises as fs } from "node:fs";
 import type { Dirent } from "node:fs";
 import path from "node:path";
 
+import { readBoundedDirectoryEntries } from "./bounded-directory-reader.ts";
+
 import { discoveryDiagnostic } from "./discovery-diagnostic.ts";
 import { DiscoveryFailure } from "./discovery-errors.ts";
 import { candidateAtRoot } from "./discovery-manifest.ts";
@@ -492,7 +494,22 @@ async function readDirectoryEntries(
       path: current.directory,
     });
     state.signal?.throwIfAborted();
-    entries = await fs.readdir(current.directory, { withFileTypes: true });
+    const read = await readBoundedDirectoryEntries(
+      current.directory,
+      state.signal,
+    );
+    entries = [...read.entries];
+    if (read.limited) {
+      state.truncatedEntries = true;
+      diagnostics.push(
+        discoveryDiagnostic(
+          "scan-directory-limit",
+          state.root,
+          displayPathFor(state.root, current.relative),
+          "A source directory reached its bounded enumeration limit; results are partial.",
+        ),
+      );
+    }
     state.signal?.throwIfAborted();
   } catch {
     state.signal?.throwIfAborted();
@@ -520,7 +537,7 @@ async function readDirectoryEntries(
   );
   state.signal?.throwIfAborted();
   if (!stableAfter) return null;
-  return entries.sort((left, right) => left.name.localeCompare(right.name));
+  return entries;
 }
 
 async function inspectDirectory(
