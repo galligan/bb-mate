@@ -19,3 +19,16 @@ export {
   verifyDevelopmentTargetCatalogSchema,
 } from "./persistence/runtime-migrations.ts";
 export { adaptPreparedSqliteDatabase } from "./persistence/sqlite.ts";
+export {
+  createProjectTargetController,
+  createRuntimeTargetController,
+  type CreateRuntimeTargetControllerOptions,
+  type ProjectTargetController,
+} from "./project-target-controller.ts";
+export { createRequestContext } from "./auth/context.ts";
+export type { RequestContext } from "./auth/context.ts";
+export type {
+  BatchProjectTargetAdmissionRequest,
+  BatchProjectTargetAdmissionResponse,
+  DevelopmentTargetListResponse,
+} from "./supervision/targets.ts";

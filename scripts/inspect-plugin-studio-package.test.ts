@@ -71,10 +71,10 @@ describe("Plugin Studio package inspection", () => {
       ).bytes(),
     ]);
     expect(createHash("sha256").update(readme).digest("hex")).toBe(
-      "045549f448af81516acd8b200d835bab6e7172986676106fda83b2cfeb339ef7",
+      "caae6d98194b7438169777332658e0ce66ed273f4faa1fdc8774c5b85e32377f",
     );
     expect(createHash("sha256").update(skill).digest("hex")).toBe(
-      "e821a0812a2374e99928707232a96e3337ec0fae826b9a628eddfcecf6ed879c",
+      "5a558f60179973e6f6c5401f4d01a93ba8348114a28a5d499b506cb34898df03",
     );
   });
 
@@ -89,7 +89,7 @@ describe("Plugin Studio package inspection", () => {
     expect(buildMetadata().pluginId).toBe("studio");
   });
 
-  test("ships schema-v3 all-project guidance without stale admission controls", async () => {
+  test("ships schema-v4 all-project guidance without stale admission controls", async () => {
     const [readme, skill] = await Promise.all([
       Bun.file(new URL("../plugins/studio/README.md", import.meta.url)).text(),
       Bun.file(
@@ -101,18 +101,17 @@ describe("Plugin Studio package inspection", () => {
     ]);
     for (const document of [readme, skill]) {
       const prose = document.replace(/\s+/gu, " ");
-      expect(prose).toContain("schema-v3");
+      expect(prose).toContain("schema-v4");
       expect(prose).toContain("read-only status");
-      expect(prose).toContain("may report the current runtime state");
-      expect(prose).toContain(
-        "idle, starting, ready, stopping, unavailable, or failed",
-      );
+      expect(prose).toContain("in-process");
       expect(prose).toContain("all eligible bb-registered local projects");
       if (document === skill) {
         expect(prose).toContain(
           "On mount, Plugin Studio automatically performs",
         );
         expect(prose).not.toContain("On mount, Workbench automatically");
+        expect(prose).toContain("bb-owned storage");
+        expect(prose).toContain("bundled runtime artifact is dormant");
       }
       expect(prose).toContain("refresh icon");
       expect(prose).toContain("npm or Bun workspace configuration");

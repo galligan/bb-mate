@@ -3,16 +3,11 @@ import { describe, expect, test } from "bun:test";
 import {
   projectIdSchema,
   workbenchSnapshotSchema,
-  type PluginWorkbenchSnapshotV3,
+  type PluginWorkbenchSnapshotV4,
 } from "./workbench-contract.ts";
 
-const idle: PluginWorkbenchSnapshotV3 = {
-  schemaVersion: 3,
-  runtimeState: "idle",
-  reason: null,
-  runtimeVersion: null,
-  apiVersion: null,
-  canStart: true,
+const idle: PluginWorkbenchSnapshotV4 = {
+  schemaVersion: 4,
   browserLaunch: "unavailable",
   projects: { state: "ready", truncated: false, items: [] },
 };
@@ -24,7 +19,7 @@ const project = {
   scan: { state: "not_scanned" as const, items: [] as [] },
 };
 
-describe("Plugin Studio v3 contract", () => {
+describe("Plugin Studio v4 contract", () => {
   test("accepts the exact finite path-free idle projection", () => {
     expect(workbenchSnapshotSchema.parse(idle)).toEqual(idle);
     expect(
@@ -117,10 +112,6 @@ describe("Plugin Studio v3 contract", () => {
       expect(
         workbenchSnapshotSchema.safeParse({
           ...idle,
-          runtimeState: "ready",
-          runtimeVersion: "0.1.0",
-          apiVersion: 2,
-          canStart: false,
           projects: {
             state,
             truncated: false,
@@ -137,10 +128,6 @@ describe("Plugin Studio v3 contract", () => {
       expect(
         workbenchSnapshotSchema.safeParse({
           ...idle,
-          runtimeState: "ready",
-          runtimeVersion: "0.1.0",
-          apiVersion: 2,
-          canStart: false,
           projects: {
             state: "partial",
             truncated: false,
@@ -180,10 +167,13 @@ describe("Plugin Studio v3 contract", () => {
     ).toBe(false);
   });
 
-  test("requires coherent runtime identity, activity, state, and unique bounded items", () => {
+  test("rejects runtime handshake fields and requires coherent activity, state, and unique bounded items", () => {
     for (const identity of [
-      { runtimeVersion: "0.1.0", apiVersion: null },
-      { runtimeVersion: null, apiVersion: 2 },
+      { runtimeState: "ready" },
+      { runtimeVersion: "0.1.0" },
+      { apiVersion: 2 },
+      { canStart: true },
+      { reason: "startup_failed" },
     ] as const) {
       expect(
         workbenchSnapshotSchema.safeParse({ ...idle, ...identity }).success,
@@ -233,10 +223,6 @@ describe("Plugin Studio v3 contract", () => {
     expect(
       workbenchSnapshotSchema.safeParse({
         ...idle,
-        runtimeState: "ready",
-        runtimeVersion: "0.1.0",
-        apiVersion: 2,
-        canStart: false,
         projects: {
           state: "ready",
           items: [

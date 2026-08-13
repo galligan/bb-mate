@@ -16,13 +16,14 @@ will move into `plugins/studio` and use only public bb plugin contracts. The
 existing inspection kernel remains the source of discovery policy; it moves
 in-process rather than being rewritten.
 
-The child runtime remains the authoritative, read-write fallback while the new
-discovery and storage paths are shadow-verified. At cutover it is quiesced and
-its database becomes an immutable rollback artifact. It is removed only after
+The in-process path is authoritative for primary-host discovery after
 [#99](https://github.com/galligan/bb-plugin-studio/issues/99) and
-[#100](https://github.com/galligan/bb-plugin-studio/issues/100) meet the evidence
-gates below. Enrolled remote-host discovery remains explicitly unavailable until
-bb exposes the bounded, host-routed public capability tracked in
+[#100](https://github.com/galligan/bb-plugin-studio/issues/100). The child
+runtime source remains only as removal work for
+[#101](https://github.com/galligan/bb-plugin-studio/issues/101); production
+Plugin Studio does not start or call it. Enrolled remote-host discovery remains
+explicitly unavailable until bb exposes the bounded, host-routed public
+capability tracked in
 [#102](https://github.com/galligan/bb-plugin-studio/issues/102). It does not
 block removing the child runtime for primary-host use.
 
@@ -68,14 +69,9 @@ not the nightly source checkout, is the 0.37 contract evidence for this ADR.
 ```text
 bb plugin backend (`plugins/studio/src/backend/plugin.ts`)
   -> project inventory (`project-adapter.ts` -> bb.sdk.system/projects)
-  -> runtime supervisor
-       -> packaged executable resolver + launcher
-       -> supervisor pipe and one-time bearer token
-       -> child `bb-plugin-studio serve`
-            -> private loopback HTTP handler
-            -> runtime identity + Bun SQLite catalog
-            -> target admission/list endpoints
-       -> runtime target HTTP client
+  -> shared project-target controller
+       -> bounded inspection kernel
+       -> development-target catalog on `bb.storage.database()`
   -> bb.rpc status/refresh -> plugin frontend
 
 browser-only source workbench (development only)
@@ -84,16 +80,23 @@ browser-only source workbench (development only)
   -> static schema-v2 session projection
 ```
 
-The shipped Studio flow calls only the target portion of the runtime:
+The shipped Studio flow calls the target domain directly:
 
-- `plugin.ts` loads bb project sources and asks the supervisor to admit a batch.
-- `runtime-supervisor.ts` resolves, starts, monitors, and stops the packaged
-  runtime.
-- `runtime-launcher.ts` and `runtime-target-client.ts` exchange the launch
-  descriptor and call `POST /v2/targets/admit` (and support target listing).
-- `apps/cli/src/serve.ts` opens the catalog and private HTTP listener.
-- `packages/runtime/src/discovery/**`, the target service, and the target/event
-  persistence tables implement the returned target projections.
+- `plugin.ts` admits only one unambiguous primary-host `local_path` source per
+  project, revalidates it before scanning and immediately before mutation, and
+  shares one abortable refresh across RPC callers.
+- `packages/runtime/src/project-target-controller.ts` composes the existing
+  trusted-root, workspace discovery, alias/overlap, capacity, and retirement
+  behavior without a transport boundary.
+- `studio-catalog.ts` opens the catalog through bb-owned storage and leaves the
+  database handle lifecycle to bb.
+- RPC schema v4 exposes only browser availability and path-free project scan
+  truth; runtime version/API/startup handshake fields are gone.
+
+Supervisor, launcher, resolver, private target client, HTTP `serve`, and
+packaged executable files remain temporarily so #101 can remove their package,
+CLI, and test graph coherently. They are not reachable from the production
+plugin entrypoint.
 
 The generic object service is not in that product call graph. Sessions,
 surfaces, annotations, captures, comparisons, plugin briefs, and reviews exist
@@ -183,7 +186,14 @@ or arbitrary commands, this decision no longer applies. That operation needs a
 new threat model and likely a disposable environment, not silent expansion of
 the manifest scanner.
 
-## Legacy state that must be inventoried and preserved
+## Historical legacy-state inventory
+
+This inventory records the migration risk that existed when the ADR was
+accepted. The owner subsequently removed Mate and chose a clean Studio install,
+so production Plugin Studio does not import this database. The bb-owned catalog
+starts clean and preserves the same identity, revision, scope, retirement, and
+event semantics going forward. The historical files, if retained outside the
+active profile, are evidence only and never an operational fallback.
 
 The legacy data root resolves to `<bb-data>/plugins/studio/runtime`; its database
 is `workbench.sqlite3`, and `runtime-identity.json` stores a generated principal
@@ -288,50 +298,33 @@ bb responsiveness.
 - Pin normalized target projections, retirement/reopen transitions, and event
   cursor behavior as migration fixtures.
 
-### Phase 1: shadow discovery (#99)
+### Phase 1: authoritative in-process discovery (#99, implemented)
 
-- Add a thin backend adapter from bb-authorized primary project sources to the
-  inspection kernel.
-- Run child and in-process paths against the deterministic corpus and compare
-  normalized projections, ordering, partial states, and diagnostics.
-- Keep child output authoritative while mismatches remain.
-- Complete #97 and prove cancellation, deadline, memory, and event-loop bounds.
+- The backend admits and revalidates bb-authorized primary-host project sources
+  before the bounded inspection kernel and again before catalog mutation.
+- One shared refresh carries the plugin lifecycle abort signal through root
+  admission, discovery, candidate issuance, and catalog writes.
+- The extracted controller keeps the existing deterministic corpus as the
+  parity oracle for aliases, overlaps, partial results, capacity, retirement,
+  reopen, cancellation, and path-private diagnostics.
+- Enrolled, mixed, and multiple-primary source declarations fail closed.
 
-### Phase 2: bb-owned catalog (#100)
+### Phase 2: clean bb-owned catalog (#100, implemented)
 
-- Create a new schema through `bb.storage.database()` and append-only
+- The schema is created through `bb.storage.database()` and append-only
   `bb.storage.migrate()` statements.
-- Import the legacy database transactionally and idempotently after schema,
-  ownership, permissions, integrity, and source checksum validation.
-- Preserve IDs/revisions/scopes/retirements/events identified above.
-- Before the authoritative import, enter a cutover barrier: stop new child
-  admissions, drain in-flight refreshes, stop the child, close its listener and
-  SQLite handle, and verify no process, journal transition, or writer remains.
-- Take and validate one immutable source snapshot only after quiescence. Import
-  from that snapshot and record its identity/checksum plus migration completion
-  in the destination database.
-- Keep the quiesced legacy database untouched.
-- Shadow-read old and new stores and compare public projections before cutover.
+- The adapter enables and verifies foreign keys without changing bb's WAL mode
+  or closing bb's handle.
+- Reload, stable identity/revision/history, failed migration, and tampered schema
+  proofs run against the host-neutral catalog and real `better-sqlite3` adapter.
+- The removed Mate profile is not imported; there is no dual-writer or rollback
+  database in the active Studio topology.
 
-### Phase 3: read-only cutover rehearsal and removal (#101)
+### Phase 3: remove dormant child machinery (#101)
 
-- While the cutover barrier is still held, require exact public-projection
-  parity and atomically select the native catalog for reads. Keep catalog
-  mutation disabled on both paths during one bounded rollback-rehearsal window;
-  refresh must return a clear temporarily-unavailable result rather than queue
-  or apply writes.
-- Rehearse rollback while both catalogs still represent the same immutable
-  snapshot. If rollback succeeds, either stay on the child and discard the
-  destination import or repeat the barrier before another cutover attempt.
-- Accept the cutover explicitly before enabling native catalog writes. From the
-  first native mutation onward, the bb-owned database is the sole authoritative
-  state. The legacy database remains forensic evidence, not an operational
-  rollback target; any later code rollback must preserve and consume native
-  state or ship a separately reviewed reverse migration.
-- Switch status/refresh to direct backend service calls through existing
-  `bb.rpc`.
-- Make the frontend catalog-oriented; remove runtime version/API handshake as a
-  primary product status.
+- Keep direct status/refresh through existing `bb.rpc` and schema v4.
+- Keep the frontend catalog-oriented with per-project scan truth and no runtime
+  version/API/startup handshake.
 - Remove supervisor, launcher, resolver, target HTTP client, private handler,
   principals/scopes, runtime identity, health/capability endpoints, `serve`, and
   the packaged executable/stamp/gates.
@@ -345,7 +338,12 @@ bb responsiveness.
 - Show remote projects as unavailable/unsupported until it is present; never
   substitute primary-host filesystem access.
 
-## Rollback and compatibility
+## Historical rollback design and current compatibility
+
+The dual-database rollback design below is retained as decision history, not an
+active Studio mechanism. Mate was removed before native cutover, and Studio
+starts with one clean bb-owned catalog. Current rollback must preserve that
+catalog; it must not reactivate or write a legacy child database.
 
 One bounded migration window retains the legacy executable path and quiesced
 database while both legacy and native catalogs are write-frozen. Rollback may
@@ -386,12 +384,12 @@ removes the child runtime:
 2. **Call-graph proof:** production imports show no path from Studio to the
    generic object service, private HTTP handler, or child supervision after
    removal.
-3. **Shadow parity:** deterministic corpus and a scrubbed real-state fixture
-   produce identical normalized target IDs, revisions, ordering, states, and
-   diagnostics on old and new paths.
-4. **Migration proof:** first import, repeated import, crash/partial import,
-   corrupt schema, checksum drift, unknown future schema, retirement/reopen,
-   and event cursor/retention tests pass without modifying the source database.
+3. **Controller parity:** the shared deterministic corpus preserves target IDs,
+   revisions, ordering, aliases, overlaps, partial states, capacity,
+   retirement/reopen, and diagnostics without a second implementation.
+4. **Native-catalog proof:** clean initialization, repeated load, failed
+   migration rollback, corrupt schema, stable identity/history,
+   retirement/reopen, and event cursor/retention tests pass on bb-owned storage.
 5. **Resource proof:** a 100k-entry pathological directory is bounded before
    full materialization, with recorded wall time, peak memory, cancellation,
    deadline, symlink, and event-loop responsiveness evidence.
@@ -407,8 +405,8 @@ removes the child runtime:
 9. **Repository gates:** compatibility lanes, typecheck, tests, build, visual
    tests, package inspection, and clean-room lifecycle are green with no
    packaged runtime executable.
-10. **Rollback rehearsal:** a copied legacy database can return to the old path
-    within the documented window without touching the primary profile.
+10. **Rollback proof:** reload and compatible code rollback keep the bb-owned
+    catalog authoritative and never reactivate a legacy child database.
 
 ## Consequences
 

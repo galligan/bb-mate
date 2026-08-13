@@ -1,30 +1,13 @@
 import { PluginWorkbenchView } from "./workbench-panel";
-import type {
-  PluginWorkbenchRuntimeState,
-  PluginWorkbenchSnapshot,
-} from "./workbench-snapshot";
+import type { PluginWorkbenchSnapshot } from "./workbench-snapshot";
 
 const targetId = "abcdefghijklmnopqrstuvwxzy012345";
 
 function snapshot(
-  runtimeState: PluginWorkbenchRuntimeState,
   overrides: Partial<PluginWorkbenchSnapshot> = {},
 ): PluginWorkbenchSnapshot {
-  const failed = runtimeState === "failed";
-  const unavailable = runtimeState === "unavailable";
   return {
-    schemaVersion: 3,
-    runtimeState,
-    reason: failed
-      ? "startup_failed"
-      : unavailable
-        ? "unsupported_platform"
-        : null,
-    runtimeVersion:
-      runtimeState === "ready" || runtimeState === "stopping" ? "0.7.0" : null,
-    apiVersion:
-      runtimeState === "ready" || runtimeState === "stopping" ? 2 : null,
-    canStart: runtimeState === "idle" || failed,
+    schemaVersion: 4,
     browserLaunch: "unavailable",
     projects: {
       state: "ready",
@@ -55,29 +38,37 @@ function Fixture({ value }: { value: PluginWorkbenchSnapshot }) {
 }
 
 export function Idle() {
-  return <Fixture value={snapshot("idle")} />;
+  return <Fixture value={snapshot()} />;
 }
 export function Starting() {
-  return <Fixture value={snapshot("starting")} />;
+  return <Fixture value={snapshot()} />;
 }
 export function Ready() {
-  return <Fixture value={snapshot("ready")} />;
+  return <Fixture value={snapshot()} />;
 }
 export function Stopping() {
-  return <Fixture value={snapshot("stopping")} />;
+  return <Fixture value={snapshot()} />;
 }
 export function Unavailable() {
-  return <Fixture value={snapshot("unavailable")} />;
+  return (
+    <Fixture
+      value={snapshot({ projects: { state: "unavailable", items: [] } })}
+    />
+  );
 }
 export function Failed() {
-  return <Fixture value={snapshot("failed")} />;
+  return (
+    <Fixture
+      value={snapshot({ projects: { state: "unavailable", items: [] } })}
+    />
+  );
 }
 
 export function HostileVersion() {
   const hostile = '<img src=x onerror="alert(1)">';
   return (
     <Fixture
-      value={snapshot("ready", {
+      value={snapshot({
         projects: {
           state: "ready",
           truncated: false,

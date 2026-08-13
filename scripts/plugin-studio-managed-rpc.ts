@@ -60,19 +60,7 @@ export type StudioProjectCatalog =
   | { readonly state: "unavailable"; readonly items: readonly [] };
 
 export interface StudioSnapshot {
-  readonly schemaVersion: 3;
-  readonly runtimeState:
-    "idle" | "starting" | "ready" | "stopping" | "unavailable" | "failed";
-  readonly reason:
-    | "unsupported_platform"
-    | "artifact_missing"
-    | "artifact_invalid"
-    | "runtime_incompatible"
-    | "startup_failed"
-    | null;
-  readonly runtimeVersion: string | null;
-  readonly apiVersion: 2 | null;
-  readonly canStart: boolean;
+  readonly schemaVersion: 4;
   readonly browserLaunch: "unavailable";
   readonly projects: StudioProjectCatalog;
 }
@@ -202,68 +190,18 @@ export function parseStudioSnapshot(value: unknown): StudioSnapshot {
   const snapshot = record(value, "snapshot");
   exactKeys(
     snapshot,
-    [
-      "schemaVersion",
-      "runtimeState",
-      "reason",
-      "runtimeVersion",
-      "apiVersion",
-      "canStart",
-      "browserLaunch",
-      "projects",
-    ],
+    ["schemaVersion", "browserLaunch", "projects"],
     "snapshot",
   );
-  const projects = projectCatalog(snapshot.projects);
-  const states = [
-    "idle",
-    "starting",
-    "ready",
-    "stopping",
-    "unavailable",
-    "failed",
-  ];
-  const reasons = [
-    "unsupported_platform",
-    "artifact_missing",
-    "artifact_invalid",
-    "runtime_incompatible",
-    "startup_failed",
-  ];
-  const state = String(snapshot.runtimeState);
-  const reason = snapshot.reason;
-  const runtimeVersion = snapshot.runtimeVersion;
-  const hasIdentity =
-    typeof runtimeVersion === "string" &&
-    Buffer.byteLength(runtimeVersion, "utf8") <= 64 &&
-    /^[0-9A-Za-z][0-9A-Za-z._+-]*$/u.test(runtimeVersion) &&
-    snapshot.apiVersion === 2;
-  const identityFieldsCoherent =
-    hasIdentity || (runtimeVersion === null && snapshot.apiVersion === null);
-  const coherent =
-    identityFieldsCoherent &&
-    (state === "ready" || state === "stopping") === hasIdentity &&
-    (state === "idle"
-      ? snapshot.canStart === true && reason === null
-      : state === "unavailable"
-        ? snapshot.canStart === false &&
-          typeof reason === "string" &&
-          reason !== "startup_failed"
-        : state === "failed"
-          ? snapshot.canStart === true && reason === "startup_failed"
-          : snapshot.canStart === false && reason === null);
   assert(
-    snapshot.schemaVersion === 3 &&
-      states.includes(state) &&
-      (reason === null || reasons.includes(String(reason))) &&
-      (runtimeVersion === null || typeof runtimeVersion === "string") &&
-      (snapshot.apiVersion === null || snapshot.apiVersion === 2) &&
-      typeof snapshot.canStart === "boolean" &&
-      snapshot.browserLaunch === "unavailable" &&
-      coherent,
+    snapshot.schemaVersion === 4 && snapshot.browserLaunch === "unavailable",
     "Studio RPC snapshot values are invalid.",
   );
-  return { ...snapshot, projects } as unknown as StudioSnapshot;
+  return {
+    schemaVersion: 4,
+    browserLaunch: "unavailable",
+    projects: projectCatalog(snapshot.projects),
+  };
 }
 
 export async function callStudioRpc(

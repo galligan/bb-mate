@@ -49,12 +49,7 @@ function snapshot(
   },
 ): PluginWorkbenchSnapshot {
   return {
-    schemaVersion: 3,
-    runtimeState: "ready",
-    reason: null,
-    runtimeVersion: "0.7.0",
-    apiVersion: 2,
-    canStart: false,
+    schemaVersion: 4,
     browserLaunch: "unavailable",
     projects:
       projects.state === "unavailable"
@@ -80,7 +75,7 @@ function render(
 }
 
 describe("Plugin Studio nav panel", () => {
-  test("uses host semantic styling, one scroll owner, and compact runtime refresh", async () => {
+  test("uses host semantic styling, one scroll owner, and project refresh", async () => {
     const css = await Bun.file(
       new URL("./workbench-panel.css", import.meta.url),
     ).text();
@@ -88,8 +83,7 @@ describe("Plugin Studio nav panel", () => {
     expect(css).toContain("prefers-reduced-motion: reduce");
     const html = render(snapshot());
     expect(html).not.toContain("<main");
-    expect(html).toContain("Runtime ready");
-    expect(html).toContain("0.7.0 · API 2");
+    expect(html).toContain("Projects");
     expect(html).toContain('aria-label="Reload Plugin Studio data"');
     expect(html).not.toContain("Workbench");
     expect(html).toContain('data-icon="RotateCcw"');
@@ -281,22 +275,10 @@ describe("Plugin Studio nav panel", () => {
     expect(busy).toContain('aria-label="Reloading Plugin Studio data"');
   });
 
-  test("shows permanent runtime failure reasons to sighted users", () => {
-    const html = render({
-      ...snapshot(),
-      runtimeState: "unavailable",
-      reason: "artifact_invalid",
-      runtimeVersion: null,
-      apiVersion: null,
-      canStart: false,
-    });
-
-    expect(html).toContain(
-      "The packaged runtime did not pass integrity checks.",
-    );
-    expect(html).not.toContain(
-      'class="sr-only">The packaged runtime did not pass integrity checks.',
-    );
+  test("shows catalog unavailability without runtime handshake detail", () => {
+    const html = render(snapshot({ state: "unavailable", items: [] }));
+    expect(html).toContain("Project list unavailable");
+    expect(html).not.toContain("packaged runtime");
   });
 
   test("renders hostile labels inertly", () => {

@@ -194,9 +194,17 @@ export function assertPluginStudioRuntimeStampEmbedded(
     String(stamp.manifestSize),
     stamp.manifestSha256,
   ];
+  const embeddedValues = exactValues.filter((value) =>
+    compiledBackend.includes(value),
+  );
+  const embedsApiVersion = apiVersionPattern.test(compiledBackend);
+
+  // The schema-v4 backend no longer consumes the dormant child artifact. During
+  // the one-PR transition before #101 deletes it, accept either a complete exact
+  // stamp or no stamp at all; a partial/stale embedded identity still fails.
   if (
-    exactValues.some((value) => !compiledBackend.includes(value)) ||
-    !apiVersionPattern.test(compiledBackend)
+    (embeddedValues.length !== 0 || embedsApiVersion) &&
+    (embeddedValues.length !== exactValues.length || !embedsApiVersion)
   ) {
     throw new Error(
       "Compiled Studio backend does not embed the exact runtime stamp.",

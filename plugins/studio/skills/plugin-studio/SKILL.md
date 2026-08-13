@@ -1,17 +1,15 @@
 ---
 name: plugin-studio
-description: Use Plugin Studio to inspect source plugins across eligible local bb projects with the packaged bb-plugin-studio runtime.
+description: Use Plugin Studio's in-process discovery and bb-owned catalog to inspect source plugins across eligible local bb projects.
 ---
 
 # Plugin Studio
 
-Open **Plugin Studio** from bb's plugin navigation to inspect the packaged
-runtime and its finite schema-v3 catalog.
+Open **Plugin Studio** from bb's plugin navigation to inspect its finite
+schema-v4 catalog.
 
-- Opening the panel first requests read-only status. That request does not start
-  the runtime, open its catalog, or inspect source. It may report the current
-  runtime state as idle, starting, ready, stopping, unavailable, or failed
-  without changing it.
+- Opening the panel first requests read-only status. Discovery runs in-process
+  without starting a child process or opening a private listener.
 - On mount, Plugin Studio automatically performs one bounded refresh across all
   eligible bb-registered local projects. The refresh icon repeats that same
   all-project operation. There is no per-project selector or admit action.
@@ -21,8 +19,12 @@ runtime and its finite schema-v3 catalog.
   row to open its detail view.
 - The refresh does not execute target code, package scripts, installed-plugin
   inventory, or native plugin lifecycle actions. Source paths stay private to
-  the backend and runtime; the panel receives only bounded opaque projections.
-- Preview remains unavailable under #70. Do not invent a runtime URL, expose a
+  the backend. Target identity and history persist through Plugin Studio's
+  catalog on bb-owned storage; the panel receives only bounded opaque
+  projections.
+- The bundled runtime artifact is dormant and remains only for compatibility
+  inspection until #101 removes that package machinery.
+- Preview remains unavailable under #70. Do not invent a private URL, expose a
   loopback listener, or substitute installed inventory for source discovery.
 - Use native `bb plugin build`, `bb plugin dev`, and `bb plugin reload` for
   lifecycle work. Plugin Studio does not replace those commands.

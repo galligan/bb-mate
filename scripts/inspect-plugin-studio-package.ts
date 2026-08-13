@@ -392,7 +392,7 @@ export async function inspectPluginStudioPackageDirectory(
   );
   assert(
     createHash("sha256").update(packagedReadme).digest("hex") ===
-      "045549f448af81516acd8b200d835bab6e7172986676106fda83b2cfeb339ef7" &&
+      "caae6d98194b7438169777332658e0ce66ed273f4faa1fdc8774c5b85e32377f" &&
       Buffer.compare(packagedReadme, approvedReadme) === 0,
     "Plugin Studio packaged README differs from the approved usage document.",
   );
@@ -414,7 +414,7 @@ export async function inspectPluginStudioPackageDirectory(
   const skillText = packagedSkill.toString("utf8");
   assert(
     createHash("sha256").update(packagedSkill).digest("hex") ===
-      "e821a0812a2374e99928707232a96e3337ec0fae826b9a628eddfcecf6ed879c" &&
+      "5a558f60179973e6f6c5401f4d01a93ba8348114a28a5d499b506cb34898df03" &&
       Buffer.compare(packagedSkill, approvedSkill) === 0 &&
       skillText.startsWith("---\nname: plugin-studio\ndescription:") &&
       skillText.includes("# Plugin Studio") &&

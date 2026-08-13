@@ -32,9 +32,7 @@ for (const fixture of fixtures) {
     await page.goto(`?state=${fixture.state}&theme=${fixture.theme}`);
     const panel = page.locator("#panel-fixture");
     await expect(panel).toBeVisible();
-    await expect(
-      panel.getByText(/Runtime (idle|ready|stopped|unavailable)/).first(),
-    ).toBeVisible();
+    await expect(panel.getByText("Projects").first()).toBeVisible();
     await expect(page.locator("main main")).toHaveCount(0);
     await expect(
       panel.getByRole("button", { name: "Open", exact: true }),
