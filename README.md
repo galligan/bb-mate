@@ -1,7 +1,6 @@
 # bb Plugin Studio
 
 [![CI](https://github.com/galligan/bb-plugin-studio/actions/workflows/ci.yml/badge.svg)](https://github.com/galligan/bb-plugin-studio/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/bb-mate?label=npm&color=cb3837)](https://www.npmjs.com/package/bb-mate)
 [![license](https://img.shields.io/github/license/galligan/bb-plugin-studio)](LICENSE)
 
 bb Plugin Studio is an experimental, fixture-driven authoring companion for plugins
@@ -56,11 +55,14 @@ bb plugin dev .
 bb Plugin Studio can sit beside that loop, but it never becomes the runtime:
 
 ```sh
-bb-mate inspect .
-bb-mate dev .
-bb-mate check .
-bb-mate live .
+bun run bb-mate inspect .
+bun run bb-mate dev .
+bun run bb-mate check .
+bun run bb-mate live .
 ```
+
+`bb-mate` is the current compatibility command. It is not the current product
+name or a promise that a renamed public package is available.
 
 - `inspect` is passive and does not execute plugin code.
 - `dev` opens the Fixture lab.
@@ -76,39 +78,16 @@ adapter, Harness mode remains unavailable. Publication of those testing
 subpaths is tracked upstream in
 [get-bb/bb#1134](https://github.com/get-bb/bb/issues/1134).
 
-## Install the alpha
+## Try the source preview
 
 Prerequisites:
 
 - [bb](https://github.com/get-bb/bb#use-bb) for native build, install, and Live
   handoffs;
-- Bun 1.3.14 or a newer engine-compatible version to run `bb-mate`;
+- Bun 1.3.14 or a newer engine-compatible version;
 - an existing bb plugin when you want to inspect or hand off a real workspace.
 
-Install the current public prerelease:
-
-```sh
-npm install --global bb-mate@alpha
-bb-mate --help
-```
-
-Then, from a plugin directory:
-
-```sh
-bb-mate inspect .
-bb-mate dev .
-```
-
-The installed `dev` command serves a packaged, loopback-only static lab. It
-does not install, build, reload, or run the selected plugin.
-
-> [!NOTE]
-> This is an early alpha. Commands, fixtures, and package contents may change
-> between prereleases. npm currently points both `alpha` and `latest` at the
-> only published version, so use `bb-mate@alpha` when you want the intended
-> channel explicitly.
-
-## Develop bb Plugin Studio from source
+Clone and start the deterministic workbench:
 
 ```sh
 git clone https://github.com/galligan/bb-plugin-studio.git
@@ -118,7 +97,23 @@ bun run bb-mate --help
 bun run dev
 ```
 
-Useful checks:
+The browser workbench runs with fixtures and does not require a bb server. To
+inspect an existing plugin source tree explicitly:
+
+```sh
+bun run bb-mate inspect /absolute/path/to/plugin
+bun run bb-mate dev /absolute/path/to/plugin
+```
+
+bb Plugin Studio is not currently distributed as a public installable package.
+The supported first-contact path is this experimental source preview; commands,
+fixtures, and package contents may change. The older `bb-mate` npm artifact is
+not the current onboarding path. See the [Source preview guide](docs/source-preview.md)
+for exact boundaries, useful checks, and native handoff behavior.
+
+## Develop and verify from source
+
+After following the source-preview setup above, useful checks are:
 
 ```sh
 bun run format:check
@@ -159,7 +154,7 @@ plugin looks or behaves exactly the same inside bb.
 ## Repository map
 
 ```text
-apps/cli/        The published bb-mate CLI package
+apps/cli/        The source CLI (current command: bb-mate)
 apps/workbench/  Browser-only fixture workbench
 packages/        Shared inspection and authoring contracts
 plugins/mate/    Studio-owned live integration plugin
@@ -168,6 +163,7 @@ docs/            Architecture, authoring, trust, and compatibility guides
 
 Start with:
 
+- [Source preview guide](docs/source-preview.md)
 - [Plugin-author guide](docs/plugin-author-guide.md)
 - [Architecture and upstream boundary](docs/architecture.md)
 - [Product naming and compatibility](docs/product-naming.md)

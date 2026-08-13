@@ -8,11 +8,12 @@ declaration refresh, build, install, dev/reload, and the live runtime.
 
 - Bun 1.3.14, the currently verified version; newer engine-compatible versions
   are best-effort until added to CI;
-- npm for installing the public alpha;
+- Git for obtaining the source preview;
 - an existing bb plugin when you want inspection or native handoff guidance;
-- native bb 0.36.0, the currently recorded target, for supported native
-  inspection, build, or Live handoffs. Other versions may still produce useful
-  diagnostics but are best-effort until the compatibility target is updated.
+- native bb 0.36.0 or newer, verified through 0.37.0, for supported native
+  inspection, build, or Live handoffs. Newer releases remain usable with a
+  nonfatal audit notice and are best-effort until the verified-through boundary
+  is updated.
 
 Install native bb through its own supported distribution before using native
 handoffs. The local bb Plugin Studio artifact does not bundle, install, configure, or
@@ -103,30 +104,24 @@ Set `BB_CLI` to an exact executable when you need to override the `bb` found on
 BB_CLI=/absolute/path/to/bb bun run bb-mate inspect "$plugin"
 ```
 
-## Install the public alpha
+## Use the source preview
 
-The public package supports Fixture exploration outside the source checkout:
+Plugin Studio is not currently distributed as a public installable package.
+Use a source checkout for Fixture exploration:
 
 ```sh
 plugin="/absolute/path/to/plugin"
-prefix="$(mktemp -d)"
-npm install --prefix "$prefix" --no-save --package-lock=false bb-mate@alpha
-"$prefix/node_modules/.bin/bb-mate" --help
-"$prefix/node_modules/.bin/bb-mate" dev "$plugin"
+git clone https://github.com/galligan/bb-plugin-studio.git
+cd bb-plugin-studio
+bun install --frozen-lockfile
+bun run bb-mate --help
+bun run bb-mate dev "$plugin"
 ```
 
-Open the printed loopback URL, then stop the foreground server with Control-C
-before uninstalling in the same shell:
-
-```sh
-npm uninstall --prefix "$prefix" --no-save --package-lock=false bb-mate
-```
-
-The installed `dev` serves the packaged static lab rather than the source Vite
-workbench. It binds only to loopback and does not serve inspection data. The
-package is an MIT-licensed prerelease with no stable API or support SLA. The
-reproducible artifact and clean-room lifecycle are specified in
-[local-package.md](local-package.md).
+Open the printed loopback URL, then stop the foreground server with Control-C.
+The preview has no stable API or support SLA. Its reproducible local artifact
+and clean-room lifecycle remain release-engineering evidence rather than an
+installation promise; they are specified in [local-package.md](local-package.md).
 Release-candidate maintainers can reproduce the source, packaged, and isolated
 native lanes with the [clean-room alpha trial runbook](alpha-trial-runbook.md).
 
