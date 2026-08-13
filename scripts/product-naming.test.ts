@@ -75,6 +75,15 @@ describe("bb Plugin Studio product naming", () => {
     expect(stale).toEqual([]);
   });
 
+  test("uses the canonical repository URL for the compatibility schema identity", async () => {
+    const schema = await Bun.file(
+      `${repositoryRoot}/compatibility/bb-target.schema.json`,
+    ).json();
+    expect(schema.$id).toBe(
+      "https://raw.githubusercontent.com/galligan/bb-plugin-studio/main/compatibility/bb-target.schema.json",
+    );
+  });
+
   test("uses the renamed repository directory after fresh clone commands", async () => {
     for (const relative of ["CONTRIBUTING.md", "docs/plugin-author-guide.md"]) {
       const text = await Bun.file(`${repositoryRoot}/${relative}`).text();
@@ -119,5 +128,22 @@ describe("bb Plugin Studio product naming", () => {
     expect(changelog).toContain("## Unreleased");
     expect(changelog).toContain("Rename the product to **bb Plugin Studio**");
     expect(changelog).toContain("Historical release notes below retain");
+  });
+
+  test("keeps the compatibility skill ID while using current Studio guidance", async () => {
+    const [skill, agent] = await Promise.all([
+      Bun.file(
+        `${repositoryRoot}/.bb/skills/update-bb-mate-compatibility/SKILL.md`,
+      ).text(),
+      Bun.file(
+        `${repositoryRoot}/.bb/skills/update-bb-mate-compatibility/agents/openai.yaml`,
+      ).text(),
+    ]);
+
+    expect(skill).toContain("name: update-bb-mate-compatibility");
+    expect(agent).toContain("$update-bb-mate-compatibility");
+    expect(skill).toContain("bb plugin types --check plugins/mate");
+    expect(skill).not.toContain("plugins/linear");
+    expect(skill).toContain("Plugin Studio compatibility");
   });
 });

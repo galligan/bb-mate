@@ -7,6 +7,7 @@ import {
   formatCompatibilityReport,
   observeBbVersion,
   parseCompatibilityTarget,
+  projectCompatibilityTargetToRelease,
   resolveCompatibilityDecisionPath,
   validCompatibilityDecision,
   type CompatibilityObservations,
@@ -58,24 +59,36 @@ describe("native bb version probe", () => {
 });
 
 const target: CompatibilityTarget = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   acceptedDecision: null,
   target: {
-    bbVersion: "0.35.1",
+    minimumBbVersion: "0.36.0",
+    verifiedThroughBbVersion: "0.37.0",
     pluginSdkVersion: "0.4.1",
     pluginSdkEngineRange: "^0.4.1",
-    upstreamRef: "desktop-v0.35.1",
+    upstreamRef: "desktop-v0.37.0",
   },
   publicArtifacts: {
     appPackageUrl:
-      "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/apps/app/package.json",
+      "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/apps/app/package.json",
     pluginSdkPackageUrl:
-      "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/packages/plugin-sdk/package.json",
+      "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-sdk/package.json",
     themeCssUrl:
-      "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/apps/app/src/components/ui/theme.css",
+      "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/apps/app/src/components/ui/theme.css",
+    themeCssSha256: "c".repeat(64),
+    declarations: {
+      backend: {
+        url: "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-sdk/bundled-types/bb-plugin-sdk.d.ts",
+        sha256: "d".repeat(64),
+      },
+      app: {
+        url: "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-sdk/bundled-types/bb-plugin-sdk-app.d.ts",
+        sha256: "e".repeat(64),
+      },
+    },
     registry: {
-      url: "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.35.1/packages/plugin-registry/r/index.json",
-      sha256: "abc",
+      url: "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-registry/r/index.json",
+      sha256: "a".repeat(64),
       items: ["button"],
     },
   },
@@ -100,11 +113,13 @@ const target: CompatibilityTarget = {
 
 function matchingObservations(): CompatibilityObservations {
   return {
-    bbVersion: "0.35.1",
+    bbVersion: "0.36.0",
     pluginSdkEngineRange: "^0.4.1",
     pluginSdkVersion: "0.4.1",
-    registrySha256: "abc",
+    registrySha256: "a".repeat(64),
     registryItems: ["button"],
+    themeCssSha256: "c".repeat(64),
+    declarationSha256: { backend: "d".repeat(64), app: "e".repeat(64) },
     dependencies: { icons: { local: "^1.0.0", upstream: "^1.0.0" } },
     tokens: { "--row-height": { local: "1rem", upstream: "1rem" } },
     registrationPaths: ["slots.example"],
@@ -112,10 +127,44 @@ function matchingObservations(): CompatibilityObservations {
 }
 
 describe("compatibility evaluation", () => {
-  test("passes a completely matching observation", () => {
+  test("passes the exact minimum supported host", () => {
     const report = evaluateCompatibility(target, matchingObservations());
     expect(report.outcome).toBe("pass");
     expect(report.checks.every(({ status }) => status === "pass")).toBe(true);
+  });
+
+  test("passes a host at the verified-through boundary", () => {
+    const observed = matchingObservations();
+    observed.bbVersion = "0.37.0";
+    const report = evaluateCompatibility(target, observed);
+    expect(report.outcome).toBe("pass");
+    expect(report.checks.find(({ id }) => id === "bb.version")).toMatchObject({
+      status: "pass",
+      observed: "0.37.0",
+    });
+  });
+
+  test("fails a host below the minimum supported version", () => {
+    const observed = matchingObservations();
+    observed.bbVersion = "0.35.9";
+    const report = evaluateCompatibility(target, observed);
+    expect(report.outcome).toBe("fail");
+    expect(report.checks.find(({ id }) => id === "bb.version")).toMatchObject({
+      status: "fail",
+      observed: "0.35.9",
+    });
+  });
+
+  test("reports a newer-than-verified host without failing", () => {
+    const observed = matchingObservations();
+    observed.bbVersion = "0.38.0";
+    const report = evaluateCompatibility(target, observed);
+    expect(report.outcome).toBe("pass");
+    expect(report.checks.find(({ id }) => id === "bb.version")).toMatchObject({
+      status: "notice",
+      observed: "0.38.0",
+      nextAction: expect.stringContaining("audit"),
+    });
   });
 
   test("fails when release identity and immutable URLs diverge", () => {
@@ -134,11 +183,6 @@ describe("compatibility evaluation", () => {
   });
 
   test.each([
-    [
-      "bb version",
-      (value: CompatibilityObservations) => (value.bbVersion = "0.36.0"),
-      "bb.version",
-    ],
     [
       "SDK engine",
       (value: CompatibilityObservations) =>
@@ -160,6 +204,24 @@ describe("compatibility evaluation", () => {
       (value: CompatibilityObservations) =>
         (value.registryItems = ["button", "card"]),
       "component-registry.items",
+    ],
+    [
+      "full theme",
+      (value: CompatibilityObservations) =>
+        (value.themeCssSha256 = "theme-def"),
+      "theme.sha256",
+    ],
+    [
+      "backend declarations",
+      (value: CompatibilityObservations) =>
+        (value.declarationSha256.backend = "backend-def"),
+      "plugin-sdk.declaration.backend.sha256",
+    ],
+    [
+      "app declarations",
+      (value: CompatibilityObservations) =>
+        (value.declarationSha256.app = "app-def"),
+      "plugin-sdk.declaration.app.sha256",
     ],
     [
       "local dependency",
@@ -225,7 +287,7 @@ describe("compatibility evaluation", () => {
 
   test("formats a concise actionable terminal report", () => {
     const observed = matchingObservations();
-    observed.bbVersion = "0.36.0";
+    observed.bbVersion = "0.34.0";
     const output = formatCompatibilityReport(
       evaluateCompatibility(target, observed),
     );
@@ -291,6 +353,35 @@ describe("target validation", () => {
       }),
     ).toThrow("immutable public");
   });
+
+  test("rejects malformed immutable artifact hashes", () => {
+    expect(() =>
+      parseCompatibilityTarget({
+        ...target,
+        publicArtifacts: {
+          ...target.publicArtifacts,
+          themeCssSha256: "not-a-sha256",
+        },
+      }),
+    ).toThrow("SHA-256");
+  });
+});
+
+test("projects immutable probe URLs to a candidate without accepting new hashes", () => {
+  const projected = projectCompatibilityTargetToRelease(target, "0.38.0");
+  expect(projected.target).toMatchObject({
+    minimumBbVersion: "0.36.0",
+    verifiedThroughBbVersion: "0.38.0",
+    upstreamRef: "desktop-v0.38.0",
+  });
+  expect(projected.publicArtifacts.themeCssUrl).toContain("desktop-v0.38.0");
+  expect(projected.publicArtifacts.declarations.backend.url).toContain(
+    "desktop-v0.38.0",
+  );
+  expect(projected.publicArtifacts.themeCssSha256).toBe("c".repeat(64));
+  expect(projected.publicArtifacts.declarations.backend.sha256).toBe(
+    "d".repeat(64),
+  );
 });
 
 test("the checked-in target mirrors the catalog registration paths", async () => {

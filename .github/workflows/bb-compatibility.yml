@@ -1,0 +1,45 @@
+name: BB compatibility
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  host-contract:
+    name: bb ${{ matrix.boundary }} boundary
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        boundary:
+          - minimumBbVersion
+          - verifiedThroughBbVersion
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: Install the exact boundary CLI in isolation
+        id: bb
+        shell: bash
+        run: |
+          version=$(jq -r '.target["${{ matrix.boundary }}"]' compatibility/bb-target.json)
+          test -n "$version" && test "$version" != null
+          prefix="$RUNNER_TEMP/bb-${{ matrix.boundary }}"
+          npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund "bb-app@$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "executable=$prefix/node_modules/.bin/bb" >> "$GITHUB_OUTPUT"
+      - name: Regenerate declarations from bb ${{ steps.bb.outputs.version }}
+        run: ${{ steps.bb.outputs.executable }} plugin types plugins/mate
+      - name: Typecheck against regenerated declarations
+        run: bun --cwd plugins/mate run check
+      - name: Build with the exact host CLI
+        run: ${{ steps.bb.outputs.executable }} plugin build plugins/mate
+      - name: Run plugin contract tests
+        run: bun --cwd plugins/mate test

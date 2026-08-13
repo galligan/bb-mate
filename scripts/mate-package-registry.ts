@@ -17,7 +17,7 @@ export function createMateRegistryDocument(args: {
         name: MATE_PACKAGE_NAME,
         version: MATE_PACKAGE_VERSION,
         license: "MIT",
-        engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
+        engines: { bb: ">=0.36.0", bbPluginSdk: "^0.4.1" },
         dist: { integrity: args.integrity, shasum: args.shasum, tarball },
       },
     },

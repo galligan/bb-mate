@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     permissions:
       contents: read
       issues: write
@@ -33,12 +33,60 @@ jobs:
           set -e
           if [ "$status" -eq 10 ]; then
             echo "drift=true" >> "$GITHUB_OUTPUT"
+            echo "version=$(jq -r .latestVersion bb-release-report.json)" >> "$GITHUB_OUTPUT"
           elif [ "$status" -eq 0 ]; then
             echo "drift=false" >> "$GITHUB_OUTPUT"
           else
             test ! -s bb-release-report.json || cat bb-release-report.json
             exit "$status"
           fi
+      - name: Audit npm stable without changing the committed target
+        if: steps.release.outputs.drift == 'true'
+        id: audit
+        shell: bash
+        run: |
+          version='${{ steps.release.outputs.version }}'
+          prefix="$RUNNER_TEMP/bb-latest"
+          npm install --prefix "$prefix" --ignore-scripts --no-audit --no-fund "bb-app@$version"
+          bb_cli="$prefix/node_modules/.bin/bb"
+
+          set +e
+          BB_CLI="$bb_cli" bun scripts/compatibility-check.ts \
+            --candidate-version "$version" --json > bb-candidate-report.json
+          contract_status=$?
+          "$bb_cli" plugin types plugins/mate
+          types_status=$?
+          bun --cwd plugins/mate run check
+          typecheck_status=$?
+          "$bb_cli" plugin build plugins/mate
+          build_status=$?
+          bun --cwd plugins/mate test
+          test_status=$?
+
+          # The managed-package clean room uses the plugin-local bb binary and
+          # a disposable data directory, so this replacement cannot touch a
+          # developer profile or the committed lockfile in the ephemeral runner.
+          bun add --cwd plugins/mate --no-save --ignore-scripts "bb-app@$version"
+          activation_install_status=$?
+          if [ "$activation_install_status" -eq 0 ]; then
+            BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION="$version" bun run mate:package:test
+            activation_status=$?
+          else
+            activation_status=125
+          fi
+          set -e
+
+          {
+            echo "| Probe | Exit |"
+            echo "| --- | ---: |"
+            echo "| Immutable contract drift | $contract_status |"
+            echo "| Declaration generation | $types_status |"
+            echo "| Typecheck | $typecheck_status |"
+            echo "| Build | $build_status |"
+            echo "| Plugin tests | $test_status |"
+            echo "| Activation CLI install | $activation_install_status |"
+            echo "| Disposable managed activation | $activation_status |"
+          } > bb-candidate-smoke.md
       - name: Create or update the compatibility issue
         if: steps.release.outputs.drift == 'true'
         uses: actions/github-script@v9
@@ -48,7 +96,13 @@ jobs:
             const report = JSON.parse(
               fs.readFileSync("bb-release-report.json", "utf8"),
             );
-            const marker = "<!-- bb-mate-compatibility-watch -->";
+            const contract = fs.readFileSync(
+              "bb-candidate-report.json",
+              "utf8",
+            );
+            const smoke = fs.readFileSync("bb-candidate-smoke.md", "utf8");
+            const marker = "<!-- bb-plugin-studio-compatibility-watch -->";
+            const legacyMarker = "<!-- bb-mate-compatibility-watch -->";
             const title = `Adopt bb ${report.latestVersion}`;
             const body = [
               marker,
@@ -56,11 +110,23 @@ jobs:
               "## Compatibility drift detected",
               "",
               `npm's stable \`bb-app\` release is **${report.latestVersion}**;`,
-              `bb Plugin Studio currently targets **${report.targetVersion}**.`,
+              `bb Plugin Studio supports **${report.minimumVersion}+** and is`,
+              `verified through **${report.verifiedThroughVersion}**.`,
               "",
               "Use `$update-bb-mate-compatibility` from this repository to audit",
               "the immutable upstream release, run the isolated native and visual",
               "gates, and prepare a reviewable target update.",
+              "",
+              "## Isolated candidate probes",
+              "",
+              smoke,
+              "",
+              "<details><summary>Immutable contract report</summary>",
+              "",
+              "```json",
+              contract.trim(),
+              "```",
+              "</details>",
               "",
               "This issue was created by the scheduled compatibility watch. The",
               "automation does not edit code, upgrade bb, publish, or touch the",
@@ -76,7 +142,10 @@ jobs:
               },
             );
             const existing = issues.find(
-              (issue) => !issue.pull_request && issue.body?.includes(marker),
+              (issue) =>
+                !issue.pull_request &&
+                (issue.body?.includes(marker) ||
+                  issue.body?.includes(legacyMarker)),
             );
             if (existing) {
               await github.rest.issues.update({

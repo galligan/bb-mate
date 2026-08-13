@@ -25,10 +25,11 @@ interface TokenTarget {
 }
 
 export interface CompatibilityTarget {
-  schemaVersion: 1;
+  schemaVersion: 2;
   acceptedDecision?: string | null;
   target: {
-    bbVersion: string;
+    minimumBbVersion: string;
+    verifiedThroughBbVersion: string;
     pluginSdkVersion: string;
     pluginSdkEngineRange: string;
     upstreamRef: string;
@@ -37,6 +38,8 @@ export interface CompatibilityTarget {
     appPackageUrl: string;
     pluginSdkPackageUrl: string;
     themeCssUrl: string;
+    themeCssSha256: string;
+    declarations: Record<"backend" | "app", { url: string; sha256: string }>;
     registry: { url: string; sha256: string; items: string[] };
   };
   dependencies: DependencyTarget[];
@@ -67,12 +70,16 @@ export interface CompatibilityObservations {
   registrySha256?: string;
   registryItems?: string[];
   registryError?: string;
+  themeCssSha256?: string;
+  themeCssError?: string;
+  declarationSha256: Partial<Record<"backend" | "app", string>>;
+  declarationErrors?: Partial<Record<"backend" | "app", string>>;
   dependencies: Record<string, DependencyObservation>;
   tokens: Record<string, TokenObservation>;
   registrationPaths: string[];
 }
 
-export type CompatibilityStatus = "pass" | "fail" | "unverified";
+export type CompatibilityStatus = "pass" | "fail" | "unverified" | "notice";
 
 export interface CompatibilityCheck {
   id: string;
@@ -115,6 +122,68 @@ function exactCheck(
     : { id, status: "fail", target, observed, nextAction };
 }
 
+function semanticVersion(version: string): [number, number, number, string?] {
+  const match =
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$/.exec(
+      version,
+    );
+  if (!match) throw new Error(`Expected a semantic version, got ${version}.`);
+  return [Number(match[1]), Number(match[2]), Number(match[3]), match[4]];
+}
+
+function compareVersions(left: string, right: string): number {
+  const leftParts = semanticVersion(left);
+  const rightParts = semanticVersion(right);
+  for (let index = 0; index < 3; index += 1) {
+    const difference = Number(leftParts[index]) - Number(rightParts[index]);
+    if (difference !== 0) return Math.sign(difference);
+  }
+  if (leftParts[3] === rightParts[3]) return 0;
+  if (leftParts[3] === undefined) return 1;
+  if (rightParts[3] === undefined) return -1;
+  return leftParts[3].localeCompare(rightParts[3]);
+}
+
+function bbVersionCheck(
+  target: CompatibilityTarget["target"],
+  observed?: string,
+  error?: string,
+): CompatibilityCheck {
+  const supported = {
+    minimum: target.minimumBbVersion,
+    verifiedThrough: target.verifiedThroughBbVersion,
+  };
+  if (error || observed === undefined) {
+    return {
+      id: "bb.version",
+      status: "unverified",
+      target: supported,
+      observed: error ?? "No observation was produced.",
+      nextAction: "Install a supported bb release and rerun the probe.",
+    };
+  }
+  if (compareVersions(observed, target.minimumBbVersion) < 0) {
+    return {
+      id: "bb.version",
+      status: "fail",
+      target: supported,
+      observed,
+      nextAction: `Upgrade bb to ${target.minimumBbVersion} or newer.`,
+    };
+  }
+  if (compareVersions(observed, target.verifiedThroughBbVersion) > 0) {
+    return {
+      id: "bb.version",
+      status: "notice",
+      target: supported,
+      observed,
+      nextAction:
+        "Run the latest-release compatibility audit; this installed version is newer than the verified-through boundary.",
+    };
+  }
+  return { id: "bb.version", status: "pass", target: supported, observed };
+}
+
 export function evaluateCompatibility(
   target: CompatibilityTarget,
   observed: CompatibilityObservations,
@@ -124,15 +193,9 @@ export function evaluateCompatibility(
       "target.release-coherence",
       [],
       targetCoherenceIssues(target),
-      "Make upstreamRef, bbVersion, SDK range, and every public artifact URL identify one release.",
+      "Make upstreamRef, verifiedThroughBbVersion, SDK range, and every public artifact URL identify one release.",
     ),
-    exactCheck(
-      "bb.version",
-      target.target.bbVersion,
-      observed.bbVersion,
-      "Install the targeted bb release or update compatibility/bb-target.json after verification.",
-      observed.bbError,
-    ),
+    bbVersionCheck(target.target, observed.bbVersion, observed.bbError),
     exactCheck(
       "plugin-sdk.engine-range",
       target.target.pluginSdkEngineRange,
@@ -159,6 +222,22 @@ export function evaluateCompatibility(
       observed.registryItems,
       "Review added or removed public components before updating the recorded item list.",
       observed.registryError,
+    ),
+    exactCheck(
+      "theme.sha256",
+      target.publicArtifacts.themeCssSha256,
+      observed.themeCssSha256,
+      "Review the complete public theme diff before updating the verified-through target.",
+      observed.themeCssError,
+    ),
+    ...(["backend", "app"] as const).map((name) =>
+      exactCheck(
+        `plugin-sdk.declaration.${name}.sha256`,
+        target.publicArtifacts.declarations[name].sha256,
+        observed.declarationSha256[name],
+        `Review the ${name} SDK declaration diff even if the SDK package version is unchanged.`,
+        observed.declarationErrors?.[name],
+      ),
     ),
   ];
 
@@ -218,14 +297,18 @@ export function evaluateCompatibility(
   return {
     schemaVersion: 1,
     upstreamRef: target.target.upstreamRef,
-    outcome: checks.every(({ status }) => status === "pass") ? "pass" : "fail",
+    outcome: checks.every(
+      ({ status }) => status === "pass" || status === "notice",
+    )
+      ? "pass"
+      : "fail",
     checks,
   };
 }
 
 function targetCoherenceIssues(target: CompatibilityTarget): string[] {
   const issues: string[] = [];
-  const expectedRef = `desktop-v${target.target.bbVersion}`;
+  const expectedRef = `desktop-v${target.target.verifiedThroughBbVersion}`;
   if (target.target.upstreamRef !== expectedRef) {
     issues.push(`upstreamRef must be ${expectedRef}`);
   }
@@ -234,11 +317,21 @@ function targetCoherenceIssues(target: CompatibilityTarget): string[] {
   ) {
     issues.push("plugin SDK engine range must target the recorded SDK version");
   }
+  if (
+    compareVersions(
+      target.target.minimumBbVersion,
+      target.target.verifiedThroughBbVersion,
+    ) > 0
+  ) {
+    issues.push("minimum bb version cannot exceed verified-through bb version");
+  }
   const urls = [
     target.publicArtifacts.appPackageUrl,
     target.publicArtifacts.pluginSdkPackageUrl,
     target.publicArtifacts.themeCssUrl,
     target.publicArtifacts.registry.url,
+    target.publicArtifacts.declarations.backend.url,
+    target.publicArtifacts.declarations.app.url,
   ];
   if (urls.some((url) => !url.includes(`/${target.target.upstreamRef}/`))) {
     issues.push(
@@ -333,6 +426,7 @@ export async function collectCompatibilityObservations(
   const observed: CompatibilityObservations = {
     dependencies: {},
     tokens: {},
+    declarationSha256: {},
     registrationPaths: surfaceCatalog.map(
       ({ registrationPath }) => registrationPath,
     ),
@@ -423,13 +517,33 @@ export async function collectCompatibilityObservations(
   let upstreamCss: string | undefined;
   try {
     upstreamCss = await fetchText(target.publicArtifacts.themeCssUrl);
+    observed.themeCssSha256 = createHash("sha256")
+      .update(upstreamCss)
+      .digest("hex");
   } catch (error) {
     const detail = `Could not read public theme CSS: ${message(error)}`;
+    observed.themeCssError = detail;
     for (const token of target.measuredTokens) {
       if (token.upstreamValue !== undefined)
         observed.tokens[token.name] = { upstreamError: detail };
     }
   }
+  await Promise.all(
+    (["backend", "app"] as const).map(async (name) => {
+      try {
+        const declarations = await fetchText(
+          target.publicArtifacts.declarations[name].url,
+        );
+        observed.declarationSha256[name] = createHash("sha256")
+          .update(declarations)
+          .digest("hex");
+      } catch (error) {
+        observed.declarationErrors ??= {};
+        observed.declarationErrors[name] =
+          `Could not read public ${name} declarations: ${message(error)}`;
+      }
+    }),
+  );
   for (const token of target.measuredTokens) {
     const current = observed.tokens[token.name] ?? {};
     observed.tokens[token.name] = {
@@ -494,7 +608,7 @@ export function formatCompatibilityReport(report: CompatibilityReport): string {
   ];
   for (const check of report.checks) {
     lines.push(
-      `${check.status === "pass" ? "✓" : "✗"} ${check.id}: ${check.status}`,
+      `${check.status === "pass" ? "✓" : check.status === "notice" ? "!" : "✗"} ${check.id}: ${check.status}`,
     );
     if (check.status !== "pass") {
       lines.push(`  targeted: ${serialized(check.target)}`);
@@ -518,6 +632,14 @@ function string(value: unknown, name: string): string {
     throw new Error(`${name} must be a non-empty string.`);
   }
   return value;
+}
+
+function sha256(value: unknown, name: string): string {
+  const text = string(value, name);
+  if (!/^[a-f0-9]{64}$/.test(text)) {
+    throw new Error(`${name} must be a lowercase SHA-256 digest.`);
+  }
+  return text;
 }
 
 function stringArray(value: unknown, name: string): string[] {
@@ -557,9 +679,18 @@ function publicArtifactUrl(
 
 export function parseCompatibilityTarget(value: unknown): CompatibilityTarget {
   const root = record(value, "compatibility target");
-  if (root.schemaVersion !== 1) throw new Error("schemaVersion must be 1.");
+  if (root.schemaVersion !== 2) throw new Error("schemaVersion must be 2.");
   const target = record(root.target, "target");
-  const bbVersion = string(target.bbVersion, "target.bbVersion");
+  const minimumBbVersion = string(
+    target.minimumBbVersion,
+    "target.minimumBbVersion",
+  );
+  const verifiedThroughBbVersion = string(
+    target.verifiedThroughBbVersion,
+    "target.verifiedThroughBbVersion",
+  );
+  semanticVersion(minimumBbVersion);
+  semanticVersion(verifiedThroughBbVersion);
   const pluginSdkVersion = string(
     target.pluginSdkVersion,
     "target.pluginSdkVersion",
@@ -571,6 +702,10 @@ export function parseCompatibilityTarget(value: unknown): CompatibilityTarget {
   const upstreamRef = string(target.upstreamRef, "target.upstreamRef");
   const artifacts = record(root.publicArtifacts, "publicArtifacts");
   const registry = record(artifacts.registry, "publicArtifacts.registry");
+  const declarations = record(
+    artifacts.declarations,
+    "publicArtifacts.declarations",
+  );
   const dependencies = (
     Array.isArray(root.dependencies) ? root.dependencies : []
   ).map((entry, index) => {
@@ -627,9 +762,15 @@ export function parseCompatibilityTarget(value: unknown): CompatibilityTarget {
     );
   }
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     acceptedDecision,
-    target: { bbVersion, pluginSdkVersion, pluginSdkEngineRange, upstreamRef },
+    target: {
+      minimumBbVersion,
+      verifiedThroughBbVersion,
+      pluginSdkVersion,
+      pluginSdkEngineRange,
+      upstreamRef,
+    },
     publicArtifacts: {
       appPackageUrl: publicArtifactUrl(
         artifacts.appPackageUrl,
@@ -649,6 +790,33 @@ export function parseCompatibilityTarget(value: unknown): CompatibilityTarget {
         "apps/app/src/components/ui/theme.css",
         "publicArtifacts.themeCssUrl",
       ),
+      themeCssSha256: sha256(
+        artifacts.themeCssSha256,
+        "publicArtifacts.themeCssSha256",
+      ),
+      declarations: Object.fromEntries(
+        (["backend", "app"] as const).map((name) => {
+          const declaration = record(
+            declarations[name],
+            `publicArtifacts.declarations.${name}`,
+          );
+          return [
+            name,
+            {
+              url: publicArtifactUrl(
+                declaration.url,
+                upstreamRef,
+                `packages/plugin-sdk/bundled-types/bb-plugin-sdk${name === "app" ? "-app" : ""}.d.ts`,
+                `publicArtifacts.declarations.${name}.url`,
+              ),
+              sha256: sha256(
+                declaration.sha256,
+                `publicArtifacts.declarations.${name}.sha256`,
+              ),
+            },
+          ];
+        }),
+      ) as CompatibilityTarget["publicArtifacts"]["declarations"],
       registry: {
         url: publicArtifactUrl(
           registry.url,
@@ -656,7 +824,7 @@ export function parseCompatibilityTarget(value: unknown): CompatibilityTarget {
           "packages/plugin-registry/r/index.json",
           "publicArtifacts.registry.url",
         ),
-        sha256: string(registry.sha256, "publicArtifacts.registry.sha256"),
+        sha256: sha256(registry.sha256, "publicArtifacts.registry.sha256"),
         items: stringArray(registry.items, "publicArtifacts.registry.items"),
       },
     },
@@ -672,22 +840,78 @@ export async function loadCompatibilityTarget(): Promise<CompatibilityTarget> {
   );
 }
 
+export function projectCompatibilityTargetToRelease(
+  target: CompatibilityTarget,
+  version: string,
+): CompatibilityTarget {
+  semanticVersion(version);
+  const from = `/${target.target.upstreamRef}/`;
+  const upstreamRef = `desktop-v${version}`;
+  const to = `/${upstreamRef}/`;
+  const projectUrl = (url: string) => url.replace(from, to);
+  return {
+    ...target,
+    target: {
+      ...target.target,
+      verifiedThroughBbVersion: version,
+      upstreamRef,
+    },
+    publicArtifacts: {
+      ...target.publicArtifacts,
+      appPackageUrl: projectUrl(target.publicArtifacts.appPackageUrl),
+      pluginSdkPackageUrl: projectUrl(
+        target.publicArtifacts.pluginSdkPackageUrl,
+      ),
+      themeCssUrl: projectUrl(target.publicArtifacts.themeCssUrl),
+      declarations: {
+        backend: {
+          ...target.publicArtifacts.declarations.backend,
+          url: projectUrl(target.publicArtifacts.declarations.backend.url),
+        },
+        app: {
+          ...target.publicArtifacts.declarations.app,
+          url: projectUrl(target.publicArtifacts.declarations.app.url),
+        },
+      },
+      registry: {
+        ...target.publicArtifacts.registry,
+        url: projectUrl(target.publicArtifacts.registry.url),
+      },
+    },
+  };
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const json = args.includes("--json");
+  const candidateIndex = args.indexOf("--candidate-version");
+  const candidateVersion =
+    candidateIndex >= 0 ? args[candidateIndex + 1] : undefined;
   const decisionIndex = args.indexOf("--decision");
   const decisionPath = decisionIndex >= 0 ? args[decisionIndex + 1] : undefined;
   const unknown = args.filter(
     (arg, index) =>
-      arg !== "--json" && arg !== "--decision" && index !== decisionIndex + 1,
+      arg !== "--json" &&
+      arg !== "--decision" &&
+      arg !== "--candidate-version" &&
+      index !== decisionIndex + 1 &&
+      index !== candidateIndex + 1,
   );
-  if (unknown.length > 0 || (decisionIndex >= 0 && !decisionPath)) {
+  if (
+    unknown.length > 0 ||
+    (decisionIndex >= 0 && !decisionPath) ||
+    (candidateIndex >= 0 && !candidateVersion) ||
+    (candidateVersion && decisionPath)
+  ) {
     throw new Error(
-      "Usage: bun run compatibility:check [--json] [--decision <record.md>]",
+      "Usage: bun run compatibility:check [--json] [--decision <record.md> | --candidate-version <version>]",
     );
   }
 
-  const target = await loadCompatibilityTarget();
+  const committedTarget = await loadCompatibilityTarget();
+  const target = candidateVersion
+    ? projectCompatibilityTargetToRelease(committedTarget, candidateVersion)
+    : committedTarget;
   const observations = await collectCompatibilityObservations(target);
   const report = evaluateCompatibility(target, observations);
   if (report.outcome === "fail" && decisionPath) {

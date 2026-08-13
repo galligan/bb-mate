@@ -6,8 +6,8 @@ description: Audit and adopt a newly released stable bb version in bb Plugin Stu
 # Update bb Plugin Studio Compatibility
 
 Keep the update evidence-led and reversible. Native bb owns plugin lifecycle and
-public contracts; bb Plugin Studio records, tests, and adopts released contracts without
-editing upstream or inventing substitutes.
+public contracts; bb Plugin Studio compatibility adoption records, tests, and
+adopts released contracts without editing upstream or inventing substitutes.
 
 ## Establish the release
 
@@ -43,20 +43,24 @@ editing upstream or inventing substitutes.
 - Compare the public SDK version and exports, component registry digest and
   item set, tracked dependency ranges, measured theme tokens, and public
   registration paths.
-- Run `bb plugin types --check plugins/linear`. If stale, refresh only through
+- Run `bb plugin types --check plugins/mate`. If stale, refresh only through
   the selected released bb and review the generated declaration diff.
-- Build the Linear plugin with the selected bb and inspect every
+- Build the Studio-owned integration plugin with the selected bb and inspect every
   `dist/*.meta.json` identity and SDK stamp.
-- Exercise `bb-mate inspect`, `check`, `dev`, and the guarded `live` handoff
-  against the isolated profile. Passive discovery must not execute plugin code.
+- Exercise `bun run bb-mate inspect`, `check`, `dev`, and the guarded `live`
+  handoff against the isolated profile. `bb-mate` is the current compatibility
+  command; passive discovery must not execute plugin code.
 - Compare representative Fixture states with live bb. Keep Fixture, Harness,
   and Live claims distinct; unavailable Harness support remains unavailable.
 
 ## Make the minimum adoption change
 
 - Update `compatibility/bb-target.json` only after reviewing the observations.
-- Keep the workspace `bb-app` build pin aligned with the verified release and
-  regenerate the lockfile through Bun.
+- Keep the workspace `bb-app` build pin aligned with the minimum release so the
+  default local/package lane continuously proves the support floor. Exercise
+  the verified-through and candidate releases through the exact isolated CI
+  installs; do not move the workspace pin merely to adopt a newer verified
+  boundary.
 - Update current compatibility and authoring instructions. Preserve dated
   trial reports and release handoffs as historical evidence.
 - Change implementation only when the released public contract requires it.
@@ -70,7 +74,7 @@ Run, at minimum:
 ```sh
 bun run compatibility:latest --json
 bun run compatibility:check
-bb plugin types --check plugins/linear
+bb plugin types --check plugins/mate
 bun run format:check
 bun run check
 bun run test
