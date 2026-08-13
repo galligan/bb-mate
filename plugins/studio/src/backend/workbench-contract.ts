@@ -104,58 +104,15 @@ export const projectCatalogSchema = z.discriminatedUnion("state", [
   z.object({ state: z.literal("unavailable"), items: z.tuple([]) }).strict(),
 ]);
 
-const runtimeVersionSchema = utf8Bytes(64)
-  .min(1)
-  .regex(/^[0-9A-Za-z][0-9A-Za-z._+-]*$/u);
-
 export const workbenchSnapshotSchema = z
   .object({
-    schemaVersion: z.literal(3),
-    runtimeState: z.enum([
-      "idle",
-      "starting",
-      "ready",
-      "stopping",
-      "unavailable",
-      "failed",
-    ]),
-    reason: z
-      .enum([
-        "unsupported_platform",
-        "artifact_missing",
-        "artifact_invalid",
-        "runtime_incompatible",
-        "startup_failed",
-      ])
-      .nullable(),
-    runtimeVersion: runtimeVersionSchema.nullable(),
-    apiVersion: z.literal(2).nullable(),
-    canStart: z.boolean(),
+    schemaVersion: z.literal(4),
     browserLaunch: z.literal("unavailable"),
     projects: projectCatalogSchema,
   })
-  .strict()
-  .refine((snapshot) => {
-    const hasRuntimeIdentity =
-      snapshot.runtimeVersion !== null && snapshot.apiVersion === 2;
-    const expectsRuntimeIdentity =
-      snapshot.runtimeState === "ready" || snapshot.runtimeState === "stopping";
-    if (expectsRuntimeIdentity !== hasRuntimeIdentity) return false;
-    if (
-      !expectsRuntimeIdentity &&
-      (snapshot.runtimeVersion !== null || snapshot.apiVersion !== null)
-    )
-      return false;
-    if (snapshot.runtimeState === "idle")
-      return snapshot.canStart && snapshot.reason === null;
-    if (snapshot.runtimeState === "unavailable")
-      return !snapshot.canStart && snapshot.reason !== null;
-    if (snapshot.runtimeState === "failed")
-      return snapshot.canStart && snapshot.reason === "startup_failed";
-    return !snapshot.canStart && snapshot.reason === null;
-  });
+  .strict();
 
 export type ProjectOption = z.infer<typeof projectOptionSchema>;
 export type ProjectCatalog = z.infer<typeof projectCatalogSchema>;
 export type TargetSummary = z.infer<typeof targetSummarySchema>;
-export type PluginWorkbenchSnapshotV3 = z.infer<typeof workbenchSnapshotSchema>;
+export type PluginWorkbenchSnapshotV4 = z.infer<typeof workbenchSnapshotSchema>;

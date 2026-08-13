@@ -10,12 +10,7 @@ const workbenchId = "b".repeat(32);
 
 function snapshot(): StudioSnapshot {
   return {
-    schemaVersion: 3,
-    runtimeState: "ready",
-    reason: null,
-    runtimeVersion: "0.1.0-alpha.3",
-    apiVersion: 2,
-    canStart: false,
+    schemaVersion: 4,
     browserLaunch: "unavailable",
     projects: {
       state: "ready",
@@ -55,16 +50,20 @@ function snapshot(): StudioSnapshot {
 }
 
 describe("managed Studio RPC proof codec", () => {
-  test("accepts only the exact finite API 2 schema v3 grouped snapshot", () => {
+  test("accepts only the exact finite schema-v4 grouped snapshot", () => {
     expect(parseStudioSnapshot(snapshot())).toEqual(snapshot());
     expect(() =>
-      parseStudioSnapshot({ ...snapshot(), baseUrl: "http://127.0.0.1:1" }),
+      parseStudioSnapshot({ ...snapshot(), runtimeState: "ready" }),
     ).toThrow("snapshot keys");
+    expect(() =>
+      parseStudioSnapshot({ ...snapshot(), schemaVersion: 3 }),
+    ).toThrow("snapshot values");
     expect(() =>
       parseStudioSnapshot({
         ...snapshot(),
         projects: {
           state: "ready",
+          truncated: false,
           items: [
             { ...snapshot().projects.items[0], path: "/private" },
             snapshot().projects.items[1],
@@ -77,6 +76,7 @@ describe("managed Studio RPC proof codec", () => {
         ...snapshot(),
         projects: {
           state: "ready",
+          truncated: false,
           items: [
             {
               ...snapshot().projects.items[0],
@@ -96,26 +96,56 @@ describe("managed Studio RPC proof codec", () => {
     ).toThrow("target summary keys");
   });
 
-  test("accepts read-only idle project options and rejects incoherent identity", () => {
-    const idle = {
-      ...snapshot(),
-      runtimeState: "idle",
-      runtimeVersion: null,
-      apiVersion: null,
-      canStart: true,
-      projects: {
-        state: "ready",
-        truncated: false,
-        items: snapshot().projects.items.map((project) => ({
-          ...project,
-          scan: { state: "not_scanned", items: [] },
-        })),
-      },
-    };
-    expect(parseStudioSnapshot(idle)).toEqual(parseStudioSnapshot(idle));
+  test("rejects unsafe labels, overlong IDs, and duplicate identities", () => {
+    for (const label of ["/private", ".", "..", "~", "C:secret", " bad "]) {
+      expect(() =>
+        parseStudioSnapshot({
+          ...snapshot(),
+          projects: {
+            ...snapshot().projects,
+            items: [{ ...snapshot().projects.items[0], label }],
+          },
+        }),
+      ).toThrow("project option values");
+    }
     expect(() =>
-      parseStudioSnapshot({ ...idle, runtimeVersion: "0.1.0-alpha.3" }),
-    ).toThrow("snapshot values");
+      parseStudioSnapshot({
+        ...snapshot(),
+        projects: {
+          ...snapshot().projects,
+          items: [{ ...snapshot().projects.items[0], id: "p".repeat(129) }],
+        },
+      }),
+    ).toThrow("project option values");
+    expect(() =>
+      parseStudioSnapshot({
+        ...snapshot(),
+        projects: {
+          ...snapshot().projects,
+          items: [snapshot().projects.items[0], snapshot().projects.items[0]],
+        },
+      }),
+    ).toThrow("project IDs are duplicated");
+    expect(() =>
+      parseStudioSnapshot({
+        ...snapshot(),
+        projects: {
+          ...snapshot().projects,
+          items: [
+            {
+              ...snapshot().projects.items[0],
+              scan: {
+                state: "ready",
+                items: [
+                  snapshot().projects.items[0]!.scan.items[0],
+                  snapshot().projects.items[0]!.scan.items[0],
+                ],
+              },
+            },
+          ],
+        },
+      }),
+    ).toThrow("target IDs are duplicated");
   });
 
   test("requires stable grouped identities and nondecreasing target revisions", () => {
@@ -186,15 +216,6 @@ describe("managed Studio RPC proof codec", () => {
     expect(() =>
       parseStudioSnapshot({
         ...snapshot(),
-        projects: {
-          state: "ready",
-          items: snapshot().projects.items,
-        },
-      }),
-    ).toThrow("project catalog keys");
-    expect(() =>
-      parseStudioSnapshot({
-        ...snapshot(),
         projects: { ...snapshot().projects, truncated: true },
       }),
     ).toThrow("project catalog values");
@@ -208,20 +229,19 @@ describe("managed Studio RPC proof codec", () => {
         },
       }),
     ).toThrow("project catalog values");
-
     const partial = {
       ...snapshot(),
       projects: {
-        state: "partial",
+        state: "partial" as const,
         truncated: false,
         items: snapshot().projects.items.map((project) =>
           project.id === "grid"
             ? {
                 ...project,
                 scan: {
-                  state: "unavailable",
-                  reason: "scan_failed",
-                  items: [],
+                  state: "unavailable" as const,
+                  reason: "scan_failed" as const,
+                  items: [] as const,
                 },
               }
             : project,
@@ -235,35 +255,28 @@ describe("managed Studio RPC proof codec", () => {
         projects: { ...partial.projects, state: "ready" },
       }),
     ).toThrow("project catalog values");
-
     expect(
       parseStudioSnapshot({
         ...snapshot(),
         projects: { state: "unavailable", items: [] },
       }).projects,
     ).toEqual({ state: "unavailable", items: [] });
-    expect(() =>
-      parseStudioSnapshot({
-        ...snapshot(),
-        projects: { state: "unavailable", truncated: false, items: [] },
-      }),
-    ).toThrow("project catalog keys");
   });
 
-  test("bounds total projected target entries across duplicate project fan-out", () => {
-    const fanout = (targetsPerProject: number) => ({
+  test("bounds project, scan, and total projected target entries", () => {
+    const fanout = (projects: number, targetsPerProject: number) => ({
       ...snapshot(),
       projects: {
         state: "ready",
         truncated: false,
-        items: ["project_1", "project_2"].map((id) => ({
-          id,
-          label: id,
+        items: Array.from({ length: projects }, (_, projectIndex) => ({
+          id: `project_${projectIndex}`,
+          label: `Project ${projectIndex}`,
           activity: { active: false, lastThreadUpdatedAt: null },
           scan: {
             state: "ready",
             items: Array.from({ length: targetsPerProject }, (_, index) => ({
-              id: String(index).padStart(32, "0"),
+              id: `${projectIndex}_${index}`.padStart(32, "0"),
               label: `Plugin ${index}`,
               pluginId: `plugin-${index}`,
               revision: 1,
@@ -272,10 +285,15 @@ describe("managed Studio RPC proof codec", () => {
         })),
       },
     });
-
-    expect(parseStudioSnapshot(fanout(64)).projects.state).toBe("ready");
-    expect(() => parseStudioSnapshot(fanout(65))).toThrow(
+    expect(parseStudioSnapshot(fanout(2, 64)).projects.state).toBe("ready");
+    expect(() => parseStudioSnapshot(fanout(2, 65))).toThrow(
       "too many target entries",
+    );
+    expect(() => parseStudioSnapshot(fanout(1, 129))).toThrow(
+      "too many targets",
+    );
+    expect(() => parseStudioSnapshot(fanout(129, 0))).toThrow(
+      "too many projects",
     );
   });
 });

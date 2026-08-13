@@ -15,12 +15,7 @@ const target = {
 } as const;
 
 const readySnapshot: PluginWorkbenchSnapshot = {
-  schemaVersion: 3,
-  runtimeState: "ready",
-  reason: null,
-  runtimeVersion: "0.7.0",
-  apiVersion: 2,
-  canStart: false,
+  schemaVersion: 4,
   browserLaunch: "unavailable",
   projects: {
     state: "partial",
@@ -43,17 +38,13 @@ const readySnapshot: PluginWorkbenchSnapshot = {
 };
 
 describe("Plugin Studio frontend snapshot", () => {
-  test("accepts the strict path-free grouped v3 projection", () => {
+  test("accepts the strict path-free grouped v4 projection", () => {
     expect(parsePluginWorkbenchSnapshot(readySnapshot)).toEqual(readySnapshot);
   });
 
   test("accepts read-only status with unscanned projects and finite failures", () => {
     const status = parsePluginWorkbenchSnapshot({
       ...readySnapshot,
-      runtimeState: "idle",
-      runtimeVersion: null,
-      apiVersion: null,
-      canStart: true,
       projects: {
         state: "ready",
         truncated: false,
@@ -325,21 +316,13 @@ describe("Plugin Studio frontend snapshot", () => {
     }
   });
 
-  test("requires coherent finite runtime identity", () => {
+  test("rejects removed runtime handshake fields", () => {
     for (const value of [
-      { ...readySnapshot, runtimeVersion: null, apiVersion: null },
-      {
-        ...readySnapshot,
-        runtimeState: "idle",
-        canStart: true,
-      },
-      {
-        ...readySnapshot,
-        runtimeState: "unavailable",
-        reason: null,
-        runtimeVersion: null,
-        apiVersion: null,
-      },
+      { ...readySnapshot, runtimeVersion: "0.7.0" },
+      { ...readySnapshot, runtimeState: "ready" },
+      { ...readySnapshot, apiVersion: 2 },
+      { ...readySnapshot, canStart: true },
+      { ...readySnapshot, reason: "startup_failed" },
     ]) {
       expect(() => parsePluginWorkbenchSnapshot(value)).toThrow(
         "Plugin Studio returned an invalid snapshot.",

@@ -61,12 +61,7 @@ function readySnapshot(
   truncated = false,
 ): PluginWorkbenchSnapshot {
   return parsePluginWorkbenchSnapshot({
-    schemaVersion: 3,
-    runtimeState: "ready",
-    reason: null,
-    runtimeVersion: "0.7.0",
-    apiVersion: 2,
-    canStart: false,
+    schemaVersion: 4,
     browserLaunch: "unavailable",
     projects: { state, truncated, items },
   });
@@ -115,10 +110,6 @@ const fixtures: Record<FixtureName, Fixture> = {
   idle: {
     snapshot: parsePluginWorkbenchSnapshot({
       ...allProjects,
-      runtimeState: "idle",
-      runtimeVersion: null,
-      apiVersion: null,
-      canStart: true,
       projects: {
         state: "ready",
         truncated: false,
@@ -132,11 +123,6 @@ const fixtures: Record<FixtureName, Fixture> = {
   failed: {
     snapshot: parsePluginWorkbenchSnapshot({
       ...allProjects,
-      runtimeState: "failed",
-      reason: "startup_failed",
-      runtimeVersion: null,
-      apiVersion: null,
-      canStart: true,
       projects: {
         state: "partial",
         truncated: false,

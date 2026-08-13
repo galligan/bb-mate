@@ -1535,6 +1535,41 @@ describe("runtime target controller", () => {
     catalog.close();
   });
 
+  test("revalidates host authorization after discovery and before the first catalog write", async () => {
+    const fixture = await makeFixture();
+    await writePlugin(fixture.sourceRoot, "changed-source");
+    const catalog = await openDevelopmentTargetCatalog({
+      dataRoot: fixture.dataRoot,
+      id: () => ObjectIdSchema.parse("h".repeat(32)),
+      clock: () => 1_000,
+    });
+    let checks = 0;
+    const controller = createRuntimeTargetController({
+      catalog,
+      principalId,
+      bbContextId,
+      createRootKey: () => OpaqueIdSchema.parse("r".repeat(32)),
+      beforeCatalogMutation: async (signal) => {
+        checks += 1;
+        signal?.throwIfAborted();
+        throw new Error("host source changed");
+      },
+    });
+
+    await expect(
+      controller.admit(context(), {
+        schemaVersion: 2,
+        inventoryState: "complete",
+        projects: [
+          { projectKey: "p".repeat(32), sourcePath: fixture.sourceRoot },
+        ],
+      }),
+    ).rejects.toThrow("host source changed");
+    expect(checks).toBe(1);
+    expect((await controller.list(context())).targets).toEqual([]);
+    catalog.close();
+  });
+
   test("settles an aborted batch when discovery never resolves", async () => {
     const fixture = await makeFixture();
     await writePlugin(fixture.sourceRoot, "stalled");

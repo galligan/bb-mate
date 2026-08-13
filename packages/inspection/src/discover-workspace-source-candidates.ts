@@ -1,6 +1,7 @@
 import { constants, promises as fs } from "node:fs";
 import type { Dirent } from "node:fs";
 import path from "node:path";
+import { isAlias, isMap, parseDocument } from "yaml";
 
 import { readBoundedDirectoryEntries } from "./bounded-directory-reader.ts";
 
@@ -235,7 +236,18 @@ async function readPnpmWorkspacePatterns(
 function parsePnpmWorkspacePackages(source: string): readonly string[] {
   if (source.startsWith("\uFEFF")) source = source.slice(1);
   if (source.includes("\uFEFF")) throw new Error();
-  const document = Bun.YAML.parse(source) as unknown;
+  // Bun's parser rejected explicit-form mapping keys here. Preserve that
+  // bounded contract while using a host-neutral YAML implementation in bb.
+  if (/^\?[ \t]/mu.test(source)) throw new Error();
+  const parsed = parseDocument(source, { uniqueKeys: false });
+  if (
+    parsed.errors.length > 0 ||
+    (isMap(parsed.contents) &&
+      parsed.contents.items.some(({ key }) => isAlias(key)))
+  ) {
+    throw new Error();
+  }
+  const document = parsed.toJS({ maxAliasCount: 100 }) as unknown;
   if (
     !isRecord(document) ||
     !Object.hasOwn(document, "packages") ||

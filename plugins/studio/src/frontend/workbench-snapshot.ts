@@ -1,13 +1,3 @@
-export type PluginWorkbenchRuntimeState =
-  "idle" | "starting" | "ready" | "stopping" | "unavailable" | "failed";
-
-export type PluginWorkbenchUnavailableReason =
-  | "unsupported_platform"
-  | "artifact_missing"
-  | "artifact_invalid"
-  | "runtime_incompatible"
-  | "startup_failed";
-
 export interface TargetSummary {
   id: string;
   label: string;
@@ -48,12 +38,7 @@ export type ProjectCatalog =
   | { state: "unavailable"; items: [] };
 
 export interface PluginWorkbenchSnapshot {
-  schemaVersion: 3;
-  runtimeState: PluginWorkbenchRuntimeState;
-  reason: PluginWorkbenchUnavailableReason | null;
-  runtimeVersion: string | null;
-  apiVersion: 2 | null;
-  canStart: boolean;
+  schemaVersion: 4;
   browserLaunch: "unavailable";
   projects: ProjectCatalog;
 }
@@ -61,21 +46,6 @@ export interface PluginWorkbenchSnapshot {
 export type PluginWorkbenchStatusInput = Record<string, never>;
 export type PluginWorkbenchRefreshInput = Record<string, never>;
 
-const runtimeStates = new Set<PluginWorkbenchRuntimeState>([
-  "idle",
-  "starting",
-  "ready",
-  "stopping",
-  "unavailable",
-  "failed",
-]);
-const unavailableReasons = new Set<PluginWorkbenchUnavailableReason>([
-  "unsupported_platform",
-  "artifact_missing",
-  "artifact_invalid",
-  "runtime_incompatible",
-  "startup_failed",
-]);
 const scanUnavailableReasons = new Set([
   "source_changed",
   "scan_failed",
@@ -131,13 +101,6 @@ function isPluginId(value: unknown): value is string {
   return (
     isBoundedString(value, 1, 64) &&
     /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/u.test(value)
-  );
-}
-
-function isRuntimeVersion(value: unknown): value is string {
-  return (
-    isBoundedString(value, 1, 64) &&
-    /^[0-9A-Za-z][0-9A-Za-z._+-]*$/u.test(value)
   );
 }
 
@@ -256,55 +219,12 @@ function parseProjects(value: unknown): ProjectCatalog | null {
     : null;
 }
 
-function hasCoherentRuntime(snapshot: PluginWorkbenchSnapshot): boolean {
-  const hasRuntimeVersion = snapshot.runtimeVersion !== null;
-  const hasApiVersion = snapshot.apiVersion === 2;
-  if (hasRuntimeVersion !== hasApiVersion) return false;
-  const hasRuntimeIdentity = hasRuntimeVersion && hasApiVersion;
-  if (
-    (snapshot.runtimeState === "ready" ||
-      snapshot.runtimeState === "stopping") !== hasRuntimeIdentity
-  ) {
-    return false;
-  }
-  if (snapshot.runtimeState === "idle") {
-    return snapshot.canStart && snapshot.reason === null;
-  }
-  if (snapshot.runtimeState === "unavailable") {
-    return snapshot.canStart === false && snapshot.reason !== null;
-  }
-  if (snapshot.runtimeState === "failed") {
-    return snapshot.canStart && snapshot.reason === "startup_failed";
-  }
-  return snapshot.canStart === false && snapshot.reason === null;
-}
-
 export function parsePluginWorkbenchSnapshot(
   value: unknown,
 ): PluginWorkbenchSnapshot {
   if (
-    !isExactRecord(value, [
-      "schemaVersion",
-      "runtimeState",
-      "reason",
-      "runtimeVersion",
-      "apiVersion",
-      "canStart",
-      "browserLaunch",
-      "projects",
-    ]) ||
-    value.schemaVersion !== 3 ||
-    typeof value.runtimeState !== "string" ||
-    !runtimeStates.has(value.runtimeState as PluginWorkbenchRuntimeState) ||
-    (value.reason !== null &&
-      (typeof value.reason !== "string" ||
-        !unavailableReasons.has(
-          value.reason as PluginWorkbenchUnavailableReason,
-        ))) ||
-    (value.runtimeVersion !== null &&
-      !isRuntimeVersion(value.runtimeVersion)) ||
-    (value.apiVersion !== null && value.apiVersion !== 2) ||
-    typeof value.canStart !== "boolean" ||
+    !isExactRecord(value, ["schemaVersion", "browserLaunch", "projects"]) ||
+    value.schemaVersion !== 4 ||
     value.browserLaunch !== "unavailable"
   ) {
     throw new Error("Plugin Studio returned an invalid snapshot.");
@@ -314,18 +234,10 @@ export function parsePluginWorkbenchSnapshot(
     throw new Error("Plugin Studio returned an invalid snapshot.");
   }
   const snapshot: PluginWorkbenchSnapshot = {
-    schemaVersion: 3,
-    runtimeState: value.runtimeState as PluginWorkbenchRuntimeState,
-    reason: value.reason as PluginWorkbenchUnavailableReason | null,
-    runtimeVersion: value.runtimeVersion as string | null,
-    apiVersion: value.apiVersion as 2 | null,
-    canStart: value.canStart,
+    schemaVersion: 4,
     browserLaunch: "unavailable",
     projects,
   };
-  if (!hasCoherentRuntime(snapshot)) {
-    throw new Error("Plugin Studio returned an invalid snapshot.");
-  }
   return snapshot;
 }
 

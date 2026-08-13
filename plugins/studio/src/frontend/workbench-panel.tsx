@@ -11,7 +11,6 @@ import { cn } from "../lib/utils";
 import { NativeSettingsSection } from "./native-settings";
 import type {
   PluginWorkbenchSnapshot,
-  PluginWorkbenchUnavailableReason,
   ProjectOption,
   ProjectScan,
   TargetSummary,
@@ -34,54 +33,6 @@ export interface PluginWorkbenchViewProps {
   onOpenTarget(projectId: string, targetId: string): void;
   onRefresh(): void;
 }
-
-const stateCopy: Record<
-  PluginWorkbenchSnapshot["runtimeState"],
-  { title: string; detail: string }
-> = {
-  idle: {
-    title: "Runtime idle",
-    detail: "Reload Plugin Studio data to start plugin discovery.",
-  },
-  starting: {
-    title: "Starting runtime",
-    detail: "Verifying the packaged runtime.",
-  },
-  ready: {
-    title: "Runtime ready",
-    detail: "The local plugin runtime is available.",
-  },
-  stopping: {
-    title: "Stopping runtime",
-    detail: "Closing the local plugin runtime.",
-  },
-  unavailable: {
-    title: "Runtime unavailable",
-    detail: "This installation cannot start the packaged runtime.",
-  },
-  failed: {
-    title: "Runtime stopped",
-    detail: "Reload Plugin Studio data to retry.",
-  },
-};
-
-const reasonCopy: Record<PluginWorkbenchUnavailableReason, string> = {
-  unsupported_platform: "This packaged runtime does not support this platform.",
-  artifact_missing: "The packaged runtime artifact is missing.",
-  artifact_invalid: "The packaged runtime did not pass integrity checks.",
-  runtime_incompatible: "The packaged runtime version is incompatible.",
-  startup_failed: "The runtime stopped during startup.",
-};
-
-const statusDotClass: Record<PluginWorkbenchSnapshot["runtimeState"], string> =
-  {
-    idle: "bg-muted-foreground/45",
-    starting: "pw-status-dot--busy bg-warning",
-    ready: "bg-success",
-    stopping: "pw-status-dot--busy bg-warning",
-    unavailable: "bg-destructive",
-    failed: "bg-destructive",
-  };
 
 function RefreshButton({
   busy,
@@ -118,40 +69,18 @@ function RefreshButton({
   );
 }
 
-function RuntimeSummary({
-  snapshot,
+function CatalogRefresh({
   busy,
   onRefresh,
 }: {
-  snapshot: PluginWorkbenchSnapshot;
   busy: boolean;
   onRefresh(): void;
 }) {
-  const status = stateCopy[snapshot.runtimeState];
-  const identity =
-    snapshot.runtimeVersion && snapshot.apiVersion
-      ? `${snapshot.runtimeVersion} · API ${snapshot.apiVersion}`
-      : null;
   return (
     <div className="flex min-h-7 items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2" aria-live="polite">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "size-1.5 shrink-0 rounded-full",
-            statusDotClass[snapshot.runtimeState],
-          )}
-        />
-        <p className="min-w-0 text-xs text-subtle-foreground">
-          <span className="font-medium text-foreground">{status.title}</span>
-          {identity ? <span> · {identity}</span> : null}
-          {snapshot.reason ? (
-            <span> · {reasonCopy[snapshot.reason]}</span>
-          ) : (
-            <span className="sr-only">{status.detail}</span>
-          )}
-        </p>
-      </div>
+      <p className="text-xs text-subtle-foreground">
+        Development plugin catalog
+      </p>
       <RefreshButton busy={busy} onRefresh={onRefresh} />
     </div>
   );
@@ -360,17 +289,12 @@ export function PluginWorkbenchView({
       aria-busy={refreshing}
     >
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
-        <RuntimeSummary
-          snapshot={snapshot}
-          busy={refreshing}
-          onRefresh={onRefresh}
-        />
-
         <WorkbenchMessage message={catalogMessage} />
         <NativeSettingsSection
           headingId="pw-projects-heading"
           title="Projects"
           description="Development plugins in bb projects on this machine."
+          action={<RefreshButton busy={refreshing} onRefresh={onRefresh} />}
           cardClassName="divide-y divide-border p-0"
         >
           {snapshot.projects.state === "unavailable" ? (
@@ -443,11 +367,7 @@ export function PluginWorkbenchTargetDetail({
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
-        <RuntimeSummary
-          snapshot={snapshot}
-          busy={refreshing}
-          onRefresh={onRefresh}
-        />
+        <CatalogRefresh busy={refreshing} onRefresh={onRefresh} />
         <WorkbenchMessage message={catalogMessage} />
         <div>
           <Button
@@ -595,11 +515,7 @@ export function PluginWorkbenchMissingTarget({
   return (
     <div className="h-full overflow-y-auto bg-background text-foreground">
       <div className="mx-auto flex min-h-full w-full max-w-[760px] flex-col gap-5 px-4 pb-6 pt-4 md:px-5 md:pb-8 md:pt-5">
-        <RuntimeSummary
-          snapshot={snapshot}
-          busy={refreshing}
-          onRefresh={onRefresh}
-        />
+        <CatalogRefresh busy={refreshing} onRefresh={onRefresh} />
         <WorkbenchMessage message={catalogMessage} />
         <Button
           type="button"

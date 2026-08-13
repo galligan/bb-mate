@@ -84,6 +84,9 @@ export type ProjectInventory =
 
 function sourceFor(project: ProjectLike, primaryHostId: string | null) {
   if (!primaryHostId) return null;
+  // Mixed or multiple source declarations cannot prove which host-owned path
+  // is authoritative, even when exactly one happens to name the primary host.
+  if (project.sources.length !== 1) return null;
   const matches = project.sources.filter(
     (source) =>
       source.type === "local_path" &&
@@ -129,6 +132,11 @@ export async function loadProjectInventory(
       sdk.projects.list({ include: "threads" }),
     ]);
     if (!primaryHostId) throw new Error();
+    const hasUnscannableProjects = projects.some(
+      (project) =>
+        projectIdSchema.safeParse(project.id).success &&
+        sourceFor(project, primaryHostId) === null,
+    );
     const eligible = projects
       .flatMap((project, nativeOrder) => {
         if (!projectIdSchema.safeParse(project.id).success) return [];
@@ -176,7 +184,8 @@ export async function loadProjectInventory(
           left.option.id.localeCompare(right.option.id),
       );
     const admitted = eligible.slice(0, TARGET_ADMISSION_MAX_PROJECTS);
-    const truncated = eligible.length > TARGET_ADMISSION_MAX_PROJECTS;
+    const truncated =
+      hasUnscannableProjects || eligible.length > TARGET_ADMISSION_MAX_PROJECTS;
     const catalog = projectCatalogSchema.parse({
       state: truncated ? "partial" : "ready",
       truncated,

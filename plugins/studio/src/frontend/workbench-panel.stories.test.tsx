@@ -12,7 +12,7 @@ import {
 } from "./workbench-panel.stories";
 
 describe("Plugin Studio visual fixtures", () => {
-  test("keeps every finite runtime state deterministic and renderable", () => {
+  test("keeps every catalog fixture deterministic and renderable", () => {
     for (const Story of [
       Idle,
       Starting,
@@ -23,8 +23,8 @@ describe("Plugin Studio visual fixtures", () => {
       HostileVersion,
     ]) {
       const html = renderToStaticMarkup(<Story />);
-      expect(html).toMatch(/runtime/iu);
       expect(html).toContain("Projects");
+      expect(html).not.toMatch(/packaged runtime|runtime version|API 2/iu);
       expect(html).not.toContain("Plugin Studio preview");
       expect(html).not.toContain("Workbench");
     }

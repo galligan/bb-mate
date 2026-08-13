@@ -161,14 +161,15 @@ describe("released bb project adapter", () => {
       [source({ projectId: "other" })],
       [source({ hostId: "host-2" })],
       [source(), source({ id: "source-2" })],
+      [source(), source({ id: "source-2", hostId: "host-2" })],
       [source({ path: "../relative" })],
       [source({ type: "remote_clone" })],
     ];
     for (const sources of variants) {
       const api = sdk([project({ sources })]);
       expect(await listProjectOptions(api)).toEqual({
-        state: "ready",
-        truncated: false,
+        state: "partial",
+        truncated: true,
         items: [],
       });
       await expect(resolveProjectSource(api, "project-1")).rejects.toThrow(
@@ -185,13 +186,13 @@ describe("released bb project adapter", () => {
       project({ id: "project-path", name: "folder/project", sources: [] }),
     ]);
     expect(await listProjectOptions(api)).toEqual({
-      state: "ready",
-      truncated: false,
+      state: "partial",
+      truncated: true,
       items: [],
     });
   });
 
-  test("omits 128 ineligible projects without crowding out an eligible Zulu project", async () => {
+  test("marks omitted ineligible projects partial without crowding out an eligible Zulu project", async () => {
     const ineligible = Array.from({ length: 128 }, (_, index) =>
       project({
         id: `project-${String(index).padStart(3, "0")}`,
@@ -212,8 +213,8 @@ describe("released bb project adapter", () => {
     });
     const result = await listProjectOptions(sdk([...ineligible, eligible]));
     expect(result).toEqual({
-      state: "ready",
-      truncated: false,
+      state: "partial",
+      truncated: true,
       items: [
         {
           id: "project-zulu",

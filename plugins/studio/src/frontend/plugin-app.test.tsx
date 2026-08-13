@@ -41,12 +41,7 @@ function snapshot(
     : "ready",
 ): PluginWorkbenchSnapshot {
   return {
-    schemaVersion: 3,
-    runtimeState: "ready",
-    reason: null,
-    runtimeVersion: "0.7.0",
-    apiVersion: 2,
-    canStart: false,
+    schemaVersion: 4,
     browserLaunch: "unavailable",
     projects: { state, truncated: false, items: projects },
   };
