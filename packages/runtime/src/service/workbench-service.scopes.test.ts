@@ -34,7 +34,7 @@ const scopeCases = [
 async function makeDataRoot(): Promise<string> {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-service-scopes-"),
+    path.join(temporaryRoot, "bb-plugin-studio-service-scopes-"),
   );
   temporaryRoots.push(parent);
   return path.join(parent, "data");

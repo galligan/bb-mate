@@ -29,7 +29,7 @@ const targetId = TargetIdSchema.parse("t".repeat(32));
 async function makeDataRoot(): Promise<string> {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-service-credentials-"),
+    path.join(temporaryRoot, "bb-plugin-studio-service-credentials-"),
   );
   temporaryRoots.push(parent);
   return path.join(parent, "data");

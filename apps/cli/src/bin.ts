@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 
-import { runBbMateEntrypoint } from "./entrypoint.ts";
+import { runBbStudioEntrypoint } from "./entrypoint.ts";
 
 const manifest = (await Bun.file(
   new URL("../package.json", import.meta.url),
 ).json()) as { version: string };
-const result = await runBbMateEntrypoint({
+const result = await runBbStudioEntrypoint({
   mode: "source-or-package",
   moduleUrl: import.meta.url,
   bunExecutable: process.execPath,

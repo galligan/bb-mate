@@ -9,8 +9,8 @@ const currentProductSurfaces = [
   "README.md",
   "SECURITY.md",
   "SUPPORT.md",
-  ".bb/skills/update-bb-mate-compatibility/SKILL.md",
-  ".bb/skills/update-bb-mate-compatibility/agents/openai.yaml",
+  ".bb/skills/update-plugin-studio-compatibility/SKILL.md",
+  ".bb/skills/update-plugin-studio-compatibility/agents/openai.yaml",
   ".github/ISSUE_TEMPLATE/bug_report.yml",
   ".github/ISSUE_TEMPLATE/config.yml",
   ".github/ISSUE_TEMPLATE/feature_request.yml",
@@ -27,7 +27,7 @@ const currentProductSurfaces = [
   "apps/workbench/server/http-policy.ts",
   "apps/workbench/server/public-session.ts",
   "apps/workbench/src/components/BbShell.tsx",
-  "apps/workbench/src/components/MateOverlay.tsx",
+  "apps/workbench/src/components/StudioOverlay.tsx",
   "apps/workbench/src/components/PreviewCanvas.tsx",
   "apps/workbench/src/preview-mode.ts",
   "apps/workbench/src/surface-lab/SurfaceLab.tsx",
@@ -37,24 +37,23 @@ const currentProductSurfaces = [
   "docs/native-plugin-design-system.md",
   "docs/plugin-author-guide.md",
   "docs/plugin-publishing.md",
-  "docs/plugin-workbench-capabilities.md",
-  "docs/release-handoff.md",
+  "docs/plugin-studio-capabilities.md",
   "docs/trust-model.md",
   "docs/visual-regression.md",
-  "plugins/mate/README.md",
-  "plugins/mate/package.json",
-  "plugins/mate/skills/plugin-workbench/SKILL.md",
-  "plugins/mate/src/frontend/plugin-app.tsx",
-  "plugins/mate/src/frontend/workbench-boundary.tsx",
-  "plugins/mate/src/frontend/workbench-snapshot.ts",
-  "plugins/mate/visual/index.html",
-  "plugins/mate/visual/main.tsx",
+  "plugins/studio/README.md",
+  "plugins/studio/package.json",
+  "plugins/studio/skills/plugin-studio/SKILL.md",
+  "plugins/studio/src/frontend/plugin-app.tsx",
+  "plugins/studio/src/frontend/workbench-boundary.tsx",
+  "plugins/studio/src/frontend/workbench-snapshot.ts",
+  "plugins/studio/visual/index.html",
+  "plugins/studio/visual/main.tsx",
   "packages/inspection/src/native.ts",
   "packages/inspection/src/report.ts",
   "scripts/build-local-package.ts",
   "scripts/check-latest-bb.ts",
   "scripts/compatibility-check.ts",
-  "scripts/mate-package-managed-clean-room.ts",
+  "scripts/plugin-studio-package-managed-clean-room.ts",
   "scripts/package-clean-room.ts",
   "scripts/third-party-licenses.ts",
 ] as const;
@@ -94,35 +93,37 @@ describe("bb Plugin Studio product naming", () => {
     }
   });
 
-  test("keeps installed and published compatibility identities stable", async () => {
+  test("uses one canonical Studio package and command identity", async () => {
     const cliManifest = await Bun.file(
       `${repositoryRoot}/apps/cli/package.json`,
     ).json();
-    expect(cliManifest.name).toBe("bb-mate");
+    expect(cliManifest.name).toBe("@bb-plugin-studio/cli");
     expect(cliManifest.description).toBe(
       "Build, inspect, and preview bb plugins.",
     );
 
     const manifest = await Bun.file(
-      `${repositoryRoot}/plugins/mate/package.json`,
+      `${repositoryRoot}/plugins/studio/package.json`,
     ).json();
-    expect(manifest.name).toBe("bb-plugin-mate");
+    expect(manifest.name).toBe("bb-plugin-studio");
+    expect(manifest.bin).toEqual({
+      "bb-plugin-studio": "./dist/cli.js",
+    });
     expect(manifest.bb.name).toBe("Plugin Studio");
     expect(manifest.bb.description).toBe(
       "Build, inspect, and preview bb plugins.",
     );
-    expect(manifest.bb.skills).toEqual(["./skills/plugin-workbench"]);
-    expect(manifest.files).toContain("runtime/darwin-arm64/bb-mate");
+    expect(manifest.bb.skills).toEqual(["./skills/plugin-studio"]);
+    expect(manifest.files).toContain(
+      "runtime/darwin-arm64/bb-plugin-studio-runtime",
+    );
 
     const namingGuide = await Bun.file(
       `${repositoryRoot}/docs/product-naming.md`,
     ).text();
     expect(namingGuide).toContain("The product is **bb Plugin Studio**");
-    expect(namingGuide).toContain("`bb-plugin-mate`");
-    expect(namingGuide).toContain("`mate`, `plugins/mate`");
-    expect(namingGuide).toContain(
-      "A remove-and-reinstall migration is not acceptable",
-    );
+    expect(namingGuide).toContain("`bb-plugin-studio`");
+    expect(namingGuide).not.toContain("`bb-plugin-mate`");
 
     const changelog = await Bun.file(`${repositoryRoot}/CHANGELOG.md`).text();
     expect(changelog).toContain("## Unreleased");
@@ -133,17 +134,72 @@ describe("bb Plugin Studio product naming", () => {
   test("keeps the compatibility skill ID while using current Studio guidance", async () => {
     const [skill, agent] = await Promise.all([
       Bun.file(
-        `${repositoryRoot}/.bb/skills/update-bb-mate-compatibility/SKILL.md`,
+        `${repositoryRoot}/.bb/skills/update-plugin-studio-compatibility/SKILL.md`,
       ).text(),
       Bun.file(
-        `${repositoryRoot}/.bb/skills/update-bb-mate-compatibility/agents/openai.yaml`,
+        `${repositoryRoot}/.bb/skills/update-plugin-studio-compatibility/agents/openai.yaml`,
       ).text(),
     ]);
 
-    expect(skill).toContain("name: update-bb-mate-compatibility");
-    expect(agent).toContain("$update-bb-mate-compatibility");
-    expect(skill).toContain("bb plugin types --check plugins/mate");
+    expect(skill).toContain("name: update-plugin-studio-compatibility");
+    expect(agent).toContain("$update-plugin-studio-compatibility");
+    expect(skill).toContain("bb plugin types --check plugins/studio");
     expect(skill).not.toContain("plugins/linear");
     expect(skill).toContain("Plugin Studio compatibility");
+  });
+
+  test("invokes the canonical package verification script from workflows", async () => {
+    for (const relative of [
+      ".github/workflows/ci.yml",
+      ".github/workflows/bb-compatibility-watch.yml",
+    ]) {
+      const workflow = await Bun.file(`${repositoryRoot}/${relative}`).text();
+      expect(workflow).toContain("bun run plugin-studio:package:test");
+      expect(workflow).not.toContain("bun run studio:package:test");
+      expect(workflow).not.toContain("bun run mate:package:test");
+    }
+  });
+
+  test("keeps cross-platform tests separate from the macOS plugin artifact proof", async () => {
+    const workspace = JSON.parse(
+      await Bun.file(`${repositoryRoot}/package.json`).text(),
+    ) as { scripts?: Record<string, string> };
+
+    expect(workspace.scripts?.test).toBe("bun run test:unit");
+    expect(workspace.scripts?.["test:unit"]).toBe(
+      "bun --filter '*' test && bun test scripts",
+    );
+    expect(workspace.scripts?.["package:artifact"]).toBe(
+      "bun scripts/build-plugin-studio-package.ts",
+    );
+    expect(workspace.scripts?.["package:inspect"]).toBe(
+      "bun scripts/plugin-studio-package-clean-room.ts",
+    );
+    expect(workspace.scripts?.["package:test"]).toBe(
+      "bun scripts/plugin-studio-package-clean-room.ts",
+    );
+    expect(workspace.scripts?.["plugin-studio:package:test"]).toBe(
+      "bun scripts/plugin-studio-package-clean-room.ts",
+    );
+  });
+
+  test("uses canonical active fixtures and keeps the real legacy issue marker", async () => {
+    const [rpcFixture, workflow] = await Promise.all([
+      Bun.file(
+        `${repositoryRoot}/scripts/plugin-studio-managed-rpc.test.ts`,
+      ).text(),
+      Bun.file(
+        `${repositoryRoot}/.github/workflows/bb-compatibility-watch.yml`,
+      ).text(),
+    ]);
+
+    expect(rpcFixture).toContain('id: "bb_plugin_studio"');
+    expect(rpcFixture).not.toContain("bb_mate");
+    expect(workflow).toContain(
+      'const marker = "<!-- bb-plugin-studio-compatibility-watch -->"',
+    );
+    expect(workflow).toContain(
+      'const legacyMarker = "<!-- bb-mate-compatibility-watch -->"',
+    );
   });
 });

@@ -30,7 +30,7 @@ body:
     id: version
     attributes:
       label: bb Plugin Studio version
-      placeholder: bb-mate@0.1.0-alpha.2 or source commit
+      placeholder: bb-plugin-studio@0.1.0-alpha.2 or source commit
     validations:
       required: true
   - type: input

@@ -140,7 +140,7 @@ function NavigationPreview({ state }: { state: FixtureState }) {
     <section className="surface-demo-card">
       <span className="surface-demo-eyebrow">Plugin route</span>
       <h2>{stringValue(state.title, "Workspace")}</h2>
-      <p>/mate/{stringValue(state.subPath, "overview")}</p>
+      <p>/studio/{stringValue(state.subPath, "overview")}</p>
       <nav aria-label="Fixture navigation">
         <a href="#overview">Overview</a>
         <a href="#today">Today</a>

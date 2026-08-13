@@ -3,7 +3,7 @@ import {
   openDevelopmentTargetCatalog,
   type RuntimeIdentity,
   type RuntimeTargetController,
-} from "@bb-mate/runtime";
+} from "@bb-plugin-studio/runtime";
 import { createRuntimeTargetController } from "./runtime-target-controller.ts";
 
 export interface RuntimeTargetResources {

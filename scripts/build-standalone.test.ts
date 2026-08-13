@@ -14,7 +14,7 @@ const roots: string[] = [];
 
 async function temporaryRoot(): Promise<string> {
   const root = await fs.mkdtemp(
-    path.join(os.tmpdir(), "bb-mate-standalone-output-"),
+    path.join(os.tmpdir(), "bb-plugin-studio-standalone-output-"),
   );
   roots.push(root);
   return root;
@@ -46,20 +46,20 @@ describe("standalone output ownership", () => {
     const stage = path.join(parent, "stage");
     await Promise.all([fs.mkdir(root), fs.mkdir(stage)]);
     await Promise.all([
-      fs.writeFile(path.join(root, "bb-mate"), "old binary"),
+      fs.writeFile(path.join(root, "bb-plugin-studio-runtime"), "old binary"),
       fs.writeFile(path.join(root, "manifest.json"), "old manifest"),
-      fs.writeFile(path.join(stage, "bb-mate"), "new binary"),
+      fs.writeFile(path.join(stage, "bb-plugin-studio-runtime"), "new binary"),
       fs.writeFile(path.join(stage, "manifest.json"), "new manifest"),
     ]);
 
     expect(await prepareStandaloneOutputRoot(root)).toBe(root);
-    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
-      "old binary",
-    );
+    expect(
+      await fs.readFile(path.join(root, "bb-plugin-studio-runtime"), "utf8"),
+    ).toBe("old binary");
     await promoteStandaloneOutputRoot(root, stage);
-    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
-      "new binary",
-    );
+    expect(
+      await fs.readFile(path.join(root, "bb-plugin-studio-runtime"), "utf8"),
+    ).toBe("new binary");
     expect(await fs.readFile(path.join(root, "manifest.json"), "utf8")).toBe(
       "new manifest",
     );
@@ -71,16 +71,16 @@ describe("standalone output ownership", () => {
     const root = path.join(parent, "output");
     await fs.mkdir(root);
     await Promise.all([
-      fs.writeFile(path.join(root, "bb-mate"), "old binary"),
+      fs.writeFile(path.join(root, "bb-plugin-studio-runtime"), "old binary"),
       fs.writeFile(path.join(root, "keep.txt"), "user data"),
     ]);
 
     await expect(prepareStandaloneOutputRoot(root)).rejects.toThrow(
       "unexpected entry: keep.txt",
     );
-    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
-      "old binary",
-    );
+    expect(
+      await fs.readFile(path.join(root, "bb-plugin-studio-runtime"), "utf8"),
+    ).toBe("old binary");
     expect(await fs.readFile(path.join(root, "keep.txt"), "utf8")).toBe(
       "user data",
     );
@@ -136,17 +136,20 @@ describe("standalone output ownership", () => {
     const stage = path.join(parent, "stage");
     await Promise.all([fs.mkdir(root), fs.mkdir(stage)]);
     await Promise.all([
-      fs.writeFile(path.join(root, "bb-mate"), "old binary"),
+      fs.writeFile(path.join(root, "bb-plugin-studio-runtime"), "old binary"),
       fs.writeFile(path.join(root, "manifest.json"), "old manifest"),
-      fs.writeFile(path.join(stage, "bb-mate"), "incomplete binary"),
+      fs.writeFile(
+        path.join(stage, "bb-plugin-studio-runtime"),
+        "incomplete binary",
+      ),
     ]);
 
     await expect(promoteStandaloneOutputRoot(root, stage)).rejects.toThrow(
       "must contain exactly",
     );
-    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
-      "old binary",
-    );
+    expect(
+      await fs.readFile(path.join(root, "bb-plugin-studio-runtime"), "utf8"),
+    ).toBe("old binary");
     expect(await fs.readFile(path.join(root, "manifest.json"), "utf8")).toBe(
       "old manifest",
     );
@@ -158,9 +161,9 @@ describe("standalone output ownership", () => {
     const stage = path.join(parent, "stage");
     await Promise.all([fs.mkdir(root), fs.mkdir(stage)]);
     await Promise.all([
-      fs.writeFile(path.join(root, "bb-mate"), "old binary"),
+      fs.writeFile(path.join(root, "bb-plugin-studio-runtime"), "old binary"),
       fs.writeFile(path.join(root, "manifest.json"), "old manifest"),
-      fs.writeFile(path.join(stage, "bb-mate"), "new binary"),
+      fs.writeFile(path.join(stage, "bb-plugin-studio-runtime"), "new binary"),
       fs.writeFile(path.join(stage, "manifest.json"), "new manifest"),
     ]);
     let renameCount = 0;
@@ -175,14 +178,14 @@ describe("standalone output ownership", () => {
       }),
     ).rejects.toThrow("injected promotion failure");
     expect(renameCount).toBe(3);
-    expect(await fs.readFile(path.join(root, "bb-mate"), "utf8")).toBe(
-      "old binary",
-    );
+    expect(
+      await fs.readFile(path.join(root, "bb-plugin-studio-runtime"), "utf8"),
+    ).toBe("old binary");
     expect(await fs.readFile(path.join(root, "manifest.json"), "utf8")).toBe(
       "old manifest",
     );
-    expect(await fs.readFile(path.join(stage, "bb-mate"), "utf8")).toBe(
-      "new binary",
-    );
+    expect(
+      await fs.readFile(path.join(stage, "bb-plugin-studio-runtime"), "utf8"),
+    ).toBe("new binary");
   });
 });

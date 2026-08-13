@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import * as runtime from "./index.ts";
 
-describe("@bb-mate/runtime public surface", () => {
+describe("@bb-plugin-studio/runtime public surface", () => {
   test("exports only the transport-neutral runtime foundation", () => {
     expect(Object.keys(runtime).sort()).toEqual([
       "AuthenticatedPrincipalSchema",

@@ -20,7 +20,7 @@ workspace and is never required to build or test bb Plugin Studio.
 Fixtures should describe product state rather than mirror private bb database or React types. Adapters can translate those fixtures into components. This keeps prototypes stable when upstream internals change.
 
 The workbench puts the bb surface directly in the viewport. Workbench controls
-belong in the collapsible Mate overlay, not in a permanent wrapper around the
+belong in the collapsible Studio overlay, not in a permanent wrapper around the
 prototype. The overlay uses vendored shadcn/Base UI source and has its own dark
 theme; bb-facing views use bb's typography, icon family, and measured semantic
 tokens. The URL is the complete launcher-state contract for target, surface,
@@ -68,7 +68,7 @@ drift.
 
 ## Runtime sources
 
-The source control in the Mate overlay represents adapters, not a browser data
+The source control in the Studio overlay represents adapters, not a browser data
 fetch:
 
 - **Fixtures** are always available in `apps/workbench`.
@@ -131,7 +131,7 @@ repair generated packages after the fact;
 
 ## Plugins
 
-`plugins/mate` is the Studio-owned integration package. It proves the live bb,
+`plugins/studio` is the Studio-owned integration package. It proves the live bb,
 packaging, and visual boundaries used by this repository without making Plugin
 Studio the home of independently distributed plugins.
 
@@ -142,5 +142,5 @@ Plugin UI can share host-neutral components with the workbench once a second con
 [bb-plugins](https://github.com/galligan/bb-plugins) owns independently
 versioned, distributable plugins and their release lifecycle. Plugin Studio can
 inspect those packages from an explicit local path, but it does not depend on
-that sibling checkout. The Mate plugin is packaged only as part of Plugin
+that sibling checkout. The Studio plugin is packaged only as part of Plugin
 Studio's own integration workflow.

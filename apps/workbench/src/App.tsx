@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { MateOverlay } from "@/components/MateOverlay";
+import { StudioOverlay } from "@/components/StudioOverlay";
 import { PreviewCanvas } from "@/components/PreviewCanvas";
 import { previewModeCapabilities } from "@/preview-mode";
 import { resolveCatalogSelection } from "@/surface-catalog";
@@ -60,7 +60,7 @@ export function App() {
         theme={state.theme}
         viewport={state.viewport}
       />
-      <MateOverlay
+      <StudioOverlay
         selection={selection}
         state={state}
         inspection={inspection.inspection}

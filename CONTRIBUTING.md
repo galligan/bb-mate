@@ -37,15 +37,15 @@ bun run dev
 Run the CLI from source:
 
 ```sh
-bun run bb-mate --help
-bun run bb-mate inspect /absolute/path/to/plugin
+bun run bb-plugin-studio --help
+bun run bb-plugin-studio inspect /absolute/path/to/plugin
 ```
 
 ## Design boundaries
 
 - `apps/workbench` is browser-only Fixture tooling and must work without a bb
   server.
-- `plugins/mate` is the Studio-owned native integration plugin and uses only
+- `plugins/studio` is the Studio-owned native integration plugin and uses only
   public plugin contracts. Independently distributed plugins belong in
   [bb-plugins](https://github.com/galligan/bb-plugins) and can be inspected
   here by path.

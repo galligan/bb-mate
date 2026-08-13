@@ -71,13 +71,13 @@ test("keyboard traverses multiple labeled controls with visible focus", async ({
   ]);
 });
 
-test("Mate overlay and minimized FAB pass axe and restore focus", async ({
+test("Studio overlay and minimized FAB pass axe and restore focus", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("http://127.0.0.1:5173");
-  await settle(page, ".mate-popover");
-  await expectNoAxeViolations(page, ".mate-popover");
+  await settle(page, ".studio-popover");
+  await expectNoAxeViolations(page, ".studio-popover");
 
   await page.keyboard.press("Escape");
   const fab = page.getByRole("button", {
@@ -86,10 +86,10 @@ test("Mate overlay and minimized FAB pass axe and restore focus", async ({
   await expect(fab).toBeVisible();
   await expect(fab).toBeFocused();
   await expect(fab).toHaveAttribute("aria-haspopup", "dialog");
-  await expectNoAxeViolations(page, ".mate-overlay");
+  await expectNoAxeViolations(page, ".studio-overlay");
 
   await fab.press("Enter");
-  await expect(page.locator(".mate-popover")).toBeVisible();
+  await expect(page.locator(".studio-popover")).toBeVisible();
 
   const traversed = new Set<string>();
   const initialFocus = await activeControl(page);

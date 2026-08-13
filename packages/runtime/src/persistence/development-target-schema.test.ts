@@ -62,7 +62,7 @@ describe("development-target source schema attestation", () => {
   test("upgrades legacy append-only guards to parent-lifetime retention guards", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-target-retention-upgrade-"),
+      path.join(temporaryRoot, "bb-plugin-studio-target-retention-upgrade-"),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");
@@ -133,7 +133,7 @@ describe("development-target source schema attestation", () => {
   test("creates a strict private host-observation table with no topology fields", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-target-host-schema-"),
+      path.join(temporaryRoot, "bb-plugin-studio-target-host-schema-"),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");
@@ -176,7 +176,7 @@ describe("development-target source schema attestation", () => {
   test("rejects a missing private-source index without recreating it", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-target-schema-"),
+      path.join(temporaryRoot, "bb-plugin-studio-target-schema-"),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");
@@ -208,7 +208,7 @@ describe("development-target source schema attestation", () => {
   test("rejects a missing private-host no-delete trigger without recreating it", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-target-host-attestation-"),
+      path.join(temporaryRoot, "bb-plugin-studio-target-host-attestation-"),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");
@@ -240,7 +240,7 @@ describe("development-target source schema attestation", () => {
   test("rejects a missing event-retention guard without recreating it", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-target-retention-guard-"),
+      path.join(temporaryRoot, "bb-plugin-studio-target-retention-guard-"),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");

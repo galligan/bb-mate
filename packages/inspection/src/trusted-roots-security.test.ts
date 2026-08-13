@@ -18,7 +18,9 @@ afterEach(async () => {
 
 describe("trusted root security", () => {
   test("rejects a directory swapped to a symlink during admission", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const configured = path.join(parent, "configured");
     const original = path.join(parent, "original");
@@ -75,7 +77,9 @@ describe("trusted root security", () => {
   });
 
   test("rejects aliases that canonicalize to root or current home", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const rootAlias = path.join(parent, "root-alias");
     const homeParentAlias = path.join(parent, "home-parent-alias");
@@ -129,7 +133,9 @@ describe("trusted root security", () => {
   test.each(["node_modules", ".git", "dist", "cache", "caches", ".private"])(
     "rejects a configured root inside the forbidden %s tree",
     async (forbiddenName) => {
-      const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+      const parent = await fs.mkdtemp(
+        path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+      );
       temporaryRoots.push(parent);
       const forbiddenRoot = path.join(parent, forbiddenName);
       const configured = path.join(forbiddenRoot, "nested-source");

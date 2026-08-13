@@ -12,7 +12,7 @@ parity with Live bb.
 | Sidebar thread list + composer shell | GitButler repo | Dark  | 430 x 860  | Compact responsive state               |
 | Composer customization               | Expanded draft | Light | 1100 x 760 | Mixed plugin/host surface              |
 | Thread header action                 | Desktop thread | Dark  | 1100 x 760 | Host-action contract                   |
-| Mate overlay                         | Agent focus    | Light | 1440 x 900 | Open controls and minimized FAB states |
+| Studio overlay                       | Agent focus    | Light | 1440 x 900 | Open controls and minimized FAB states |
 
 The suite fixes Chromium, device scale factor 1, `en-US`, UTC, bundled Inter
 and Geist fonts, color scheme, reduced motion, viewports, fixture data, and
@@ -26,8 +26,8 @@ native plugin; the ordinary verification job still performs the complete
 workspace install and build. CI installs only the `unzip` utility missing from
 the base image before the pinned Bun setup action runs.
 
-The Mate screenshots use a dedicated deterministic component harness. They do
-not call `/bb-mate-session.json`, inspect the checkout, or invoke native bb.
+The Studio screenshots use a dedicated deterministic component harness. They do
+not call `/bb-plugin-studio-session.json`, inspect the checkout, or invoke native bb.
 Playwright refuses to reuse occupied ports so a stale or unrelated local server
 cannot satisfy the visual gate.
 
@@ -65,7 +65,7 @@ docker run --rm --ipc=host \
   --mount type=volume,target=/work/apps/cli/node_modules \
   --mount type=volume,target=/work/apps/workbench/node_modules \
   --mount type=volume,target=/work/packages/inspection/node_modules \
-  --mount type=volume,target=/work/plugins/mate/node_modules \
+  --mount type=volume,target=/work/plugins/studio/node_modules \
   --workdir /work mcr.microsoft.com/playwright:v1.62.1-noble \
   bash -lc 'npm install -g bun@1.3.14 && bun install --frozen-lockfile --ignore-scripts && cd apps/workbench && bun run stories:build && bunx playwright test --update-snapshots'
 ```
@@ -76,7 +76,7 @@ node_modules. Review and commit only the expected `*-linux.png` changes.
 ## Accessibility and geometry contract
 
 The same suite runs axe against a representative surface and the open/minimized
-Mate launcher, then checks keyboard focus visibility, labels, focus restoration,
+Studio launcher, then checks keyboard focus visibility, labels, focus restoration,
 contrast, reduced-motion behavior, and complete static story enumeration.
 
 The intentionally measured sidebar/composer reference asserts:

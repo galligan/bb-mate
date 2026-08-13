@@ -29,15 +29,15 @@ for (const item of visualCases) {
   });
 }
 
-test("Mate overlay and minimized FAB remain visually stable", async ({
+test("Studio overlay and minimized FAB remain visually stable", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("http://127.0.0.1:5173");
-  await settleFixture(page, ".mate-popover");
+  await settleFixture(page, ".studio-popover");
   await expect(page.getByText("Example", { exact: true })).toBeVisible();
 
-  await expect(page).toHaveScreenshot("mate-overlay-open.png", {
+  await expect(page).toHaveScreenshot("studio-overlay-open.png", {
     fullPage: true,
   });
 
@@ -45,7 +45,7 @@ test("Mate overlay and minimized FAB remain visually stable", async ({
   await expect(
     page.getByRole("button", { name: "Show bb Plugin Studio controls" }),
   ).toBeFocused();
-  await expect(page).toHaveScreenshot("mate-overlay-minimized.png", {
+  await expect(page).toHaveScreenshot("studio-overlay-minimized.png", {
     fullPage: true,
   });
 });

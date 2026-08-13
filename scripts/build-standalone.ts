@@ -21,7 +21,7 @@ const defaultOutputRoot = path.join(
   "standalone",
   "darwin-arm64",
 );
-const outputAllowlist = new Set(["bb-mate", "manifest.json"]);
+const outputAllowlist = new Set(["bb-plugin-studio-runtime", "manifest.json"]);
 const MAX_OUTPUT_ROOT_BYTES = 4096;
 
 export function standaloneOutputRootFromArgs(
@@ -148,7 +148,7 @@ async function assertCompleteStagedOutput(root: string): Promise<void> {
     JSON.stringify(names) !== JSON.stringify([...outputAllowlist].sort())
   ) {
     throw new Error(
-      `Standalone staged output must contain exactly bb-mate and manifest.json: ${names.join(", ")}`,
+      `Standalone staged output must contain exactly bb-plugin-studio-runtime and manifest.json: ${names.join(", ")}`,
     );
   }
 }
@@ -252,10 +252,10 @@ export async function buildStandalone(
     await fs.readFile(path.join(cliRoot, "package.json"), "utf8"),
   ) as { version: string };
   const stagedRoot = await fs.mkdtemp(
-    path.join(path.dirname(outputRoot), ".bb-mate-standalone-stage-"),
+    path.join(path.dirname(outputRoot), ".bb-plugin-studio-standalone-stage-"),
   );
   try {
-    const generatedEntry = ".bb-mate-build/standalone-entry.ts";
+    const generatedEntry = ".bb-plugin-studio-build/standalone-entry.ts";
     const importPath = (sourcePath: string): string => {
       const relative = path
         .relative(repositoryRoot, sourcePath)
@@ -272,7 +272,10 @@ export async function buildStandalone(
       runtimeVersion: sourceManifest.version,
     });
 
-    const stagedExecutablePath = path.join(stagedRoot, "bb-mate");
+    const stagedExecutablePath = path.join(
+      stagedRoot,
+      "bb-plugin-studio-runtime",
+    );
     const result = await Bun.build({
       entrypoints: [generatedEntry],
       files: { [generatedEntry]: generatedSource },
@@ -288,7 +291,7 @@ export async function buildStandalone(
     if (!result.success) {
       throw new AggregateError(
         result.logs,
-        "Could not compile the standalone bb-mate executable.",
+        "Could not compile the standalone bb-plugin-studio-runtime executable.",
       );
     }
     await fs.chmod(stagedExecutablePath, 0o755);
@@ -305,7 +308,7 @@ export async function buildStandalone(
       serializeStandaloneManifest(manifest),
     );
     await promoteStandaloneOutputRoot(outputRoot, stagedRoot);
-    const executablePath = path.join(outputRoot, "bb-mate");
+    const executablePath = path.join(outputRoot, "bb-plugin-studio-runtime");
     const manifestPath = path.join(outputRoot, "manifest.json");
     return { executablePath, manifestPath, manifest };
   } finally {

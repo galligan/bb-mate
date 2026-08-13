@@ -366,7 +366,7 @@ describe("DevelopmentTargetService native reconciliation persistence", () => {
     tamper.exec("PRAGMA ignore_check_constraints = ON");
     tamper
       .query("UPDATE development_target_host_observations SET hostname = ?")
-      .run("https://mate.local:8080");
+      .run("https://studio.local:8080");
     tamper.close();
 
     await expect(
@@ -380,7 +380,7 @@ describe("DevelopmentTargetService native reconciliation persistence", () => {
             "SELECT hostname FROM development_target_host_observations",
           )
           .get(),
-      ).toEqual({ hostname: "https://mate.local:8080" });
+      ).toEqual({ hostname: "https://studio.local:8080" });
     } finally {
       inspect.close();
     }

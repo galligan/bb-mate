@@ -127,7 +127,7 @@ describe("plugin surface catalog", () => {
 
     expect(findSurface("file-opener").fixtures[0]?.state).toMatchObject({
       path: "docs/architecture.md",
-      source: { kind: "workspace", projectId: "project-bb-mate" },
+      source: { kind: "workspace", projectId: "project-bb-plugin-studio" },
     });
     expect(
       findSurface("message-directive").fixtures[0]?.state.attributes,

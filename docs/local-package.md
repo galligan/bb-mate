@@ -18,7 +18,7 @@ The command rebuilds the CLI and surface lab, creates an isolated staging
 manifest with no workspace dependencies, and writes the versioned archive:
 
 ```text
-artifacts/bb-mate-0.1.0-alpha.2.tgz
+artifacts/bb-plugin-studio-0.1.0-alpha.2.tgz
 ```
 
 The artifact is MIT-licensed and configured for public publication under the
@@ -50,7 +50,7 @@ artifact is additionally exercised on isolated Linux CI, so the manifest records
 macOS native support and Linux fixture CI separately instead of using an npm
 platform restriction that would make that proof impossible.
 
-`bb-mate inspect` is passive: it reads plugin manifests and generated metadata
+`bb-plugin-studio inspect` is passive: it reads plugin manifests and generated metadata
 without importing the plugin. Missing native bb, Connect status/shares, and the
 official SDK/Harness are named independently with actionable next steps. Those
 unavailable capabilities may make inspection exit nonzero, but they do not stop
@@ -84,8 +84,8 @@ The test:
    bb/Connect/SDK states are clear;
 7. starts installed `dev`, fetches metadata for all 13 packaged stories, and
    stops it;
-8. uninstalls `bb-mate` and verifies the bin, package directory, manifest, and
-   lockfile carry no `bb-mate` residue.
+8. uninstalls `bb-plugin-studio` and verifies the bin, package directory, manifest, and
+   lockfile carry no `bb-plugin-studio` residue.
 
 The temporary environment is removed after the test. The versioned archive
 under `artifacts/` is generated and ignored by version control.
@@ -96,7 +96,7 @@ The package scripts above never publish. After owner approval, clean review,
 green hosted CI, and merge, publish only the exact post-merge artifact:
 
 ```sh
-npm publish ./artifacts/bb-mate-0.1.0-alpha.2.tgz --access public --tag alpha
+npm publish ./artifacts/bb-plugin-studio-0.1.0-alpha.2.tgz --access public --tag alpha
 ```
 
 Verify that `alpha` points to `0.1.0-alpha.2` and a clean registry install

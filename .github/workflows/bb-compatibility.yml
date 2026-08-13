@@ -36,10 +36,10 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "executable=$prefix/node_modules/.bin/bb" >> "$GITHUB_OUTPUT"
       - name: Regenerate declarations from bb ${{ steps.bb.outputs.version }}
-        run: ${{ steps.bb.outputs.executable }} plugin types plugins/mate
+        run: ${{ steps.bb.outputs.executable }} plugin types plugins/studio
       - name: Typecheck against regenerated declarations
-        run: bun --cwd plugins/mate run check
+        run: bun --cwd plugins/studio run check
       - name: Build with the exact host CLI
-        run: ${{ steps.bb.outputs.executable }} plugin build plugins/mate
+        run: ${{ steps.bb.outputs.executable }} plugin build plugins/studio
       - name: Run plugin contract tests
-        run: bun --cwd plugins/mate test
+        run: bun --cwd plugins/studio test

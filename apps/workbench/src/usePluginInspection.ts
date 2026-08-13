@@ -33,7 +33,7 @@ export function pluginSessionUrl(targetId: string | null): string {
   const params = new URLSearchParams();
   if (targetId && isOpaqueTargetId(targetId)) params.set("target", targetId);
   const query = params.size > 0 ? `?${params.toString()}` : "";
-  return `/bb-mate-session.json${query}`;
+  return `/bb-plugin-studio-session.json${query}`;
 }
 
 export function usePluginInspection(

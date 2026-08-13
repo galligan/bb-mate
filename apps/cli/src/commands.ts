@@ -7,7 +7,7 @@ import {
   nativeCommandEnv,
   type CommandResult,
   type PluginInspection,
-} from "@bb-mate/inspection";
+} from "@bb-plugin-studio/inspection";
 import { parseCliArgs } from "./args.ts";
 import { workbenchCommand } from "./workbench.ts";
 
@@ -51,12 +51,12 @@ interface InspectionContext {
 const success: ProcessExit = { exitCode: 0, signal: null };
 const failure: ProcessExit = { exitCode: 1, signal: null };
 
-const help = `Usage: bb-mate [path]
-       bb-mate dev [path] [--host 127.0.0.1] [--port 5173]
-       bb-mate inspect [path] [--json]
-       bb-mate check [path]
-       bb-mate live [path]
-       bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>
+const help = `Usage: bb-plugin-studio [path]
+       bb-plugin-studio dev [path] [--host 127.0.0.1] [--port 5173]
+       bb-plugin-studio inspect [path] [--json]
+       bb-plugin-studio check [path]
+       bb-plugin-studio live [path]
+       bb-plugin-studio serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>
 
 Fixture workbench, packaged surface lab, and passive inspection stay in bb Plugin Studio.
 Native bb owns build, install, dev/reload, and live runtime.`;
@@ -248,8 +248,8 @@ export async function runCli(
         cwd: runtime.workspaceRoot,
         env: {
           ...nativeCommandEnv(runtime.env),
-          BB_MATE_WORKSPACE: runtime.cwd,
-          ...(pluginRoot ? { BB_MATE_PLUGIN: pluginRoot } : {}),
+          BB_PLUGIN_STUDIO_WORKSPACE: runtime.cwd,
+          ...(pluginRoot ? { BB_PLUGIN_STUDIO_PLUGIN: pluginRoot } : {}),
           ...(context.bbExecutable ? { BB_CLI: context.bbExecutable } : {}),
         },
       },

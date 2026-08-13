@@ -4,7 +4,9 @@ import {
   type AuthenticatedPrincipal,
 } from "./principals.ts";
 
-const requestContextBrand: unique symbol = Symbol("bb-mate.request-context");
+const requestContextBrand: unique symbol = Symbol(
+  "bb-plugin-studio.request-context",
+);
 const issuedRequestContexts = new WeakSet<object>();
 
 export interface RequestContext {

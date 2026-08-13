@@ -9,7 +9,7 @@ import type { Readable, Writable } from "node:stream";
 
 export interface StandaloneRuntimeDescriptor {
   schemaVersion: 2;
-  protocol: "bb-mate-runtime";
+  protocol: "bb-plugin-studio-runtime";
   runtimeVersion: string;
   apiVersion: 2;
   pid: number;
@@ -35,7 +35,7 @@ export interface SupervisorControl {
 }
 
 export function runtimeDataRootForCwd(cwd: string): string {
-  return path.join(realpathSync(cwd), ".bb-mate-runtime-data");
+  return path.join(realpathSync(cwd), ".bb-plugin-studio-runtime-data");
 }
 
 export function observeChildClose(child: {
@@ -370,7 +370,7 @@ export function validateStandaloneDescriptor(
   );
   assert(
     descriptor.schemaVersion === 2 &&
-      descriptor.protocol === "bb-mate-runtime" &&
+      descriptor.protocol === "bb-plugin-studio-runtime" &&
       descriptor.runtimeVersion === options.runtimeVersion &&
       descriptor.apiVersion === 2 &&
       (options.pid === undefined || descriptor.pid === options.pid) &&

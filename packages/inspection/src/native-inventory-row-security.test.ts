@@ -98,10 +98,10 @@ describe("native inventory row security", () => {
 
   test("rejects direct source and runtime root disagreement", async () => {
     const sourceRoot = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-native-source-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-native-source-"),
     );
     const runtimeRoot = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-native-runtime-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-native-runtime-"),
     );
     try {
       const facts = await observeRows([
@@ -138,7 +138,7 @@ describe("native inventory row security", () => {
 
   test("retains only a safely canonicalized root hint for a malformed direct row", async () => {
     const root = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-native-malformed-root-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-native-malformed-root-"),
     );
     try {
       const facts = await observeRows([

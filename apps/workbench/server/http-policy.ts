@@ -38,14 +38,14 @@ export function attachCatalogMiddleware(
     }
     let url: URL;
     try {
-      url = new URL(requestTarget, "http://bb-mate.local");
+      url = new URL(requestTarget, "http://bb-plugin-studio.local");
     } catch {
       response.statusCode = 400;
       setSecurityHeaders(response);
       response.end(JSON.stringify({ error: "Request unavailable." }));
       return;
     }
-    if (url.pathname !== "/bb-mate-session.json") {
+    if (url.pathname !== "/bb-plugin-studio-session.json") {
       next();
       return;
     }

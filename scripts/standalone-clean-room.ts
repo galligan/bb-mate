@@ -65,7 +65,7 @@ async function unusedPort(): Promise<number> {
 }
 
 const temporaryRoot = await fs.mkdtemp(
-  path.join(os.tmpdir(), "bb-mate-standalone-clean-room-"),
+  path.join(os.tmpdir(), "bb-plugin-studio-standalone-clean-room-"),
 );
 let server: ReturnType<typeof Bun.spawn> | null = null;
 let hiddenLabRoot: string | null = null;
@@ -82,7 +82,7 @@ try {
   );
 
   const buildRoot = path.join(temporaryRoot, "build");
-  const firstCopy = path.join(temporaryRoot, "first-bb-mate");
+  const firstCopy = path.join(temporaryRoot, "first-bb-plugin-studio-runtime");
   const firstManifestCopy = path.join(temporaryRoot, "first-manifest.json");
   await buildStandaloneFresh({ outputRoot: buildRoot });
   const first = await inspectStandalone(buildRoot);
@@ -139,7 +139,7 @@ try {
       tempRoot,
     ].map((root) => fs.mkdir(root, { recursive: true })),
   );
-  const movedExecutable = path.join(movedRoot, "bb-mate");
+  const movedExecutable = path.join(movedRoot, "bb-plugin-studio-runtime");
   await fs.copyFile(second.executablePath, movedExecutable);
   await fs.chmod(movedExecutable, 0o755);
   await fs.access(movedExecutable, constants.X_OK);
@@ -168,7 +168,7 @@ try {
     env: runtimeEnv,
   });
   assert(
-    help.stdout.includes("Usage: bb-mate"),
+    help.stdout.includes("Usage: bb-plugin-studio"),
     "Moved executable help failed.",
   );
 

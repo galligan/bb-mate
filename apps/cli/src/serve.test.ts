@@ -3,11 +3,11 @@ import {
   BbContextIdSchema,
   createOpaqueId,
   PrincipalIdSchema,
-} from "@bb-mate/runtime";
+} from "@bb-plugin-studio/runtime";
 import {
   parseSupervisorFrame,
   RUNTIME_CAPABILITIES,
-} from "@bb-mate/runtime/supervision";
+} from "@bb-plugin-studio/runtime/supervision";
 import { runSupervisedServe, type SupervisedServePlatform } from "./serve.ts";
 import type { RuntimeTargetResources } from "./runtime-target-resources.ts";
 
@@ -99,7 +99,7 @@ describe("supervised serve", () => {
       capabilities: RUNTIME_CAPABILITIES,
       instanceId,
       pid: 9001,
-      protocol: "bb-mate-runtime",
+      protocol: "bb-plugin-studio-runtime",
       runtimeVersion: "0.1.0-alpha.2",
       schemaVersion: 2,
     });

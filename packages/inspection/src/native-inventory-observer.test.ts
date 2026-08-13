@@ -15,7 +15,9 @@ import {
 
 describe("native inventory observer", () => {
   test("normalizes the released bb 0.36 path row through one passive command", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-native-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-native-"),
+    );
     const calls: string[][] = [];
     try {
       const observation = await observeNativePluginInventoryForTest({

@@ -10,13 +10,13 @@ import {
   openDevelopmentTargetCatalog,
   PrincipalIdSchema,
   type OpaqueId,
-} from "@bb-mate/runtime";
-import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
+} from "@bb-plugin-studio/runtime";
+import { TARGET_LIST_MAX_TARGETS } from "@bb-plugin-studio/runtime/supervision";
 import { createRuntimeTargetController } from "./runtime-target-controller.ts";
 import {
   admitTrustedRoots,
   discoverWorkspaceSourceCandidates,
-} from "@bb-mate/inspection";
+} from "@bb-plugin-studio/inspection";
 
 const temporaryRoots: string[] = [];
 const principalId = PrincipalIdSchema.parse("p".repeat(32));
@@ -30,7 +30,7 @@ afterEach(async () => {
 
 async function makeFixture() {
   const parent = await fs.mkdtemp(
-    path.join(await fs.realpath(os.tmpdir()), "bb-mate-cli-targets-"),
+    path.join(await fs.realpath(os.tmpdir()), "bb-plugin-studio-cli-targets-"),
   );
   temporaryRoots.push(parent);
   return {

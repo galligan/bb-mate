@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update bb Plugin Studio Compatibility"
+  short_description: "Audit and adopt new stable bb releases"
+  default_prompt: "Use $update-plugin-studio-compatibility to check the latest stable bb release and prepare a verified Plugin Studio compatibility update."

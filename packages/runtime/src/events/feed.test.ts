@@ -30,7 +30,7 @@ const bindings: ObjectBindings = {
 async function makeDataRoot(): Promise<string> {
   const temporaryDirectory = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryDirectory, "bb-mate-events-"),
+    path.join(temporaryDirectory, "bb-plugin-studio-events-"),
   );
   temporaryRoots.push(parent);
   return path.join(parent, "data");

@@ -31,7 +31,7 @@ const sessionId = SessionIdSchema.parse("s".repeat(32));
 async function makeDataRoot(): Promise<string> {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-service-security-"),
+    path.join(temporaryRoot, "bb-plugin-studio-service-security-"),
   );
   temporaryRoots.push(parent);
   return path.join(parent, "data");

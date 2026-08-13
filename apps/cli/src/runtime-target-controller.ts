@@ -12,18 +12,18 @@ import {
   type PrincipalId,
   type RequestContext,
   type RuntimeTargetController,
-} from "@bb-mate/runtime";
-import { TARGET_LIST_MAX_TARGETS } from "@bb-mate/runtime/supervision";
+} from "@bb-plugin-studio/runtime";
+import { TARGET_LIST_MAX_TARGETS } from "@bb-plugin-studio/runtime/supervision";
 import {
   admitTrustedRoots,
   discoverWorkspaceSourceCandidates,
   sourceCandidateDiscoveringRootKeys,
   trustedRootCanonicalRoot,
-} from "@bb-mate/inspection";
+} from "@bb-plugin-studio/inspection";
 import {
   consumeIssuedSourceCandidate,
   readSourceCandidateTransition,
-} from "@bb-mate/inspection/source-transition";
+} from "@bb-plugin-studio/inspection/source-transition";
 
 export interface CreateRuntimeTargetControllerOptions {
   readonly catalog: DevelopmentTargetCatalog;

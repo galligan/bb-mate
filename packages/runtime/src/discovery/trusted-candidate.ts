@@ -23,7 +23,7 @@ export type DevelopmentTargetRootKind = z.infer<
 >;
 
 const trustedCandidateBrand: unique symbol = Symbol(
-  "bb-mate.trusted-development-target-candidate",
+  "bb-plugin-studio.trusted-development-target-candidate",
 );
 const issuedCandidates = new WeakMap<object, DevelopmentSourceIdentity>();
 

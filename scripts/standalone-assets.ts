@@ -16,7 +16,7 @@ export interface StandaloneAssetGraph {
 
 export interface StandaloneManifest {
   schemaVersion: 1;
-  artifact: "bb-mate";
+  artifact: "bb-plugin-studio-runtime";
   target: "bun-darwin-arm64";
   platform: "darwin";
   architecture: "arm64";
@@ -142,9 +142,9 @@ export function generateStandaloneEntry(options: {
 
   return [
     ...imports,
-    `import { runBbMateEntrypoint } from ${JSON.stringify(options.entrypointPath)};`,
+    `import { runBbStudioEntrypoint } from ${JSON.stringify(options.entrypointPath)};`,
     "",
-    "const result = await runBbMateEntrypoint({",
+    "const result = await runBbStudioEntrypoint({",
     '  mode: "standalone",',
     `  runtimeVersion: ${JSON.stringify(options.runtimeVersion)},`,
     "  assets: {",
@@ -165,7 +165,7 @@ export function createStandaloneManifest(options: {
 }): StandaloneManifest {
   return {
     schemaVersion: 1,
-    artifact: "bb-mate",
+    artifact: "bb-plugin-studio-runtime",
     target: "bun-darwin-arm64",
     platform: "darwin",
     architecture: "arm64",

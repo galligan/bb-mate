@@ -1,4 +1,4 @@
-import type { PluginInspection } from "@bb-mate/inspection";
+import type { PluginInspection } from "@bb-plugin-studio/inspection";
 import type { PreviewMode } from "@/workbench-state";
 
 export interface LauncherPreviewCapability {

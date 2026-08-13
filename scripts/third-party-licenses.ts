@@ -37,7 +37,7 @@ const runtimeManifest = path.join(
 const mateManifest = path.join(
   repositoryRoot,
   "plugins",
-  "mate",
+  "studio",
   "package.json",
 );
 

@@ -14,7 +14,7 @@ The policy separates three values:
   version emits a nonfatal `notice`; its presence alone never makes an ordinary
   repository check fail.
 
-`plugins/mate/package.json` expresses the same open-ended host floor as
+`plugins/studio/package.json` expresses the same open-ended host floor as
 `engines.bb: ">=0.36.0"`. The SDK contract remains independent in
 `engines.bbPluginSdk`.
 
@@ -47,7 +47,7 @@ one deduplicated GitHub issue.
 
 The required `BB compatibility` workflow reads both boundary versions from the
 manifest, installs each exact CLI in isolation, regenerates declarations, then
-typechecks, builds, and tests the Mate plugin. The scheduled watch is separate
+typechecks, builds, and tests the Studio plugin. The scheduled watch is separate
 from pull-request CI. For a newer npm release it projects only immutable probe
 URLs to that release (without accepting new hashes), runs the same declaration,
 typecheck, build, and test probes, and exercises managed activation in a
@@ -99,7 +99,7 @@ values above are for human comparison only.
    contract. Raising the verified-through boundary does not automatically raise
    the minimum version.
 
-The workspace `plugins/mate` `bb-app` pin stays on `minimumBbVersion`. It makes
+The workspace `plugins/studio` `bb-app` pin stays on `minimumBbVersion`. It makes
 the ordinary build and package lifecycle a continuous floor check. The required
 verified-through lane and the scheduled candidate audit install their exact bb
 versions in isolation; the candidate package probe supplies that exact version

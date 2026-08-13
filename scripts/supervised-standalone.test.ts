@@ -19,7 +19,7 @@ import {
 function descriptor(): StandaloneRuntimeDescriptor & Record<string, unknown> {
   return {
     schemaVersion: 2,
-    protocol: "bb-mate-runtime",
+    protocol: "bb-plugin-studio-runtime",
     runtimeVersion: "0.1.0-alpha.3",
     apiVersion: 2,
     pid: 42,
@@ -43,12 +43,14 @@ function descriptor(): StandaloneRuntimeDescriptor & Record<string, unknown> {
 
 describe("standalone supervision proof", () => {
   test("uses the physical disposable workspace for runtime persistence", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-data-root-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-data-root-"),
+    );
     const alias = `${root}-alias`;
     await fs.symlink(root, alias);
     try {
       expect(runtimeDataRootForCwd(alias)).toBe(
-        path.join(await fs.realpath(root), ".bb-mate-runtime-data"),
+        path.join(await fs.realpath(root), ".bb-plugin-studio-runtime-data"),
       );
     } finally {
       await fs.unlink(alias);

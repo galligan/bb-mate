@@ -1,7 +1,7 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { PluginInspection } from "@bb-mate/inspection";
-import { MateOverlay } from "@/components/MateOverlay";
+import type { PluginInspection } from "@bb-plugin-studio/inspection";
+import { StudioOverlay } from "@/components/StudioOverlay";
 import { PreviewCanvas } from "@/components/PreviewCanvas";
 import { resolveCatalogSelection } from "@/surface-catalog";
 import type { WorkbenchState } from "@/workbench-state";
@@ -96,7 +96,7 @@ function Harness() {
         theme={state.theme}
         viewport={state.viewport}
       />
-      <MateOverlay
+      <StudioOverlay
         selection={selection}
         state={state}
         inspection={inspection}
@@ -112,8 +112,8 @@ function Harness() {
         ]}
         selectedTargetId={exampleTargetId}
         handoffs={{
-          launchCommand: "bun run bb-mate plugins/example",
-          checkCommand: "bun run bb-mate check plugins/example",
+          launchCommand: "bun run bb-plugin-studio plugins/example",
+          checkCommand: "bun run bb-plugin-studio check plugins/example",
           liveCommand: null,
           detail: "Deterministic copy-only commands for visual coverage.",
         }}

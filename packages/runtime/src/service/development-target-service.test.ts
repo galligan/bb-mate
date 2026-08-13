@@ -72,7 +72,7 @@ async function issueInspectionCandidate(value: InspectionSourceCandidateFacts) {
 async function makeFixture() {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-development-target-"),
+    path.join(temporaryRoot, "bb-plugin-studio-development-target-"),
   );
   temporaryRoots.push(parent);
   const pluginRoot = path.join(parent, "plugin");

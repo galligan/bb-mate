@@ -82,7 +82,7 @@ export async function issueNativeInventory(
         schemaVersion: 1,
         observedAt: 1_500,
         runtimeInstanceId: OpaqueIdSchema.parse("i".repeat(32)),
-        hostname: "mate.local",
+        hostname: "studio.local",
         topLevelStatus: "ok",
         entries: [
           {
@@ -106,7 +106,7 @@ export async function issueNativeInventory(
 export async function makeFixture() {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-development-target-"),
+    path.join(temporaryRoot, "bb-plugin-studio-development-target-"),
   );
   temporaryRoots.push(parent);
   const pluginRoot = path.join(parent, "plugin");

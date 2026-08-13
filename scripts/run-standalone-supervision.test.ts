@@ -5,13 +5,13 @@ describe("Node-hosted standalone supervision entry", () => {
   test("accepts only four bounded absolute arguments", () => {
     expect(
       parseStandaloneSupervisionArgs([
-        "/tmp/bb-mate",
+        "/tmp/bb-plugin-studio-runtime",
         "/tmp/cwd",
         "0.1.0-alpha.3",
         "/tmp/root",
       ]),
     ).toEqual({
-      executable: "/tmp/bb-mate",
+      executable: "/tmp/bb-plugin-studio-runtime",
       cwd: "/tmp/cwd",
       runtimeVersion: "0.1.0-alpha.3",
       temporaryRoot: "/tmp/root",

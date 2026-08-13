@@ -54,22 +54,22 @@ jobs:
           BB_CLI="$bb_cli" bun scripts/compatibility-check.ts \
             --candidate-version "$version" --json > bb-candidate-report.json
           contract_status=$?
-          "$bb_cli" plugin types plugins/mate
+          "$bb_cli" plugin types plugins/studio
           types_status=$?
-          bun --cwd plugins/mate run check
+          bun --cwd plugins/studio run check
           typecheck_status=$?
-          "$bb_cli" plugin build plugins/mate
+          "$bb_cli" plugin build plugins/studio
           build_status=$?
-          bun --cwd plugins/mate test
+          bun --cwd plugins/studio test
           test_status=$?
 
           # The managed-package clean room uses the plugin-local bb binary and
           # a disposable data directory, so this replacement cannot touch a
           # developer profile or the committed lockfile in the ephemeral runner.
-          bun add --cwd plugins/mate --no-save --ignore-scripts "bb-app@$version"
+          bun add --cwd plugins/studio --no-save --ignore-scripts "bb-app@$version"
           activation_install_status=$?
           if [ "$activation_install_status" -eq 0 ]; then
-            BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION="$version" bun run mate:package:test
+            BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION="$version" bun run plugin-studio:package:test
             activation_status=$?
           else
             activation_status=125
@@ -113,7 +113,7 @@ jobs:
               `bb Plugin Studio supports **${report.minimumVersion}+** and is`,
               `verified through **${report.verifiedThroughVersion}**.`,
               "",
-              "Use `$update-bb-mate-compatibility` from this repository to audit",
+              "Use `$update-plugin-studio-compatibility` from this repository to audit",
               "the immutable upstream release, run the isolated native and visual",
               "gates, and prepare a reviewable target update.",
               "",

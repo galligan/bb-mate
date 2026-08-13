@@ -23,7 +23,9 @@ const temporaryRoots: string[] = [];
 
 async function makeDataRoot(): Promise<string> {
   const temporaryRoot = await fs.realpath(os.tmpdir());
-  const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-service-"));
+  const parent = await fs.mkdtemp(
+    path.join(temporaryRoot, "bb-plugin-studio-service-"),
+  );
   temporaryRoots.push(parent);
   return path.join(parent, "data");
 }

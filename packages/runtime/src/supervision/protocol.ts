@@ -107,7 +107,7 @@ const LoopbackBaseUrlSchema = z
 
 export const RuntimeLaunchDescriptorSchema = z.strictObject({
   schemaVersion: z.literal(2),
-  protocol: z.literal("bb-mate-runtime"),
+  protocol: z.literal("bb-plugin-studio-runtime"),
   runtimeVersion: RuntimeVersionSchema,
   apiVersion: z.literal(RUNTIME_API_VERSION),
   pid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),

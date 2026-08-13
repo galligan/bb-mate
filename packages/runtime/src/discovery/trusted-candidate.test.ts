@@ -116,7 +116,9 @@ afterEach(async () => {
 describe("trusted development-target candidates", () => {
   test("issues only through an active inspection transition", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
-    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-plugin-studio-root-"),
+    );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
@@ -136,7 +138,9 @@ describe("trusted development-target candidates", () => {
 
   test("derives conservative target state only from an issued inspection candidate", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
-    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-plugin-studio-root-"),
+    );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
@@ -167,7 +171,9 @@ describe("trusted development-target candidates", () => {
 
   test("rejects missing roots, symlink aliases, and invalid discovery facts", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
-    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-plugin-studio-root-"),
+    );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     const alias = path.join(parent, "alias");
@@ -189,7 +195,9 @@ describe("trusted development-target candidates", () => {
 
   test("rejects filesystem-wide, home, and ignored source roots", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
-    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-plugin-studio-root-"),
+    );
     temporaryRoots.push(parent);
     const ignoredRoot = path.join(parent, "node_modules", "plugin");
     await fs.mkdir(ignoredRoot, { recursive: true });
@@ -211,7 +219,9 @@ describe("trusted development-target candidates", () => {
 
   test("recognizes only the exact runtime capability and its source identity", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
-    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-plugin-studio-root-"),
+    );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);
@@ -243,7 +253,9 @@ describe("trusted development-target candidates", () => {
 
   test("rejects manifest mutation after runtime issuance and before persistence", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
-    const parent = await fs.mkdtemp(path.join(temporaryRoot, "bb-mate-root-"));
+    const parent = await fs.mkdtemp(
+      path.join(temporaryRoot, "bb-plugin-studio-root-"),
+    );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
     await fs.mkdir(pluginRoot);

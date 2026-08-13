@@ -1,4 +1,4 @@
-import type { PluginInspection } from "@bb-mate/inspection";
+import type { PluginInspection } from "@bb-plugin-studio/inspection";
 import type {
   DevelopmentTargetProjection,
   TargetId,

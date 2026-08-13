@@ -19,11 +19,11 @@ afterEach(() => harness.cleanup());
 describe("workspace-aware source discovery", () => {
   test("discovers only the root and npm or Bun workspace packages", async () => {
     const root = await harness.createRoot();
-    const plugin = path.join(root, "plugins", "mate");
+    const plugin = path.join(root, "plugins", "studio");
     const unrelated = path.join(root, "src", "nested");
     await fs.mkdir(plugin, { recursive: true });
     await fs.mkdir(unrelated, { recursive: true });
-    await harness.writePlugin(plugin, "mate");
+    await harness.writePlugin(plugin, "studio");
     await harness.writePlugin(unrelated, "unrelated");
     await fs.writeFile(
       path.join(root, "package.json"),
@@ -39,7 +39,9 @@ describe("workspace-aware source discovery", () => {
 
     const result = await discoverWorkspaceSourceCandidates(admission.roots);
 
-    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual(["mate"]);
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "studio",
+    ]);
     expect(result.diagnostics).toEqual([]);
   });
 
@@ -1006,9 +1008,9 @@ describe("workspace-aware source discovery", () => {
 
   test("supports Bun object-form workspace packages", async () => {
     const root = await harness.createRoot();
-    const plugin = path.join(root, "extensions", "mate");
+    const plugin = path.join(root, "extensions", "studio");
     await fs.mkdir(plugin, { recursive: true });
-    await harness.writePlugin(plugin, "mate");
+    await harness.writePlugin(plugin, "studio");
     await fs.writeFile(
       path.join(root, "package.json"),
       JSON.stringify({
@@ -1023,7 +1025,9 @@ describe("workspace-aware source discovery", () => {
 
     const result = await discoverWorkspaceSourceCandidates(admission.roots);
 
-    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual(["mate"]);
+    expect(result.candidates.map(({ pluginId }) => pluginId)).toEqual([
+      "studio",
+    ]);
     expect(result.diagnostics).toEqual([]);
   });
 

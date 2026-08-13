@@ -80,7 +80,7 @@ export async function checkLatestBbRelease(
     );
   }
   const response = await fetcher(registryUrl, {
-    headers: { "user-agent": "bb-mate-release-check" },
+    headers: { "user-agent": "bb-plugin-studio-release-check" },
     redirect: "error",
     signal: AbortSignal.timeout(10_000),
   });
