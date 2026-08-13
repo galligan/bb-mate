@@ -1,6 +1,5 @@
-import type { Database } from "bun:sqlite";
-
 import { RuntimeError } from "../errors.ts";
+import type { SqliteDatabase } from "./sqlite.ts";
 
 export interface ExpectedSchemaEntry {
   readonly type: "table" | "index" | "trigger";
@@ -23,7 +22,7 @@ function normalizeSql(sql: string): string {
 }
 
 export function verifyOwnedSchema(
-  database: Database,
+  database: SqliteDatabase,
   tableName: string,
   expected: readonly ExpectedSchemaEntry[],
 ): void {

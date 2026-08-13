@@ -16,7 +16,7 @@ import {
   OpaqueIdSchema,
   PrincipalIdSchema,
 } from "../packages/runtime/src/contracts/ids.ts";
-import { openDevelopmentTargetCatalog } from "../packages/runtime/src/discovery/catalog.ts";
+import { openDevelopmentTargetCatalog } from "../packages/runtime/src/discovery/open-catalog.ts";
 import { createInspectionDevelopmentTargetCandidateBridge } from "../packages/runtime/src/discovery/trusted-candidate.ts";
 import { createDevelopmentTargetService } from "../packages/runtime/src/service/development-target-service.ts";
 

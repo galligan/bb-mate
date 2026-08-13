@@ -1,5 +1,3 @@
-import type { Database, SQLQueryBindings } from "bun:sqlite";
-
 import { ObjectIdSchema, type ObjectId } from "../contracts/ids.ts";
 import {
   ObjectKindSchema,
@@ -8,6 +6,11 @@ import {
   type ObjectKind,
 } from "../contracts/objects.ts";
 import { RuntimeError } from "../errors.ts";
+import type { SqliteBindings, SqliteDatabase } from "../persistence/sqlite.ts";
+import {
+  adaptQuerySqliteDatabase,
+  type QuerySqliteDatabase,
+} from "../persistence/sqlite.ts";
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 100;
@@ -97,14 +100,17 @@ function decodeCursor(cursor: string): number {
   return sequence;
 }
 
-export function createEventFeed(database: Database): EventFeed {
+export function createEventFeed(
+  input: SqliteDatabase | QuerySqliteDatabase,
+): EventFeed {
+  const database = adaptQuerySqliteDatabase(input as QuerySqliteDatabase);
   const insert = database.query(`
     INSERT INTO runtime_events (
       event_type, object_id, object_kind, revision, occurred_at,
       principal_id, bb_context_id, target_id, session_id
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const ownsCursor = database.query<{ found: number }, SQLQueryBindings[]>(`
+  const ownsCursor = database.query<{ found: number }, SqliteBindings>(`
     SELECT 1 AS found
     FROM runtime_events e
     WHERE e.sequence = ?
@@ -121,7 +127,7 @@ export function createEventFeed(database: Database): EventFeed {
           AND r.expired_through_sequence >= e.sequence
       )
   `);
-  const select = database.query<EventRow, SQLQueryBindings[]>(`
+  const select = database.query<EventRow, SqliteBindings>(`
     SELECT sequence, event_type, object_id, object_kind, revision, occurred_at
     FROM runtime_events e
     WHERE e.sequence > ?

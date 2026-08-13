@@ -49,14 +49,16 @@ export type {
   DevelopmentTargetPayload,
   DevelopmentTargetProjection,
 } from "./discovery/development-target.ts";
-export { openDevelopmentTargetCatalog } from "./discovery/catalog.ts";
+export { createDevelopmentTargetCatalog } from "./discovery/catalog.ts";
 export type {
+  CreateDevelopmentTargetCatalogOptions,
   DevelopmentTargetCatalog,
-  OpenDevelopmentTargetCatalogOptions,
   PrivateDevelopmentTargetSource,
   RefreshCompleteDevelopmentTargetSnapshotInput,
   RefreshDevelopmentTargetInput,
 } from "./discovery/catalog.ts";
+export { openDevelopmentTargetCatalog } from "./discovery/open-catalog.ts";
+export type { OpenDevelopmentTargetCatalogOptions } from "./discovery/open-catalog.ts";
 export { DevelopmentTargetRootKindSchema } from "./discovery/trusted-candidate.ts";
 export { createInspectionDevelopmentTargetCandidateBridge } from "./discovery/trusted-candidate.ts";
 export type {

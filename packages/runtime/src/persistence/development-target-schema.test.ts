@@ -4,7 +4,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
+import { openDevelopmentTargetCatalog } from "../discovery/open-catalog.ts";
 import {
   bbContextId,
   candidate,

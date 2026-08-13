@@ -1,9 +1,8 @@
-import type { Database, SQLQueryBindings } from "bun:sqlite";
-
 import type { BbContextId, ObjectId, PrincipalId } from "../contracts/ids.ts";
 import { canonicalJson, type JsonValue } from "../contracts/objects.ts";
 import { RuntimeError } from "../errors.ts";
 import { createEventFeed } from "../events/feed.ts";
+import type { SqliteBindings, SqliteDatabase } from "../persistence/sqlite.ts";
 import { createDevelopmentTargetIntegrityCheck } from "./catalog-integrity.ts";
 import {
   parseDevelopmentTargetEnvelope,
@@ -183,17 +182,17 @@ export interface DevelopmentTargetCatalogStorage {
 }
 
 export function createDevelopmentTargetCatalogStorage(
-  database: Database,
+  database: SqliteDatabase,
 ): DevelopmentTargetCatalogStorage {
   const eventFeed = createEventFeed(database);
   const assertIntegrity = createDevelopmentTargetIntegrityCheck(database);
-  const selectByRoot = database.query<ObjectRow, SQLQueryBindings[]>(`
+  const selectByRoot = database.query<ObjectRow, SqliteBindings>(`
     SELECT o.*
     FROM runtime_objects o
     INNER JOIN development_target_sources s ON s.object_id = o.id
     WHERE s.principal_id = ? AND s.bb_context_id = ? AND s.canonical_root = ?
   `);
-  const selectList = database.query<ObjectRow, SQLQueryBindings[]>(`
+  const selectList = database.query<ObjectRow, SqliteBindings>(`
     SELECT o.*
     FROM runtime_objects o
     INNER JOIN development_target_sources s ON s.object_id = o.id
@@ -206,7 +205,7 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectAll = database.query<
     ObjectRow & { readonly retired: number },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT o.*, CASE WHEN r.object_id IS NULL THEN 0 ELSE 1 END AS retired
     FROM runtime_objects o
@@ -217,7 +216,7 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectCount = database.query<
     { readonly count: number },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT COUNT(*) AS count
     FROM runtime_objects o
@@ -230,14 +229,14 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectHistoryCount = database.query<
     { readonly count: number },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT COUNT(*) AS count
     FROM runtime_objects o
     INNER JOIN development_target_sources s ON s.object_id = o.id
     WHERE s.principal_id = ? AND s.bb_context_id = ?
   `);
-  const selectById = database.query<ObjectRow, SQLQueryBindings[]>(`
+  const selectById = database.query<ObjectRow, SqliteBindings>(`
     SELECT o.*
     FROM runtime_objects o
     INNER JOIN development_target_sources s ON s.object_id = o.id
@@ -247,12 +246,12 @@ export function createDevelopmentTargetCatalogStorage(
         WHERE r.object_id = o.id
       )
   `);
-  const selectPrivate = database.query<PrivateRow, SQLQueryBindings[]>(`
+  const selectPrivate = database.query<PrivateRow, SqliteBindings>(`
     SELECT canonical_root, root_key, root_kind
     FROM development_target_sources
     WHERE object_id = ? AND principal_id = ? AND bb_context_id = ?
   `);
-  const selectPrivateHost = database.query<PrivateHostRow, SQLQueryBindings[]>(`
+  const selectPrivateHost = database.query<PrivateHostRow, SqliteBindings>(`
     SELECT runtime_instance_id, hostname, bb_host_id, bb_host_name,
       bb_host_is_server, observed_at
     FROM development_target_host_observations
@@ -260,7 +259,7 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectProjectScopes = database.query<
     { readonly canonical_root: string },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT canonical_root
     FROM development_target_project_scopes
@@ -326,7 +325,7 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectRetirement = database.query<
     { readonly found: number },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT 1 AS found
     FROM development_target_retirements
@@ -334,7 +333,7 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectOldestRetired = database.query<
     { readonly object_id: string },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT object_id
     FROM development_target_retirements
@@ -365,7 +364,7 @@ export function createDevelopmentTargetCatalogStorage(
   `);
   const selectTargetEvents = database.query<
     { readonly sequence: number; readonly event_type: string },
-    SQLQueryBindings[]
+    SqliteBindings
   >(`
     SELECT sequence, event_type
     FROM runtime_events

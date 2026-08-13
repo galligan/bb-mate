@@ -1,11 +1,10 @@
 import { createHash } from "node:crypto";
-import type { Database } from "bun:sqlite";
-
 import {
   RUNTIME_EVENTS_NO_DELETE_TRIGGER,
   verifyRuntimeEventSchema,
 } from "../events/schema.ts";
 import type { RuntimeMigration } from "../persistence/migrations.ts";
+import type { SqliteDatabase } from "../persistence/sqlite.ts";
 import {
   verifyOwnedSchema,
   type ExpectedSchemaEntry,
@@ -37,7 +36,7 @@ const SOURCE_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
     sql: SOURCES_INDEX,
   },
 ];
-const SOURCE_SCHEMA = `${SOURCES_TABLE};\n${SOURCES_INDEX};`;
+export const DEVELOPMENT_TARGET_SOURCE_MIGRATION_SQL = `${SOURCES_TABLE};\n${SOURCES_INDEX};`;
 
 const HOST_OBSERVATIONS_TABLE = `CREATE TABLE development_target_host_observations (
     object_id TEXT PRIMARY KEY,
@@ -126,9 +125,9 @@ const LEGACY_HOST_OBSERVATION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
     sql: LEGACY_HOSTS_NO_DELETE_TRIGGER,
   },
 ];
-const HOST_OBSERVATION_SCHEMA = `${HOST_OBSERVATIONS_TABLE};\n${HOST_OBSERVATIONS_INDEX};\n${LEGACY_HOSTS_NO_DELETE_TRIGGER};`;
+export const DEVELOPMENT_TARGET_HOST_MIGRATION_SQL = `${HOST_OBSERVATIONS_TABLE};\n${HOST_OBSERVATIONS_INDEX};\n${LEGACY_HOSTS_NO_DELETE_TRIGGER};`;
 
-function verifyDevelopmentTargetHostBaseSchema(database: Database): void {
+function verifyDevelopmentTargetHostBaseSchema(database: SqliteDatabase): void {
   try {
     verifyOwnedSchema(
       database,
@@ -140,7 +139,9 @@ function verifyDevelopmentTargetHostBaseSchema(database: Database): void {
   }
 }
 
-export function verifyDevelopmentTargetHostSchema(database: Database): void {
+export function verifyDevelopmentTargetHostSchema(
+  database: SqliteDatabase,
+): void {
   verifyOwnedSchema(
     database,
     "development_target_host_observations",
@@ -172,21 +173,21 @@ const RETIREMENT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
     sql: RETIREMENTS_INDEX,
   },
 ];
-const RETIREMENT_SCHEMA = `${RETIREMENTS_TABLE};\n${RETIREMENTS_INDEX};`;
+export const DEVELOPMENT_TARGET_RETIREMENT_MIGRATION_SQL = `${RETIREMENTS_TABLE};\n${RETIREMENTS_INDEX};`;
 
-const RETENTION_GUARD_MIGRATION = `DROP TRIGGER runtime_events_no_delete;
+export const DEVELOPMENT_TARGET_RETENTION_GUARD_MIGRATION_SQL = `DROP TRIGGER runtime_events_no_delete;
 DROP TRIGGER development_target_host_observations_no_delete;
 ${RUNTIME_EVENTS_NO_DELETE_TRIGGER};
 ${DEVELOPMENT_TARGET_HOSTS_NO_DELETE_TRIGGER};`;
 
-const PROJECT_SCOPES_TABLE = `CREATE TABLE development_target_project_scopes (
+export const DEVELOPMENT_TARGET_PROJECT_SCOPE_MIGRATION_SQL = `CREATE TABLE development_target_project_scopes (
     principal_id TEXT NOT NULL,
     bb_context_id TEXT NOT NULL,
     canonical_root TEXT NOT NULL,
     PRIMARY KEY (principal_id, bb_context_id, canonical_root)
   ) STRICT`;
 
-const PROJECT_SCOPE_BACKFILL = `INSERT OR IGNORE INTO development_target_project_scopes (
+export const DEVELOPMENT_TARGET_PROJECT_SCOPE_BACKFILL_MIGRATION_SQL = `INSERT OR IGNORE INTO development_target_project_scopes (
   principal_id,
   bb_context_id,
   canonical_root
@@ -199,7 +200,7 @@ const PROJECT_SCOPE_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
   {
     type: "table",
     name: "development_target_project_scopes",
-    sql: PROJECT_SCOPES_TABLE,
+    sql: DEVELOPMENT_TARGET_PROJECT_SCOPE_MIGRATION_SQL,
   },
 ];
 
@@ -233,7 +234,7 @@ const EVENT_RETENTION_MONOTONIC_TRIGGER = `CREATE TRIGGER development_target_eve
       SELECT RAISE(ABORT, 'development target event checkpoints are monotonic');
     END`;
 
-const EVENT_RETENTION_SCHEMA = `${EVENT_RETENTION_TABLE};
+export const DEVELOPMENT_TARGET_EVENT_RETENTION_MIGRATION_SQL = `${EVENT_RETENTION_TABLE};
 ${EVENT_RETENTION_NO_DELETE_TRIGGER};
 ${EVENT_RETENTION_MONOTONIC_TRIGGER};`;
 
@@ -258,9 +259,11 @@ const EVENT_RETENTION_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
 export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   {
     version: 3,
-    checksum: createHash("sha256").update(SOURCE_SCHEMA).digest("hex"),
+    checksum: createHash("sha256")
+      .update(DEVELOPMENT_TARGET_SOURCE_MIGRATION_SQL)
+      .digest("hex"),
     apply(database) {
-      database.exec(SOURCE_SCHEMA);
+      database.exec(DEVELOPMENT_TARGET_SOURCE_MIGRATION_SQL);
     },
     verify(database) {
       verifyOwnedSchema(
@@ -273,10 +276,10 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   {
     version: 4,
     checksum: createHash("sha256")
-      .update(HOST_OBSERVATION_SCHEMA)
+      .update(DEVELOPMENT_TARGET_HOST_MIGRATION_SQL)
       .digest("hex"),
     apply(database) {
-      database.exec(HOST_OBSERVATION_SCHEMA);
+      database.exec(DEVELOPMENT_TARGET_HOST_MIGRATION_SQL);
     },
     verify(database) {
       verifyDevelopmentTargetHostBaseSchema(database);
@@ -284,9 +287,11 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   },
   {
     version: 5,
-    checksum: createHash("sha256").update(RETIREMENT_SCHEMA).digest("hex"),
+    checksum: createHash("sha256")
+      .update(DEVELOPMENT_TARGET_RETIREMENT_MIGRATION_SQL)
+      .digest("hex"),
     apply(database) {
-      database.exec(RETIREMENT_SCHEMA);
+      database.exec(DEVELOPMENT_TARGET_RETIREMENT_MIGRATION_SQL);
     },
     verify(database) {
       verifyOwnedSchema(
@@ -299,10 +304,10 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   {
     version: 6,
     checksum: createHash("sha256")
-      .update(RETENTION_GUARD_MIGRATION)
+      .update(DEVELOPMENT_TARGET_RETENTION_GUARD_MIGRATION_SQL)
       .digest("hex"),
     apply(database) {
-      database.exec(RETENTION_GUARD_MIGRATION);
+      database.exec(DEVELOPMENT_TARGET_RETENTION_GUARD_MIGRATION_SQL);
     },
     verify(database) {
       verifyRuntimeEventSchema(database);
@@ -311,9 +316,11 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   },
   {
     version: 7,
-    checksum: createHash("sha256").update(PROJECT_SCOPES_TABLE).digest("hex"),
+    checksum: createHash("sha256")
+      .update(DEVELOPMENT_TARGET_PROJECT_SCOPE_MIGRATION_SQL)
+      .digest("hex"),
     apply(database) {
-      database.exec(PROJECT_SCOPES_TABLE);
+      database.exec(DEVELOPMENT_TARGET_PROJECT_SCOPE_MIGRATION_SQL);
     },
     verify(database) {
       verifyOwnedSchema(
@@ -325,9 +332,11 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   },
   {
     version: 8,
-    checksum: createHash("sha256").update(EVENT_RETENTION_SCHEMA).digest("hex"),
+    checksum: createHash("sha256")
+      .update(DEVELOPMENT_TARGET_EVENT_RETENTION_MIGRATION_SQL)
+      .digest("hex"),
     apply(database) {
-      database.exec(EVENT_RETENTION_SCHEMA);
+      database.exec(DEVELOPMENT_TARGET_EVENT_RETENTION_MIGRATION_SQL);
     },
     verify(database) {
       verifyOwnedSchema(
@@ -339,9 +348,11 @@ export const DEVELOPMENT_TARGET_MIGRATIONS: readonly RuntimeMigration[] = [
   },
   {
     version: 9,
-    checksum: createHash("sha256").update(PROJECT_SCOPE_BACKFILL).digest("hex"),
+    checksum: createHash("sha256")
+      .update(DEVELOPMENT_TARGET_PROJECT_SCOPE_BACKFILL_MIGRATION_SQL)
+      .digest("hex"),
     apply(database) {
-      database.exec(PROJECT_SCOPE_BACKFILL);
+      database.exec(DEVELOPMENT_TARGET_PROJECT_SCOPE_BACKFILL_MIGRATION_SQL);
     },
     verify(database) {
       verifyOwnedSchema(

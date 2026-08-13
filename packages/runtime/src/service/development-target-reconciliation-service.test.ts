@@ -10,7 +10,7 @@ import {
   OpaqueIdSchema,
   PrincipalIdSchema,
 } from "../contracts/ids.ts";
-import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
+import { openDevelopmentTargetCatalog } from "../discovery/open-catalog.ts";
 import { RuntimeError } from "../errors.ts";
 import { createEventFeed } from "../events/feed.ts";
 import {

@@ -1,7 +1,6 @@
-import type { Database } from "bun:sqlite";
-
 import { RuntimeError } from "../errors.ts";
 import { verifyOwnedSchema } from "./schema-verification.ts";
+import type { SqliteDatabase } from "./sqlite.ts";
 
 const MIGRATIONS_TABLE_SQL = `
   CREATE TABLE IF NOT EXISTS runtime_migrations (
@@ -13,8 +12,8 @@ const MIGRATIONS_TABLE_SQL = `
 export interface RuntimeMigration {
   readonly version: number;
   readonly checksum: string;
-  apply(database: Database): void;
-  verify?(database: Database): void;
+  apply(database: SqliteDatabase): void;
+  verify?(database: SqliteDatabase): void;
 }
 
 interface AppliedMigration {
@@ -23,7 +22,7 @@ interface AppliedMigration {
 }
 
 export function applyRuntimeMigrations(
-  database: Database,
+  database: SqliteDatabase,
   migrations: readonly RuntimeMigration[],
   initializeLedger: boolean,
 ): void {

@@ -3,7 +3,7 @@ import { Database } from "bun:sqlite";
 import * as path from "node:path";
 
 import { ObjectIdSchema, OpaqueIdSchema } from "../contracts/ids.ts";
-import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
+import { openDevelopmentTargetCatalog } from "../discovery/open-catalog.ts";
 import {
   bbContextId,
   candidate,
