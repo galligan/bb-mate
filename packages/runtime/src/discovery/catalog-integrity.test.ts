@@ -11,7 +11,7 @@ import {
   PrincipalIdSchema,
 } from "../contracts/ids.ts";
 import { RuntimeError } from "../errors.ts";
-import { openDevelopmentTargetCatalog } from "./catalog.ts";
+import { openDevelopmentTargetCatalog } from "./open-catalog.ts";
 import { inspectDevelopmentSourceIdentity } from "./source-identity.ts";
 import {
   createInspectionDevelopmentTargetCandidateBridge,

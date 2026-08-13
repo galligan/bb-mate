@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
-import type { Database } from "bun:sqlite";
-
 import type { RuntimeMigration } from "../persistence/migrations.ts";
+import type { SqliteDatabase } from "../persistence/sqlite.ts";
 import {
   verifyOwnedSchema,
   type ExpectedSchemaEntry,
@@ -87,14 +86,14 @@ const LEGACY_EVENT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
     sql: LEGACY_EVENTS_NO_DELETE_TRIGGER,
   },
 ];
-const EVENTS_SCHEMA = [
+export const EVENT_MIGRATION_SQL = [
   EVENTS_TABLE,
   EVENTS_INDEX,
   EVENTS_NO_UPDATE,
   LEGACY_EVENTS_NO_DELETE_TRIGGER,
 ].join(";\n");
 
-function verifyRuntimeEventBaseSchema(database: Database): void {
+function verifyRuntimeEventBaseSchema(database: SqliteDatabase): void {
   try {
     verifyOwnedSchema(database, "runtime_events", LEGACY_EVENT_SCHEMA_ENTRIES);
   } catch {
@@ -102,16 +101,16 @@ function verifyRuntimeEventBaseSchema(database: Database): void {
   }
 }
 
-export function verifyRuntimeEventSchema(database: Database): void {
+export function verifyRuntimeEventSchema(database: SqliteDatabase): void {
   verifyOwnedSchema(database, "runtime_events", EVENT_SCHEMA_ENTRIES);
 }
 
 export const EVENT_MIGRATIONS: readonly RuntimeMigration[] = [
   {
     version: 2,
-    checksum: createHash("sha256").update(EVENTS_SCHEMA).digest("hex"),
+    checksum: createHash("sha256").update(EVENT_MIGRATION_SQL).digest("hex"),
     apply(database) {
-      database.exec(EVENTS_SCHEMA);
+      database.exec(EVENT_MIGRATION_SQL);
     },
     verify(database) {
       verifyRuntimeEventBaseSchema(database);

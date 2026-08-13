@@ -12,8 +12,7 @@ import {
 } from "../contracts/ids.ts";
 import { canonicalJson } from "../contracts/objects.ts";
 import { RuntimeError } from "../errors.ts";
-import { openRuntimeDatabase } from "../persistence/database.ts";
-import { RUNTIME_MIGRATIONS } from "../persistence/runtime-migrations.ts";
+import type { SqliteDatabase } from "../persistence/sqlite.ts";
 import { createDevelopmentTargetCatalogStorage } from "./catalog-storage.ts";
 import {
   parseDevelopmentTargetEnvelope,
@@ -32,10 +31,12 @@ import {
   type TrustedDevelopmentTargetCandidate,
 } from "./trusted-candidate.ts";
 
-export interface OpenDevelopmentTargetCatalogOptions {
-  readonly dataRoot: string;
+export interface CreateDevelopmentTargetCatalogOptions {
+  readonly database: SqliteDatabase;
   readonly clock?: () => number;
   readonly id?: () => ObjectId;
+  /** Releases only resources owned by the caller; omitted for bb-owned DBs. */
+  readonly dispose?: () => void;
 }
 
 export type { PrivateDevelopmentTargetSource } from "./private-source.ts";
@@ -110,23 +111,16 @@ function storageError(error: unknown): never {
   throw new RuntimeError("internal", { cause: error });
 }
 
-export async function openDevelopmentTargetCatalog(
-  options: OpenDevelopmentTargetCatalogOptions,
-): Promise<DevelopmentTargetCatalog> {
-  const runtimeDatabase = await openRuntimeDatabase({
-    dataRoot: options.dataRoot,
-    migrations: RUNTIME_MIGRATIONS,
-  });
+export function createDevelopmentTargetCatalog(
+  options: CreateDevelopmentTargetCatalogOptions,
+): DevelopmentTargetCatalog {
   const clock = options.clock ?? Date.now;
   const id = options.id ?? (() => ObjectIdSchema.parse(createOpaqueId()));
-  const storage = createDevelopmentTargetCatalogStorage(
-    runtimeDatabase.database,
-  );
+  const storage = createDevelopmentTargetCatalogStorage(options.database);
 
   try {
     storage.assertIntegrity();
   } catch (error) {
-    runtimeDatabase.close();
     storageError(error);
   }
 
@@ -540,7 +534,7 @@ export async function openDevelopmentTargetCatalog(
         storageError(error);
       }
     },
-    close: runtimeDatabase.close,
+    close: options.dispose ?? (() => undefined),
   };
 }
 

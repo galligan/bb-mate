@@ -13,7 +13,7 @@ import {
   TargetIdSchema,
 } from "../contracts/ids.ts";
 import { ObjectCodecRegistry } from "../contracts/objects.ts";
-import { openDevelopmentTargetCatalog } from "../discovery/catalog.ts";
+import { openDevelopmentTargetCatalog } from "../discovery/open-catalog.ts";
 import { DevelopmentTargetCodec } from "../discovery/development-target.ts";
 import { inspectDevelopmentSourceIdentity } from "../discovery/source-identity.ts";
 import {

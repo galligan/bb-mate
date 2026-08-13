@@ -6,7 +6,7 @@
   "architecture": "arm64",
   "mode": "0755",
   "size": 64882658,
-  "sha256": "cc10432e34ac3bb4da87e6b1f92224841b6f7441e45ab50bddfdbdaca69ea3e5",
+  "sha256": "8e80821cb5e784bdb891c29db6583bc2861c505da40e08145ca13cb4be88fb79",
   "bunVersion": "1.3.14",
   "runtimeVersion": "0.1.0-alpha.3",
   "storyCount": 13,

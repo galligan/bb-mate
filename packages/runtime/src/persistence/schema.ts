@@ -32,7 +32,7 @@ const OBJECT_SCHEMA_ENTRIES: readonly ExpectedSchemaEntry[] = [
   { type: "table", name: "runtime_objects", sql: OBJECTS_TABLE },
   { type: "index", name: "runtime_objects_bindings", sql: OBJECTS_INDEX },
 ];
-const OBJECTS_SCHEMA = `${OBJECTS_TABLE};\n${OBJECTS_INDEX};`;
+export const OBJECT_MIGRATION_SQL = `${OBJECTS_TABLE};\n${OBJECTS_INDEX};`;
 
 function checksum(sql: string): string {
   return createHash("sha256").update(sql).digest("hex");
@@ -41,9 +41,9 @@ function checksum(sql: string): string {
 export const OBJECT_MIGRATIONS: readonly RuntimeMigration[] = [
   {
     version: 1,
-    checksum: checksum(OBJECTS_SCHEMA),
+    checksum: checksum(OBJECT_MIGRATION_SQL),
     apply(database) {
-      database.exec(OBJECTS_SCHEMA);
+      database.exec(OBJECT_MIGRATION_SQL);
     },
     verify(database) {
       verifyOwnedSchema(database, "runtime_objects", OBJECT_SCHEMA_ENTRIES);

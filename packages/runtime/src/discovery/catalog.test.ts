@@ -10,7 +10,7 @@ import {
   PrincipalIdSchema,
 } from "../contracts/ids.ts";
 import { RuntimeError } from "../errors.ts";
-import { openDevelopmentTargetCatalog } from "./catalog.ts";
+import { openDevelopmentTargetCatalog } from "./open-catalog.ts";
 import { inspectDevelopmentSourceIdentity } from "./source-identity.ts";
 import { TARGET_LIST_MAX_TARGETS } from "./target-limits.ts";
 import {

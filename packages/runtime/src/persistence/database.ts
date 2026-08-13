@@ -4,6 +4,7 @@ import * as path from "node:path";
 
 import { RuntimeError } from "../errors.ts";
 import { applyRuntimeMigrations, type RuntimeMigration } from "./migrations.ts";
+import { adaptQuerySqliteDatabase } from "./sqlite.ts";
 
 const DATABASE_NAME = "workbench.sqlite3";
 const SQLITE_SIDECAR_SUFFIXES = ["-journal", "-wal", "-shm"] as const;
@@ -190,7 +191,7 @@ export async function openRuntimeDatabase(
       throw new RuntimeError("corrupt_data");
     }
     applyRuntimeMigrations(
-      database,
+      adaptQuerySqliteDatabase(database),
       options.migrations ?? [],
       existingDatabase === undefined,
     );

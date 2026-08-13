@@ -1,6 +1,5 @@
-import type { Database } from "bun:sqlite";
-
 import { RuntimeError } from "../errors.ts";
+import type { SqliteDatabase } from "../persistence/sqlite.ts";
 import { DevelopmentTargetPayloadSchema } from "./development-target.ts";
 import { parsePrivateDevelopmentTargetSource } from "./private-source.ts";
 import { parsePrivateHostObservation } from "./private-host-observation.ts";
@@ -38,7 +37,7 @@ interface PrivateHostRow {
 }
 
 export function createDevelopmentTargetIntegrityCheck(
-  database: Database,
+  database: SqliteDatabase,
 ): () => void {
   const selectFailure = database.query<IntegrityRow, []>(`
     SELECT 1 AS invalid

@@ -31,6 +31,7 @@ describe("@bb-plugin-studio/runtime public surface", () => {
       "TargetIdSchema",
       "authorize",
       "canonicalJson",
+      "createDevelopmentTargetCatalog",
       "createDevelopmentTargetService",
       "createInspectionDevelopmentTargetCandidateBridge",
       "createOpaqueId",
