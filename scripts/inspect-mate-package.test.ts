@@ -7,6 +7,7 @@ import {
   assertMatePackageFileSize,
   assertMatePackageMetadata,
   assertMateThirdPartyCoverage,
+  expectedMatePackageBbVersion,
   gunzipMateTar,
   inspectMatePackageArchive,
   preflightMateTarBytes,
@@ -32,7 +33,7 @@ function packageManifest() {
     private: true,
     type: "module",
     license: "MIT",
-    engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
+    engines: { bb: ">=0.36.0", bbPluginSdk: "^0.4.1" },
     bb: {
       name: "Plugin Studio",
       description: "Build, inspect, and preview bb plugins.",
@@ -45,7 +46,7 @@ function packageManifest() {
   };
 }
 
-describe("Mate package inspection", () => {
+describe("Plugin Studio package inspection", () => {
   test("ships the Plugin Studio product name without changing compatibility identities", () => {
     const manifest = packageManifest();
     expect(manifest.name).toBe("bb-plugin-mate");
@@ -107,6 +108,35 @@ describe("Mate package inspection", () => {
     ).not.toThrow();
   });
 
+  test("pins normal inspection to the minimum build and permits one explicit candidate build", () => {
+    expect(expectedMatePackageBbVersion({})).toBe("0.36.0");
+    expect(
+      expectedMatePackageBbVersion({
+        BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION: "0.38.0",
+      }),
+    ).toBe("0.38.0");
+    expect(() =>
+      expectedMatePackageBbVersion({
+        BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION: "latest",
+      }),
+    ).toThrow("stable semantic version");
+
+    expect(() =>
+      assertMatePackageMetadata(
+        packageManifest(),
+        {
+          ...buildMetadata(),
+          builtWith: { bbVersion: "0.38.0", pluginSdkVersion: "0.4.1" },
+        },
+        {
+          ...buildMetadata(),
+          builtWith: { bbVersion: "0.38.0", pluginSdkVersion: "0.4.1" },
+        },
+        "0.38.0",
+      ),
+    ).not.toThrow();
+  });
+
   test("rejects source entrypoints and build-version drift", () => {
     expect(() =>
       assertMatePackageMetadata(
@@ -147,7 +177,7 @@ describe("Mate package inspection", () => {
         buildMetadata(),
         buildMetadata(),
       ),
-    ).toThrow("branding");
+    ).toThrow("Plugin Studio package branding");
   });
 
   test("rejects dependency drift in the local-verification manifest", () => {

@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "engines": {
-    "bb": ">=0.36",
+    "bb": ">=0.36.0",
     "bbPluginSdk": "^0.4.1"
   },
   "bb": {

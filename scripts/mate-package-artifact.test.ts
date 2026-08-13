@@ -124,7 +124,7 @@ describe("Mate package runtime artifact", () => {
       private: true,
       type: "module",
       license: "MIT",
-      engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
+      engines: { bb: ">=0.36.0", bbPluginSdk: "^0.4.1" },
       bb: {
         name: "Plugin Studio",
         description: "Develop source plugins.",
@@ -144,7 +144,7 @@ describe("Mate package runtime artifact", () => {
       private: true,
       type: "module",
       license: "MIT",
-      engines: { bb: ">=0.36", bbPluginSdk: "^0.4.1" },
+      engines: { bb: ">=0.36.0", bbPluginSdk: "^0.4.1" },
       bb: {
         name: "Plugin Studio",
         description: "Develop source plugins.",

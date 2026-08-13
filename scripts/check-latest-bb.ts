@@ -13,7 +13,8 @@ export type BbReleaseStatus = "current" | "update-available" | "target-ahead";
 export interface BbReleaseReport {
   schemaVersion: 1;
   package: "bb-app";
-  targetVersion: string;
+  minimumVersion: string;
+  verifiedThroughVersion: string;
   latestVersion: string;
   status: BbReleaseStatus;
   registryUrl: string;
@@ -37,14 +38,19 @@ export function compareStableVersions(left: string, right: string): number {
 }
 
 export function evaluateBbRelease(
-  targetVersion: string,
+  minimumVersion: string,
+  verifiedThroughVersion: string,
   latestVersion: string,
 ): BbReleaseReport {
-  const comparison = compareStableVersions(latestVersion, targetVersion);
+  const comparison = compareStableVersions(
+    latestVersion,
+    verifiedThroughVersion,
+  );
   return {
     schemaVersion: 1,
     package: "bb-app",
-    targetVersion,
+    minimumVersion,
+    verifiedThroughVersion,
     latestVersion,
     status:
       comparison > 0
@@ -60,10 +66,18 @@ export async function checkLatestBbRelease(
   fetcher: typeof fetch = fetch,
 ): Promise<BbReleaseReport> {
   const target = JSON.parse(await readFile(targetPath, "utf8")) as {
-    target?: { bbVersion?: unknown };
+    target?: {
+      minimumBbVersion?: unknown;
+      verifiedThroughBbVersion?: unknown;
+    };
   };
-  if (typeof target.target?.bbVersion !== "string") {
-    throw new Error("compatibility/bb-target.json has no target.bbVersion.");
+  if (
+    typeof target.target?.minimumBbVersion !== "string" ||
+    typeof target.target?.verifiedThroughBbVersion !== "string"
+  ) {
+    throw new Error(
+      "compatibility/bb-target.json must declare minimum and verified-through bb versions.",
+    );
   }
   const response = await fetcher(registryUrl, {
     headers: { "user-agent": "bb-mate-release-check" },
@@ -79,15 +93,19 @@ export async function checkLatestBbRelease(
   if (typeof latest.version !== "string") {
     throw new Error("npm registry response has no version.");
   }
-  return evaluateBbRelease(target.target.bbVersion, latest.version);
+  return evaluateBbRelease(
+    target.target.minimumBbVersion,
+    target.target.verifiedThroughBbVersion,
+    latest.version,
+  );
 }
 
 function formatReport(report: BbReleaseReport): string {
   if (report.status === "current") return "";
   if (report.status === "update-available") {
-    return `bb-app ${report.latestVersion} is available; bb Plugin Studio targets ${report.targetVersion}.\n`;
+    return `bb-app ${report.latestVersion} is available; bb Plugin Studio is verified through ${report.verifiedThroughVersion}.\n`;
   }
-  return `bb Plugin Studio targets ${report.targetVersion}, ahead of npm latest ${report.latestVersion}.\n`;
+  return `bb Plugin Studio is verified through ${report.verifiedThroughVersion}, ahead of npm latest ${report.latestVersion}.\n`;
 }
 
 async function main(): Promise<void> {

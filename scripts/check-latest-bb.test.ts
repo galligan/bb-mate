@@ -23,17 +23,20 @@ describe("stable bb release comparison", () => {
 
 describe("bb release drift report", () => {
   test("is quiet-state compatible when the target is current", () => {
-    expect(evaluateBbRelease("0.36.0", "0.36.0")).toMatchObject({
-      targetVersion: "0.36.0",
-      latestVersion: "0.36.0",
+    expect(evaluateBbRelease("0.36.0", "0.37.0", "0.37.0")).toMatchObject({
+      minimumVersion: "0.36.0",
+      verifiedThroughVersion: "0.37.0",
+      latestVersion: "0.37.0",
       status: "current",
     });
   });
 
   test("distinguishes an update from a suspicious target-ahead state", () => {
-    expect(evaluateBbRelease("0.36.0", "0.37.0").status).toBe(
+    expect(evaluateBbRelease("0.36.0", "0.37.0", "0.38.0").status).toBe(
       "update-available",
     );
-    expect(evaluateBbRelease("0.37.0", "0.36.0").status).toBe("target-ahead");
+    expect(evaluateBbRelease("0.36.0", "0.37.0", "0.36.0").status).toBe(
+      "target-ahead",
+    );
   });
 });

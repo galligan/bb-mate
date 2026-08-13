@@ -1,19 +1,31 @@
 {
   "$schema": "./bb-target.schema.json",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "acceptedDecision": null,
   "target": {
-    "bbVersion": "0.36.0",
+    "minimumBbVersion": "0.36.0",
+    "verifiedThroughBbVersion": "0.37.0",
     "pluginSdkVersion": "0.4.1",
     "pluginSdkEngineRange": "^0.4.1",
-    "upstreamRef": "desktop-v0.36.0"
+    "upstreamRef": "desktop-v0.37.0"
   },
   "publicArtifacts": {
-    "appPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/apps/app/package.json",
-    "pluginSdkPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/packages/plugin-sdk/package.json",
-    "themeCssUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/apps/app/src/components/ui/theme.css",
+    "appPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/apps/app/package.json",
+    "pluginSdkPackageUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-sdk/package.json",
+    "themeCssUrl": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/apps/app/src/components/ui/theme.css",
+    "themeCssSha256": "c2ed653f27a5836f98733a027425cfa87eff7ce9a43b3f6cac4723c315b83282",
+    "declarations": {
+      "backend": {
+        "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-sdk/bundled-types/bb-plugin-sdk.d.ts",
+        "sha256": "92ed82ff874280ab0c239e11669da3ed040b800aa1e8dd59cdf9c617dafcaccb"
+      },
+      "app": {
+        "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-sdk/bundled-types/bb-plugin-sdk-app.d.ts",
+        "sha256": "984e0539c6926d42ddaf666c6b6890a567d08f711d9ae73a9b986620230eed9a"
+      }
+    },
     "registry": {
-      "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.36.0/packages/plugin-registry/r/index.json",
+      "url": "https://raw.githubusercontent.com/get-bb/bb/desktop-v0.37.0/packages/plugin-registry/r/index.json",
       "sha256": "ae65ae093d2435540e445707529337598cfa9f3446a8535986affef0939fe1e2",
       "items": [
         "accordion",

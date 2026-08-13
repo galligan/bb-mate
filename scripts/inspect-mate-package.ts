@@ -19,7 +19,7 @@ import { generateThirdPartyLicenses } from "./third-party-licenses.ts";
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const expectedPackageName = "bb-plugin-mate";
 const expectedPackageVersion = "0.1.0-alpha.2";
-const expectedBbVersion = "0.36.0";
+const defaultExpectedBbVersion = "0.36.0";
 const expectedSdkVersion = "0.4.1";
 const MAX_COMPRESSED_PACKAGE_BYTES = 128 * 1024 * 1024;
 const MAX_EXPANDED_PACKAGE_BYTES = 256 * 1024 * 1024;
@@ -69,15 +69,28 @@ interface BuildMetadata {
   builtWith?: Record<string, unknown>;
 }
 
+export function expectedMatePackageBbVersion(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): string {
+  const override = environment.BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION;
+  if (override === undefined) return defaultExpectedBbVersion;
+  assert(
+    /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/u.test(override),
+    "BB_PLUGIN_STUDIO_EXPECTED_BB_VERSION must be a stable semantic version.",
+  );
+  return override;
+}
+
 export function assertMatePackageMetadata(
   manifest: PackagedManifest,
   serverMetadata: BuildMetadata,
   appMetadata: BuildMetadata,
+  expectedBbVersion = defaultExpectedBbVersion,
 ): void {
   assertExactKeys(
     manifest as Record<string, unknown>,
     ["bb", "engines", "files", "license", "name", "private", "type", "version"],
-    "Mate package manifest",
+    "Plugin Studio package manifest",
   );
   assert(
     manifest.name === expectedPackageName &&
@@ -85,49 +98,53 @@ export function assertMatePackageMetadata(
       manifest.private === true &&
       manifest.type === "module" &&
       manifest.license === "MIT",
-    "Unexpected Mate package identity or local-only publication guard.",
+    "Unexpected Plugin Studio package identity or local-only publication guard.",
   );
-  assertExactKeys(manifest.engines!, ["bb", "bbPluginSdk"], "Mate engines");
+  assertExactKeys(
+    manifest.engines!,
+    ["bb", "bbPluginSdk"],
+    "Plugin Studio compatibility engines",
+  );
   assertExactKeys(
     manifest.bb!,
     ["app", "branding", "description", "name", "server", "skills"],
-    "Mate bb manifest",
+    "Plugin Studio bb manifest",
   );
   assert(
     JSON.stringify(manifest.files) ===
       JSON.stringify(
         MATE_PACKAGE_ALLOWLIST.filter((file) => file !== "package.json"),
       ),
-    "Mate package files manifest differs from the exact payload allowlist.",
+    "Plugin Studio package files manifest differs from the exact payload allowlist.",
   );
   assert(
-    manifest.engines?.bb === ">=0.36" &&
+    manifest.engines?.bb === ">=0.36.0" &&
       manifest.engines?.bbPluginSdk === "^0.4.1",
-    "Unexpected Mate engine requirements.",
+    "Unexpected Plugin Studio engine requirements.",
   );
   assert(
     manifest.bb?.server === "./dist/server.js" &&
       manifest.bb?.app === "./dist/app.js",
-    "Mate package entrypoints must reference built dist files.",
+    "Plugin Studio package entrypoints must reference built dist files.",
   );
   assert(
     manifest.bb?.name === "Plugin Studio" &&
       manifest.bb?.description === "Build, inspect, and preview bb plugins.",
-    "Mate package plugin identity differs from the approved metadata.",
+    "Plugin Studio package identity differs from the approved metadata.",
   );
   assert(
     JSON.stringify(manifest.bb?.branding) ===
       JSON.stringify({ icon: "Toolbox" }),
-    "Mate package branding differs from the approved Toolbox icon.",
+    "Plugin Studio package branding differs from the approved Toolbox icon.",
   );
   assert(
     JSON.stringify(manifest.bb?.skills) ===
       JSON.stringify(["./skills/plugin-workbench"]),
-    "Mate package skill paths differ from the approved payload.",
+    "Plugin Studio package skill paths differ from the approved payload.",
   );
   assert(
     manifest.scripts === undefined && manifest.devDependencies === undefined,
-    "Mate package may not contain private build configuration.",
+    "Plugin Studio package may not contain private build configuration.",
   );
   for (const metadata of [serverMetadata, appMetadata]) {
     assert(
@@ -138,7 +155,7 @@ export function assertMatePackageMetadata(
         metadata.pluginVersion === expectedPackageVersion &&
         metadata.builtWith?.bbVersion === expectedBbVersion &&
         metadata.builtWith?.pluginSdkVersion === expectedSdkVersion,
-      "Unexpected Mate plugin build metadata.",
+      "Unexpected Plugin Studio plugin build metadata.",
     );
   }
 }
@@ -162,7 +179,7 @@ export function assertMateThirdPartyCoverage(
       /^## @radix-ui\/react-slot@/mu.test(licenses) &&
       /^## @radix-ui\/react-tooltip@/mu.test(licenses) &&
       /^## zod@/mu.test(licenses),
-    "Mate third-party notices do not cover the native component dependencies, bundled Zod, and the compiled runtime.",
+    "Plugin Studio third-party notices do not cover the native component dependencies, bundled Zod, and the compiled runtime.",
   );
 }
 
@@ -178,11 +195,14 @@ async function collectPackageFiles(
       files.push(...(await collectPackageFiles(root, absolute)));
       continue;
     }
-    assert(entry.isFile(), `Mate package contains a non-file: ${entry.name}`);
+    assert(
+      entry.isFile(),
+      `Plugin Studio package contains a non-file: ${entry.name}`,
+    );
     const stat = await fs.lstat(absolute);
     assert(
       stat.isFile() && stat.nlink === 1,
-      `Mate package contains a linked file: ${entry.name}`,
+      `Plugin Studio package contains a linked file: ${entry.name}`,
     );
     const relative = path.relative(root, absolute).split(path.sep).join("/");
     assertMatePackageFileSize(relative, stat.size);
@@ -200,7 +220,7 @@ export function assertMatePackageFileSize(
       Number.isSafeInteger(size) &&
         size >= 0 &&
         size <= MAX_NON_RUNTIME_FILE_BYTES,
-      `Mate package file is oversized: ${relative}.`,
+      `Plugin Studio package file is oversized: ${relative}.`,
     );
   }
 }
@@ -215,6 +235,7 @@ export interface MatePackageInspection {
 export async function inspectMatePackageDirectory(
   packageRoot: string,
   canonicalStandaloneRoot?: string,
+  expectedBbVersion = expectedMatePackageBbVersion(),
 ): Promise<MatePackageInspection> {
   const resolvedRoot = path.resolve(packageRoot);
   const paths = await collectPackageFiles(resolvedRoot);
@@ -240,7 +261,12 @@ export async function inspectMatePackageDirectory(
       .readFile(path.join(resolvedRoot, "dist", "app.meta.json"), "utf8")
       .then((value) => JSON.parse(value) as BuildMetadata),
   ]);
-  assertMatePackageMetadata(manifest, serverMetadata, appMetadata);
+  assertMatePackageMetadata(
+    manifest,
+    serverMetadata,
+    appMetadata,
+    expectedBbVersion,
+  );
   assert(
     JSON.stringify(packagedRuntime.manifest) ===
       JSON.stringify(canonicalRuntime.manifest),
@@ -280,7 +306,7 @@ export async function inspectMatePackageDirectory(
       !bundle.includes("sourcesContent") &&
         !bundle.includes("sourceMappingURL") &&
         !/^\/\/ (?:src\/|\.\.\/\.\.\/packages\/)/mu.test(bundle),
-      `Mate package exposes workspace source names in dist/${name}.`,
+      `Plugin Studio package exposes workspace source names in dist/${name}.`,
     );
   }
   const [
@@ -335,19 +361,19 @@ export async function inspectMatePackageDirectory(
         sourceNotices,
         packagedRuntime.manifest.bunVersion,
       ) && licenses === expectedLicenses,
-    "Mate third-party notice bytes differ from their generated sources.",
+    "Plugin Studio third-party notice bytes differ from their generated sources.",
   );
   assert(
     createHash("sha256").update(packagedReadme).digest("hex") ===
       "dae96e1eb1edc711861b4f8354f16f27d1039c4ff193f8e73b8ad67f56c17cbe" &&
       Buffer.compare(packagedReadme, approvedReadme) === 0,
-    "Mate packaged README differs from the approved usage document.",
+    "Plugin Studio packaged README differs from the approved usage document.",
   );
   assert(
     createHash("sha256").update(packagedLicense).digest("hex") ===
       "e417aaf9e252bd066a2d03c54789efa73f757a62daea00a8b1edba7efd453760" &&
       Buffer.compare(packagedLicense, approvedLicense) === 0,
-    "Mate package LICENSE differs from the approved MIT license.",
+    "Plugin Studio package LICENSE differs from the approved MIT license.",
   );
   assert(
     createHash("sha256").update(packagedBunLicense).digest("hex") ===
@@ -356,7 +382,7 @@ export async function inspectMatePackageDirectory(
         packagedBunLicense,
         pinnedBunLicenseBytes(approvedBunLicense),
       ) === 0,
-    "Mate package Bun license differs from the pinned Bun 1.3.14 license.",
+    "Plugin Studio package Bun license differs from the pinned Bun 1.3.14 license.",
   );
   const skillText = packagedSkill.toString("utf8");
   assert(
@@ -366,14 +392,14 @@ export async function inspectMatePackageDirectory(
       skillText.startsWith("---\nname: plugin-workbench\ndescription:") &&
       skillText.includes("# Plugin Studio") &&
       skillText.includes("On mount, Plugin Studio automatically performs"),
-    "Mate packaged skill identity differs from the approved plugin-workbench skill.",
+    "Plugin Studio packaged skill identity differs from the approved plugin-workbench skill.",
   );
   for (const file of paths.filter((file) => !file.endsWith("/bb-mate"))) {
     const contents = await fs.readFile(path.join(resolvedRoot, file));
     assert(
       !contents.includes(Buffer.from(repositoryRoot)) &&
         !contents.includes(Buffer.from("/Users/mg/")),
-      `Mate package leaks a checkout path in ${file}.`,
+      `Plugin Studio package leaks a checkout path in ${file}.`,
     );
   }
   return {
@@ -435,22 +461,22 @@ export function preflightMateTarBytes(compressed: Uint8Array): string[] {
         !/[\u0000-\u001f\u007f\\]/u.test(entry) &&
         !entry.startsWith("/") &&
         !entry.split("/").some((part) => part === ".." || part === ""),
-      `Mate archive contains an unsafe raw header: ${JSON.stringify(entry)}.`,
+      `Plugin Studio archive contains an unsafe raw header: ${JSON.stringify(entry)}.`,
     );
     const type = header[156];
     assert(
       type === 0 || type === 0x30,
-      `Mate archive contains unsupported raw header type ${type} for ${entry}.`,
+      `Plugin Studio archive contains unsupported raw header type ${type} for ${entry}.`,
     );
     const sizeText = readTarText(header, 124, 12).trim();
     assert(
       /^[0-7]+$/u.test(sizeText),
-      `Mate archive has invalid size for ${entry}.`,
+      `Plugin Studio archive has invalid size for ${entry}.`,
     );
     const size = Number.parseInt(sizeText, 8);
     assert(
       Number.isSafeInteger(size) && size >= 0,
-      `Mate archive has invalid size for ${entry}.`,
+      `Plugin Studio archive has invalid size for ${entry}.`,
     );
     entries.push(entry);
     offset += 512 + Math.ceil(size / 512) * 512;
@@ -459,14 +485,14 @@ export function preflightMateTarBytes(compressed: Uint8Array): string[] {
   assert(
     canonicalEnd.byteLength === 1024 &&
       canonicalEnd.every((byte) => byte === 0),
-    "Mate archive does not have one canonical end or contains trailing decompressed data.",
+    "Plugin Studio archive does not have one canonical end or contains trailing decompressed data.",
   );
   const expected = MATE_PACKAGE_ALLOWLIST.map((file) => `package/${file}`).sort(
     compareText,
   );
   assert(
     JSON.stringify([...entries].sort(compareText)) === JSON.stringify(expected),
-    `Mate archive raw header allowlist mismatch: ${entries.join(", ")}`,
+    `Plugin Studio archive raw header allowlist mismatch: ${entries.join(", ")}`,
   );
   return entries;
 }
@@ -477,11 +503,11 @@ export function assertSafeMateTarHeaders(
 ): void {
   assert(
     paths.length === verboseLines.length,
-    "Mate archive header listing is inconsistent.",
+    "Plugin Studio archive header listing is inconsistent.",
   );
   assert(
     new Set(paths).size === paths.length,
-    "Mate archive has duplicate entries.",
+    "Plugin Studio archive has duplicate entries.",
   );
   for (let index = 0; index < paths.length; index += 1) {
     const entry = paths[index]!;
@@ -491,7 +517,7 @@ export function assertSafeMateTarHeaders(
     const type = verboseLines[index]?.[0];
     assert(
       type === "-" || type === "d",
-      `Mate archive contains a non-file archive entry: ${entry}`,
+      `Plugin Studio archive contains a non-file archive entry: ${entry}`,
     );
     assert(
       !entry.includes("\\") &&
@@ -500,7 +526,7 @@ export function assertSafeMateTarHeaders(
             !pathWithoutTrailingSlash
               .split("/")
               .some((part) => part === ".." || part === ""))),
-      `Mate archive contains an unsafe entry: ${entry}`,
+      `Plugin Studio archive contains an unsafe entry: ${entry}`,
     );
   }
 }
@@ -509,6 +535,7 @@ export async function inspectMatePackageArchive(
   archivePath: string,
   tarExecutable: string,
   canonicalStandaloneRoot?: string,
+  expectedBbVersion = expectedMatePackageBbVersion(),
 ): Promise<MatePackageInspection> {
   assert(path.isAbsolute(tarExecutable), "tarExecutable must be absolute.");
   const resolvedArchive = path.resolve(archivePath);
@@ -522,7 +549,7 @@ export async function inspectMatePackageArchive(
         archiveStat.nlink === 1 &&
         archiveStat.size > 0 &&
         archiveStat.size <= MAX_COMPRESSED_PACKAGE_BYTES,
-      "Mate archive must be one bounded regular file.",
+      "Plugin Studio archive must be one bounded regular file.",
     );
     preflightMateTarBytes(await fs.readFile(resolvedArchive));
     const listed = (
@@ -544,6 +571,7 @@ export async function inspectMatePackageArchive(
     return await inspectMatePackageDirectory(
       path.join(temporaryRoot, "package"),
       canonicalStandaloneRoot,
+      expectedBbVersion,
     );
   } finally {
     await fs.rm(temporaryRoot, { recursive: true, force: true });
