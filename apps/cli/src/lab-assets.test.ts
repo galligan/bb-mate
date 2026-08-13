@@ -31,9 +31,11 @@ describe("surface lab asset providers", () => {
   });
 
   test("keeps filesystem assets inside their real root", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-assets-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-assets-"),
+    );
     const outside = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-assets-outside-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-assets-outside-"),
     );
     roots.push(root, outside);
     await fs.writeFile(path.join(root, "index.html"), "inside");
@@ -53,14 +55,16 @@ describe("surface lab asset providers", () => {
 
   test("reports an unavailable filesystem root without throwing", async () => {
     const assets = createFileSystemLabAssets(
-      path.join(os.tmpdir(), "bb-mate-assets-does-not-exist"),
+      path.join(os.tmpdir(), "bb-plugin-studio-assets-does-not-exist"),
     );
 
     expect(await assets.get("/index.html")).toBeNull();
   });
 
   test("reads standalone assets from their embedded file paths", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-embedded-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-embedded-"),
+    );
     roots.push(root);
     const embeddedPath = path.join(root, "index.html");
     await fs.writeFile(embeddedPath, "embedded");

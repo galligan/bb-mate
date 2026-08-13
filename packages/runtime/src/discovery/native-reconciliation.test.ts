@@ -186,7 +186,10 @@ describe("native target reconciliation", () => {
 
   test("uses the real observer's safe malformed-root hint to protect a matching target", async () => {
     const root = await fs.mkdtemp(
-      path.join(await fs.realpath(os.tmpdir()), "bb-mate-native-runtime-"),
+      path.join(
+        await fs.realpath(os.tmpdir()),
+        "bb-plugin-studio-native-runtime-",
+      ),
     );
     try {
       const observation = await observeNativePluginInventoryForTest({

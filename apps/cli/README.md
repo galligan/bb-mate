@@ -18,22 +18,22 @@ Studio-owned integration plugin used for native bb testing.
 git clone https://github.com/galligan/bb-plugin-studio.git
 cd bb-plugin-studio
 bun install --frozen-lockfile
-bun run bb-mate --help
+bun run bb-plugin-studio --help
 bun run dev
 ```
 
 bb Plugin Studio is not currently distributed as a public installable package.
 The supported first-contact path is this experimental source preview. The older
-`bb-mate` npm artifact is not the current onboarding path.
+`bb-plugin-studio` npm artifact is not the current onboarding path.
 
-`bb-mate` is the current compatibility command. It predates the product rename
-and is not the product name or the name of a new public package.
+`bb-plugin-studio` is the canonical package and command identity introduced by
+the Studio rename. The package has not been published yet.
 
 To inspect an existing plugin source tree explicitly:
 
 ```sh
-bun run bb-mate inspect /absolute/path/to/plugin
-bun run bb-mate dev /absolute/path/to/plugin
+bun run bb-plugin-studio inspect /absolute/path/to/plugin
+bun run bb-plugin-studio dev /absolute/path/to/plugin
 ```
 
 See the
@@ -43,10 +43,10 @@ for native handoff side effects, confidence levels, and current limitations.
 ## Commands
 
 ```text
-bb-mate inspect <plugin>  Read manifests, native metadata, and compatibility
-bb-mate dev <plugin>      Open the packaged Fixture surface lab
-bb-mate check <plugin>    Inspect, delegate bb plugin build, inspect again
-bb-mate live <plugin>     Hand off an installed path plugin to bb plugin dev
+bb-plugin-studio inspect <plugin>  Read manifests, native metadata, and compatibility
+bb-plugin-studio dev <plugin>      Open the packaged Fixture surface lab
+bb-plugin-studio check <plugin>    Inspect, delegate bb plugin build, inspect again
+bb-plugin-studio live <plugin>     Hand off an installed path plugin to bb plugin dev
 ```
 
 `inspect` is passive: it does not import or execute the selected plugin.

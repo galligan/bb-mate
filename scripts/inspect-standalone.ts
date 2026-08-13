@@ -12,7 +12,10 @@ const defaultArtifactRoot = path.join(
   "standalone",
   "darwin-arm64",
 );
-const artifactAllowlist = ["bb-mate", "manifest.json"] as const;
+const artifactAllowlist = [
+  "bb-plugin-studio-runtime",
+  "manifest.json",
+] as const;
 const machMagic64 = 0xfeedfacf;
 const cpuTypeArm64 = 0x0100000c;
 
@@ -52,7 +55,7 @@ export async function inspectStandalone(
     `Standalone artifact allowlist mismatch: ${entries.map((entry) => entry.name).join(", ")}`,
   );
 
-  const executablePath = path.join(resolvedRoot, "bb-mate");
+  const executablePath = path.join(resolvedRoot, "bb-plugin-studio-runtime");
   const manifestBytes = await fs.readFile(
     path.join(resolvedRoot, "manifest.json"),
   );
@@ -82,7 +85,7 @@ export async function inspectStandalone(
     "Unexpected standalone manifest schema.",
   );
   assert(
-    manifest.artifact === "bb-mate",
+    manifest.artifact === "bb-plugin-studio-runtime",
     "Unexpected standalone artifact name.",
   );
   assert(

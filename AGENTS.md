@@ -1,11 +1,11 @@
 # AGENTS.md
 
-bb Plugin Studio is the private workspace for browser-based bb interface experiments and the Studio-owned Mate plugin.
+bb Plugin Studio is the private workspace for browser-based bb interface experiments and the Studio-owned Studio plugin.
 
 ## Boundaries
 
 - `apps/workbench` is a browser-only design studio. It uses deterministic fixtures and must run without a bb server.
-- `plugins/mate` is the Studio-owned bb plugin used for live integration and packaging. Independently distributed plugins live in the sibling `../bb-plugins` repository and are inspected here by path.
+- `plugins/studio` is the Studio-owned bb plugin used for live integration and packaging. Independently distributed plugins live in the sibling `../bb-plugins` repository and are inspected here by path.
 - `../bb` is the canonical upstream source checkout. Read it for contracts and patterns, but do not edit it unless the task explicitly targets upstream bb.
 - Do not import bb application internals into the workbench or plugins. Plugins use the public `@bb/plugin-sdk` contracts.
 - Plugin frontend bundles run inside bb. Keep reusable visual components host-neutral and put bb-specific hooks behind thin adapters.
@@ -40,8 +40,8 @@ Run the smallest relevant check while iterating and all checks before pushing.
 Develop distributable plugins in `../bb-plugins/plugins/<name>` and keep their package names in the `bb-plugin-*` namespace. Inspect or run one here by passing its path explicitly:
 
 ```sh
-bun run bb-mate inspect ../bb-plugins/plugins/<name>
-bun run bb-mate dev ../bb-plugins/plugins/<name>
+bun run bb-plugin-studio inspect ../bb-plugins/plugins/<name>
+bun run bb-plugin-studio dev ../bb-plugins/plugins/<name>
 ```
 
 Each plugin must declare honest `engines.bb` and `engines.bbPluginSdk` ranges. Managed npm or Git installs refuse incompatible ranges.

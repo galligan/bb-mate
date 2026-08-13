@@ -362,7 +362,7 @@ function cssVariable(css: string, name: string): string | undefined {
 
 async function fetchText(url: string): Promise<string> {
   const response = await fetch(url, {
-    headers: { "user-agent": "bb-mate-compatibility-check" },
+    headers: { "user-agent": "bb-plugin-studio-compatibility-check" },
     redirect: "error",
     signal: AbortSignal.timeout(10_000),
   });
@@ -391,7 +391,7 @@ export async function observeBbVersion(
 ): Promise<string> {
   const candidates = explicit
     ? [explicit]
-    : ["bb", path.join(repositoryRoot, "plugins/mate/node_modules/.bin/bb")];
+    : ["bb", path.join(repositoryRoot, "plugins/studio/node_modules/.bin/bb")];
   let missingError: string | undefined;
   for (const candidate of candidates) {
     const result = await run(candidate, ["--version"], repositoryRoot, {
@@ -440,7 +440,10 @@ export async function collectCompatibilityObservations(
 
   const [pluginPackageText, workbenchPackageText, localCss] = await Promise.all(
     [
-      readFile(path.join(repositoryRoot, "plugins/mate/package.json"), "utf8"),
+      readFile(
+        path.join(repositoryRoot, "plugins/studio/package.json"),
+        "utf8",
+      ),
       readFile(
         path.join(repositoryRoot, "apps/workbench/package.json"),
         "utf8",

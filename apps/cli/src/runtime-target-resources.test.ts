@@ -6,11 +6,11 @@ import {
   createOpaqueId,
   createRequestContext,
   createRuntimeHttpHandler,
-} from "@bb-mate/runtime";
+} from "@bb-plugin-studio/runtime";
 import {
   RUNTIME_CAPABILITIES,
   TARGET_LIST_MAX_TARGETS,
-} from "@bb-mate/runtime/supervision";
+} from "@bb-plugin-studio/runtime/supervision";
 import { openRuntimeTargetResources } from "./runtime-target-resources.ts";
 
 const temporaryRoots: string[] = [];
@@ -24,7 +24,10 @@ afterEach(async () => {
 describe("runtime target resources", () => {
   test("reopens one stable identity and persistent catalog", async () => {
     const parent = await fs.mkdtemp(
-      path.join(await fs.realpath(os.tmpdir()), "bb-mate-target-resources-"),
+      path.join(
+        await fs.realpath(os.tmpdir()),
+        "bb-plugin-studio-target-resources-",
+      ),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");
@@ -78,7 +81,10 @@ describe("runtime target resources", () => {
 
   test("reclaims complete-snapshot capacity and reopens the replacement catalog", async () => {
     const parent = await fs.mkdtemp(
-      path.join(await fs.realpath(os.tmpdir()), "bb-mate-target-limit-"),
+      path.join(
+        await fs.realpath(os.tmpdir()),
+        "bb-plugin-studio-target-limit-",
+      ),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");

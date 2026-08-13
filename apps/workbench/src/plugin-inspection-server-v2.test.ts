@@ -19,7 +19,7 @@ async function fixture(): Promise<{
 }> {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const root = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-session-v2-"),
+    path.join(temporaryRoot, "bb-plugin-studio-session-v2-"),
   );
   temporaryRoots.push(root);
   const workspaceRoot = path.join(root, "workspace");
@@ -370,41 +370,46 @@ describe("catalog-backed plugin inspection session", () => {
         responseHeaders,
       };
     };
-    const initial = await request("/bb-mate-session.json");
+    const initial = await request("/bb-plugin-studio-session.json");
     const targetId = (initial.body as BrowserPluginSession).workspace
       .candidates[0]!.id;
-    const selected = await request(`/bb-mate-session.json?target=${targetId}`, {
-      host: "127.0.0.1:5173",
-      origin: "http://127.0.0.1:5173",
-    });
-    const legacy = await request(`/bb-mate-session.json?plugin=${targetId}`);
+    const selected = await request(
+      `/bb-plugin-studio-session.json?target=${targetId}`,
+      {
+        host: "127.0.0.1:5173",
+        origin: "http://127.0.0.1:5173",
+      },
+    );
+    const legacy = await request(
+      `/bb-plugin-studio-session.json?plugin=${targetId}`,
+    );
     const duplicate = await request(
-      `/bb-mate-session.json?target=${targetId}&target=${targetId}`,
+      `/bb-plugin-studio-session.json?target=${targetId}&target=${targetId}`,
     );
     const extra = await request(
-      `/bb-mate-session.json?target=${targetId}&extra=ignored`,
+      `/bb-plugin-studio-session.json?target=${targetId}&extra=ignored`,
     );
     const pathTarget = await request(
-      "/bb-mate-session.json?target=..%2Fplugins%2Fsecret",
+      "/bb-plugin-studio-session.json?target=..%2Fplugins%2Fsecret",
     );
-    const emptyTarget = await request("/bb-mate-session.json?target=");
+    const emptyTarget = await request("/bb-plugin-studio-session.json?target=");
     const unknownTarget = await request(
-      `/bb-mate-session.json?target=${"u".repeat(32)}`,
+      `/bb-plugin-studio-session.json?target=${"u".repeat(32)}`,
     );
     const absoluteTarget = await request(
-      "http://evil.example/bb-mate-session.json",
+      "http://evil.example/bb-plugin-studio-session.json",
     );
     const backslashAuthority = await request(
-      "/\\evil.example/bb-mate-session.json",
+      "/\\evil.example/bb-plugin-studio-session.json",
     );
     const slashBackslashAuthority = await request(
-      "/\\/evil.example/bb-mate-session.json",
+      "/\\/evil.example/bb-plugin-studio-session.json",
     );
     const fragmentTarget = await request(
-      "/bb-mate-session.json#not-an-http-request-target",
+      "/bb-plugin-studio-session.json#not-an-http-request-target",
     );
     const malformed = await request("http://[");
-    const foreign = await request("/bb-mate-session.json", {
+    const foreign = await request("/bb-plugin-studio-session.json", {
       host: "evil.example",
     });
 
@@ -498,7 +503,7 @@ describe("catalog-backed plugin inspection session", () => {
         middleware!(
           {
             method: "GET",
-            url: "/bb-mate-session.json",
+            url: "/bb-plugin-studio-session.json",
             headers: { host, ...(origin === undefined ? {} : { origin }) },
             socket: { localAddress, localPort },
           } as never,

@@ -8,4 +8,4 @@ export type {
   PreviewCapability,
   ProvenanceReport,
   TrustReport,
-} from "@bb-mate/inspection";
+} from "@bb-plugin-studio/inspection";

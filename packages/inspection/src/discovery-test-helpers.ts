@@ -14,7 +14,7 @@ export function createDiscoveryTestHarness(): {
   return {
     async createRoot(name = "workspace") {
       const parent = await fs.mkdtemp(
-        path.join(os.tmpdir(), "bb-mate-discovery-"),
+        path.join(os.tmpdir(), "bb-plugin-studio-discovery-"),
       );
       temporaryRoots.push(parent);
       const root = path.join(parent, name);

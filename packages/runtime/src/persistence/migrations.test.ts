@@ -13,7 +13,7 @@ const temporaryRoots: string[] = [];
 async function makeParent(): Promise<string> {
   const temporaryDirectory = await fs.realpath(os.tmpdir());
   const root = await fs.mkdtemp(
-    path.join(temporaryDirectory, "bb-mate-migrations-"),
+    path.join(temporaryDirectory, "bb-plugin-studio-migrations-"),
   );
   temporaryRoots.push(root);
   return root;

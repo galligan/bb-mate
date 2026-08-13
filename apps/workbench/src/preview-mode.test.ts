@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { PluginInspection } from "@bb-mate/inspection";
+import type { PluginInspection } from "@bb-plugin-studio/inspection";
 import { previewModeCapabilities } from "./preview-mode";
 
 function inspectionWithHarness(available: boolean): PluginInspection {

@@ -15,7 +15,7 @@ import {
 import { runSupervisedServe } from "./serve.ts";
 import { runSurfaceLab } from "./surface-lab-server.ts";
 
-export type BbMateEntrypointOptions =
+export type BbStudioEntrypointOptions =
   | {
       mode: "source-or-package";
       moduleUrl: string;
@@ -48,8 +48,8 @@ function environment(overrides: EntrypointEnvironment) {
   };
 }
 
-export async function createBbMateCliRuntime(
-  options: BbMateEntrypointOptions,
+export async function createBbStudioCliRuntime(
+  options: BbStudioEntrypointOptions,
   overrides: EntrypointEnvironment = {},
 ): Promise<CliRuntime> {
   const current = environment(overrides);
@@ -120,11 +120,11 @@ export async function createBbMateCliRuntime(
   };
 }
 
-export async function runBbMateEntrypoint(
-  options: BbMateEntrypointOptions,
+export async function runBbStudioEntrypoint(
+  options: BbStudioEntrypointOptions,
   overrides: EntrypointEnvironment = {},
 ): Promise<ProcessExit> {
   const current = environment(overrides);
-  const runtime = await createBbMateCliRuntime(options, current);
+  const runtime = await createBbStudioCliRuntime(options, current);
   return runCli(current.argv, runtime);
 }

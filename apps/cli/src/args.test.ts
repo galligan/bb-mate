@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { parseCliArgs } from "./args.ts";
 
-describe("bb-mate arguments", () => {
+describe("bb-plugin-studio arguments", () => {
   test("treats a bare plugin path as the dev command", () => {
-    expect(parseCliArgs(["plugins/mate"])).toEqual({
+    expect(parseCliArgs(["plugins/studio"])).toEqual({
       command: "dev",
-      targetPath: "plugins/mate",
+      targetPath: "plugins/studio",
       host: "127.0.0.1",
       port: 5173,
       json: false,

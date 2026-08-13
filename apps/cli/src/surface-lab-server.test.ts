@@ -12,7 +12,9 @@ import { createInMemoryLabAssets } from "./lab-assets.ts";
 const roots: string[] = [];
 
 async function fixture() {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-lab-"));
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "bb-plugin-studio-lab-"),
+  );
   roots.push(root);
   await fs.mkdir(path.join(root, "assets"));
   await fs.writeFile(path.join(root, "index.html"), "<h1>Surface lab</h1>");
@@ -124,7 +126,7 @@ describe("packaged surface lab server", () => {
   test("rejects mutations, traversal, missing files, and escaped symlinks", async () => {
     const { root, handle } = await fixture();
     const outside = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-outside-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-outside-"),
     );
     roots.push(outside);
     await fs.writeFile(path.join(outside, "secret.txt"), "secret");

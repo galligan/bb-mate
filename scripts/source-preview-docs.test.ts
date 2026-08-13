@@ -18,17 +18,18 @@ describe("bb Plugin Studio source preview documentation", () => {
     ).text();
     const packageProse = packageReadme.replace(/\s+/gu, " ");
     const authorProse = authorGuide.replace(/\s+/gu, " ");
+    const previewProse = preview.replace(/\s+/gu, " ");
 
     for (const firstContactSurface of [readme, packageReadme]) {
       expect(firstContactSurface).not.toContain(
-        "npm install --global bb-mate@alpha",
+        "npm install --global bb-plugin-studio@alpha",
       );
       expect(firstContactSurface).toContain(
-        "`bb-mate` is the current compatibility command",
+        "`bb-plugin-studio` is the canonical package and command identity",
       );
     }
 
-    expect(readme).not.toContain("img.shields.io/npm/v/bb-mate");
+    expect(readme).not.toContain("img.shields.io/npm/v/bb-plugin-studio");
     expect(readme).toContain("## Try the source preview");
     expect(readme).toContain("[Source preview guide](docs/source-preview.md)");
 
@@ -36,14 +37,19 @@ describe("bb Plugin Studio source preview documentation", () => {
       "git clone https://github.com/galligan/bb-plugin-studio.git\ncd bb-plugin-studio",
     );
     expect(preview).toContain("bun install --frozen-lockfile");
-    expect(preview).toContain("bun run bb-mate --help");
+    expect(preview).toContain("bun run bb-plugin-studio --help");
     expect(preview).toContain("bun run dev");
     expect(preview).toContain(
       "bb Plugin Studio is not currently distributed as a public installable package",
     );
-    expect(preview).toMatch(
-      /`bb-mate` is a\s+compatibility identifier for the current CLI command/,
+    expect(previewProse).toContain(
+      "This rename introduces `bb-plugin-studio` as the canonical package and command identity",
     );
+    expect(previewProse).toContain(
+      "The source preview creates a clean `studio` installation",
+    );
+    expect(preview).not.toContain("predates the product rename");
+    expect(preview).not.toContain("silently migrating an existing `studio`");
     expect(preview).toMatch(
       /Live bb is the visual\s+and integration authority/,
     );
@@ -71,8 +77,20 @@ describe("bb Plugin Studio source preview documentation", () => {
       "native bb 0.36.0, the currently recorded target",
     );
     for (const maintainedGuide of [support, authorGuide]) {
-      expect(maintainedGuide).not.toContain("bb-mate@alpha");
+      expect(maintainedGuide).not.toContain("bb-plugin-studio@alpha");
       expect(maintainedGuide).toContain("source preview");
     }
+  });
+
+  test("describes the canonical plugin package truthfully", async () => {
+    const pluginReadme = await Bun.file(
+      `${repositoryRoot}/plugins/studio/README.md`,
+    ).text();
+
+    expect(pluginReadme).toContain("bun run plugin-studio:package:test");
+    expect(pluginReadme).not.toContain("bun run studio:package:test");
+    expect(pluginReadme).toContain("publishable package manifest");
+    expect(pluginReadme).not.toContain("manifest remain `private: true`");
+    expect(pluginReadme).not.toContain("older `bb-plugin-studio` npm artifact");
   });
 });

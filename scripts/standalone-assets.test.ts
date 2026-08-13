@@ -12,7 +12,9 @@ import {
 const temporaryRoots: string[] = [];
 
 async function fixture(storyCount = 13): Promise<string> {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-assets-"));
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "bb-plugin-studio-assets-"),
+  );
   temporaryRoots.push(root);
   await fs.mkdir(path.join(root, "assets"));
   await Promise.all([

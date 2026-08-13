@@ -2,4 +2,4 @@ bun.lock
 dist/
 node_modules/
 plugins/*/types/*.d.ts
-plugins/mate/BUN_LICENSE.md
+plugins/studio/BUN_LICENSE.md

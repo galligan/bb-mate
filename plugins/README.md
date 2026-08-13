@@ -1,7 +1,7 @@
 # Plugins
 
-This directory contains bb plugins owned by Plugin Studio itself. `mate` is the
-live integration and packaging surface for the workbench.
+This directory contains bb plugins owned by Plugin Studio itself. `studio` is
+the live integration and packaging surface for the workbench.
 
 Independently distributed plugins live in
 [galligan/bb-plugins](https://github.com/galligan/bb-plugins) and can be opened

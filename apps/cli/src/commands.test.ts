@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { CommandResult } from "@bb-mate/inspection";
+import type { CommandResult } from "@bb-plugin-studio/inspection";
 import { runCli, type CliRuntime, type ProcessExit } from "./commands.ts";
 
 const temporaryRoots: string[] = [];
@@ -11,7 +11,7 @@ async function createPlugin(
   options: { workspace?: boolean; prefix?: string } = {},
 ) {
   const root = await fs.mkdtemp(
-    path.join(os.tmpdir(), options.prefix ?? "bb-mate-cli-"),
+    path.join(os.tmpdir(), options.prefix ?? "bb-plugin-studio-cli-"),
   );
   temporaryRoots.push(root);
   const pluginRoot = options.workspace
@@ -63,20 +63,20 @@ function nativeOutput(
                     hostId: "host_local",
                     hostName: "studio",
                     port: 4317,
-                    url: "https://mate--4317.example.getbb.app",
+                    url: "https://studio--4317.example.getbb.app",
                   },
                 ],
               })
             : (connect.status ?? {
                 state: "connected",
                 paired: true,
-                url: "https://mate.example.getbb.app",
+                url: "https://studio.example.getbb.app",
                 shares: [
                   {
                     hostId: "host_local",
                     hostName: "studio",
                     port: 4317,
-                    url: "https://mate--4317.example.getbb.app",
+                    url: "https://studio--4317.example.getbb.app",
                   },
                 ],
               }),
@@ -129,7 +129,7 @@ function runtime(
       cwd,
       env: {},
       bunExecutable: "/fake/bun",
-      workspaceRoot: "/workspace/bb-mate",
+      workspaceRoot: "/workspace/bb-plugin-studio",
       stdout: (value: string) => stdout.push(value),
       stderr: (value: string) => stderr.push(value),
       resolveBb: async () => "/fake/bin/bb",
@@ -149,7 +149,7 @@ afterEach(async () => {
   );
 });
 
-describe("bb-mate CLI", () => {
+describe("bb-plugin-studio CLI", () => {
   test("prints help without resolving or running native commands", async () => {
     let nativeCall = false;
     const testRuntime = runtime(
@@ -170,10 +170,12 @@ describe("bb-mate CLI", () => {
 
     expect(result).toEqual({ exitCode: 0, signal: null });
     expect(nativeCall).toBe(false);
-    expect(testRuntime.stdout.join("")).toContain("Usage: bb-mate [path]");
+    expect(testRuntime.stdout.join("")).toContain(
+      "Usage: bb-plugin-studio [path]",
+    );
     expect(testRuntime.stdout.join("")).toContain("bb Plugin Studio");
     expect(testRuntime.stdout.join("")).toContain(
-      "bb-mate serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>",
+      "bb-plugin-studio serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>",
     );
   });
 
@@ -243,7 +245,7 @@ describe("bb-mate CLI", () => {
       env: {
         BB_CLI: "/daemon/managed/bb",
         BB_CLI_REEXEC: "1",
-        BB_MATE_SENTINEL: "preserved",
+        BB_PLUGIN_STUDIO_SENTINEL: "preserved",
       },
       runInherited: async (executable, args, options) => {
         launches.push({ executable, args, options });
@@ -263,7 +265,7 @@ describe("bb-mate CLI", () => {
         args: [
           "run",
           "--cwd",
-          "/workspace/bb-mate/apps/workbench",
+          "/workspace/bb-plugin-studio/apps/workbench",
           "dev",
           "--",
           "--host",
@@ -273,18 +275,18 @@ describe("bb-mate CLI", () => {
           "--strictPort",
         ],
         options: {
-          cwd: "/workspace/bb-mate",
+          cwd: "/workspace/bb-plugin-studio",
           env: {
             BB_CLI: "/fake/bin/bb",
-            BB_MATE_PLUGIN: pluginRoot,
-            BB_MATE_SENTINEL: "preserved",
-            BB_MATE_WORKSPACE: root,
+            BB_PLUGIN_STUDIO_PLUGIN: pluginRoot,
+            BB_PLUGIN_STUDIO_SENTINEL: "preserved",
+            BB_PLUGIN_STUDIO_WORKSPACE: root,
           },
         },
       },
     ]);
     expect(testRuntime.stdout.join("")).toContain(
-      "Connect exposure: https://mate--4317.example.getbb.app (existing studio share; passive status only)",
+      "Connect exposure: https://studio--4317.example.getbb.app (existing studio share; passive status only)",
     );
     expect(testRuntime.stdout.join("")).toContain(
       "Launching Fixture workbench at http://[::1]:4317",
@@ -329,7 +331,7 @@ describe("bb-mate CLI", () => {
       "Connect exposure: port 5173 is not shared (Connect is connected and paired; passive status only)",
     );
     expect(testRuntime.stdout.join("")).not.toContain(
-      "Connect exposure: https://mate.example.getbb.app",
+      "Connect exposure: https://studio.example.getbb.app",
     );
   });
 
@@ -341,7 +343,7 @@ describe("bb-mate CLI", () => {
         status: {
           state: "connected",
           paired: true,
-          url: "https://mate.example.getbb.app",
+          url: "https://studio.example.getbb.app",
           shares: [
             {
               hostId: "host_remote",
@@ -491,7 +493,7 @@ describe("bb-mate CLI", () => {
       env: {
         BB_CLI: "/daemon/managed/bb",
         BB_CLI_REEXEC: "1",
-        BB_MATE_SENTINEL: "preserved",
+        BB_PLUGIN_STUDIO_SENTINEL: "preserved",
       },
       runInherited: async (executable, args, options) => {
         delegated.push({
@@ -524,7 +526,7 @@ describe("bb-mate CLI", () => {
         executable: "/fake/bin/bb",
         args: ["plugin", "build", "."],
         cwd: pluginRoot,
-        env: { BB_MATE_SENTINEL: "preserved" },
+        env: { BB_PLUGIN_STUDIO_SENTINEL: "preserved" },
       },
     ]);
     expect(testRuntime.stdout.join("")).toContain("Running: bb plugin build .");
@@ -558,7 +560,7 @@ describe("bb-mate CLI", () => {
       env: {
         BB_CLI: "/daemon/managed/bb",
         BB_CLI_REEXEC: "1",
-        BB_MATE_SENTINEL: "preserved",
+        BB_PLUGIN_STUDIO_SENTINEL: "preserved",
       },
       runInherited: async (_executable, args, options) => {
         delegated.push({ args, cwd: options.cwd, env: options.env });
@@ -573,14 +575,14 @@ describe("bb-mate CLI", () => {
       {
         args: ["plugin", "dev", "."],
         cwd: pluginRoot,
-        env: { BB_MATE_SENTINEL: "preserved" },
+        env: { BB_PLUGIN_STUDIO_SENTINEL: "preserved" },
       },
     ]);
     expect(testRuntime.stdout.join("")).toContain("Running: bb plugin dev .");
   });
 
   test("refuses live handoff when the selected real path is not installed", async () => {
-    const { pluginRoot } = await createPlugin({ prefix: "bb mate cli-" });
+    const { pluginRoot } = await createPlugin({ prefix: "bb studio cli-" });
     let delegated = false;
     const testRuntime = runtime(pluginRoot, nativeOutput(pluginRoot), {
       resolveBb: async () => "/fake bb/bb's",
@@ -634,8 +636,8 @@ describe("bb-mate CLI", () => {
 
     expect(result).toEqual({ exitCode: 0, signal: null });
     expect(launches).toHaveLength(1);
-    expect(launches[0]?.env.BB_MATE_WORKSPACE).toBe(root);
-    expect(launches[0]?.env.BB_MATE_PLUGIN).toBeUndefined();
+    expect(launches[0]?.env.BB_PLUGIN_STUDIO_WORKSPACE).toBe(root);
+    expect(launches[0]?.env.BB_PLUGIN_STUDIO_PLUGIN).toBeUndefined();
     expect(testRuntime.stdout.join("")).toContain(
       "Plugin selection is ambiguous",
     );

@@ -72,12 +72,12 @@ describe("DevelopmentTargetService native reconciliation authorization", () => {
         }),
       ).toEqual({
         runtimeInstanceId: OpaqueIdSchema.parse("i".repeat(32)),
-        hostname: "mate.local",
+        hostname: "studio.local",
         observedAt: 1_500,
       });
       const serialized = JSON.stringify(reconciled);
       expect(serialized).not.toContain(fixture.pluginRoot);
-      expect(serialized).not.toContain("mate.local");
+      expect(serialized).not.toContain("studio.local");
       expect(serialized).not.toContain("i".repeat(32));
 
       const database = new Database(
@@ -94,7 +94,7 @@ describe("DevelopmentTargetService native reconciliation authorization", () => {
           occurred_at: 2_000,
         });
         expect(JSON.stringify(event)).not.toContain(fixture.pluginRoot);
-        expect(JSON.stringify(event)).not.toContain("mate.local");
+        expect(JSON.stringify(event)).not.toContain("studio.local");
         expect(JSON.stringify(event)).not.toContain("i".repeat(32));
         const page = createEventFeed(database).pull({
           bindings: {
@@ -112,7 +112,7 @@ describe("DevelopmentTargetService native reconciliation authorization", () => {
           occurredAt: 2_000,
         });
         expect(JSON.stringify(page)).not.toContain(fixture.pluginRoot);
-        expect(JSON.stringify(page)).not.toContain("mate.local");
+        expect(JSON.stringify(page)).not.toContain("studio.local");
         expect(JSON.stringify(page)).not.toContain("i".repeat(32));
       } finally {
         database.close();

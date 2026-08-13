@@ -9,7 +9,7 @@ const runtimeInstanceId = OpaqueIdSchema.parse("i".repeat(32));
 function validObservation() {
   return {
     runtimeInstanceId,
-    hostname: "mate.local",
+    hostname: "studio.local",
     bbHost: {
       id: "desktop-host",
       name: "Development Mac",
@@ -34,9 +34,9 @@ describe("private host observations", () => {
   });
 
   test.each([
-    ["URL", { hostname: "https://mate.local" }],
-    ["port", { hostname: "mate.local:8080" }],
-    ["credentials", { hostname: "user@mate.local" }],
+    ["URL", { hostname: "https://studio.local" }],
+    ["port", { hostname: "studio.local:8080" }],
+    ["credentials", { hostname: "user@studio.local" }],
     [
       "host metadata URL",
       {

@@ -8,15 +8,16 @@ import { defaultRunBb, readNativeState } from "./native.ts";
 const temporaryRoots: string[] = [];
 const originalBbCli = process.env.BB_CLI;
 const originalBbCliReexec = process.env.BB_CLI_REEXEC;
-const originalSentinel = process.env.BB_MATE_SENTINEL;
+const originalSentinel = process.env.BB_PLUGIN_STUDIO_SENTINEL;
 
 afterEach(async () => {
   if (originalBbCli === undefined) delete process.env.BB_CLI;
   else process.env.BB_CLI = originalBbCli;
   if (originalBbCliReexec === undefined) delete process.env.BB_CLI_REEXEC;
   else process.env.BB_CLI_REEXEC = originalBbCliReexec;
-  if (originalSentinel === undefined) delete process.env.BB_MATE_SENTINEL;
-  else process.env.BB_MATE_SENTINEL = originalSentinel;
+  if (originalSentinel === undefined)
+    delete process.env.BB_PLUGIN_STUDIO_SENTINEL;
+  else process.env.BB_PLUGIN_STUDIO_SENTINEL = originalSentinel;
   await Promise.all(
     temporaryRoots
       .splice(0)
@@ -49,7 +50,9 @@ function runner(
 
 describe("passive native Connect status", () => {
   test("uses the selected BB_CLI executable for default inspection", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-bb-cli-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-bb-cli-"),
+    );
     temporaryRoots.push(root);
     const executable = path.join(root, "selected-bb");
     await fs.writeFile(
@@ -68,7 +71,7 @@ esac
     );
     process.env.BB_CLI = executable;
     process.env.BB_CLI_REEXEC = "1";
-    process.env.BB_MATE_SENTINEL = "preserved";
+    process.env.BB_PLUGIN_STUDIO_SENTINEL = "preserved";
 
     const native = await readNativeState("/workspace/plugins/notes");
 
@@ -80,17 +83,19 @@ esac
   });
 
   test("consumes native selectors before invoking the selected bb", async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-bb-env-"));
+    const root = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-bb-env-"),
+    );
     temporaryRoots.push(root);
     const executable = path.join(root, "selected-bb");
     await fs.writeFile(
       executable,
-      '#!/bin/sh\nprintf \'%s|%s|%s\' "${BB_CLI-unset}" "${BB_CLI_REEXEC-unset}" "${BB_MATE_SENTINEL-unset}"\n',
+      '#!/bin/sh\nprintf \'%s|%s|%s\' "${BB_CLI-unset}" "${BB_CLI_REEXEC-unset}" "${BB_PLUGIN_STUDIO_SENTINEL-unset}"\n',
       { mode: 0o755 },
     );
     process.env.BB_CLI = executable;
     process.env.BB_CLI_REEXEC = "1";
-    process.env.BB_MATE_SENTINEL = "preserved";
+    process.env.BB_PLUGIN_STUDIO_SENTINEL = "preserved";
 
     expect(await defaultRunBb(["--version"])).toMatchObject({
       stdout: "unset|unset|preserved",
@@ -100,7 +105,7 @@ esac
 
   test("force-terminates a selected BB_CLI that ignores the passive deadline", async () => {
     const root = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-bb-timeout-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-bb-timeout-"),
     );
     temporaryRoots.push(root);
     const executable = path.join(root, "selected-bb");
@@ -129,13 +134,13 @@ esac
           JSON.stringify({
             state: "connected",
             paired: true,
-            url: "https://mate.getbb.app",
+            url: "https://studio.getbb.app",
             shares: [
               {
                 hostId: "host_123",
                 hostName: "studio",
                 port: 5173,
-                url: "https://mate--5173.getbb.app",
+                url: "https://studio--5173.getbb.app",
               },
             ],
           }),
@@ -143,17 +148,17 @@ esac
       ),
     );
 
-    expect(native.connectUrl).toBe("https://mate.getbb.app");
+    expect(native.connectUrl).toBe("https://studio.getbb.app");
     expect(native.connect).toMatchObject({
       state: "connected",
       paired: true,
-      baseUrl: "https://mate.getbb.app",
+      baseUrl: "https://studio.getbb.app",
       shares: [
         {
           hostId: "host_123",
           hostName: "studio",
           port: 5173,
-          url: "https://mate--5173.getbb.app",
+          url: "https://studio--5173.getbb.app",
           available: true,
           unavailableReason: null,
         },
@@ -193,7 +198,7 @@ esac
           JSON.stringify({
             state: "connected",
             paired: true,
-            url: "https://mate.getbb.app",
+            url: "https://studio.getbb.app",
             shares: [
               {
                 hostId: "host_remote",
@@ -206,7 +211,7 @@ esac
                 hostId: "host_123",
                 hostName: "studio",
                 port: 5173,
-                url: "https://mate--5173.getbb.app",
+                url: "https://studio--5173.getbb.app",
               },
             ],
           }),
@@ -227,7 +232,7 @@ esac
         hostId: "host_123",
         hostName: "studio",
         port: 5173,
-        url: "https://mate--5173.getbb.app",
+        url: "https://studio--5173.getbb.app",
         available: true,
         unavailableReason: null,
       },
@@ -238,7 +243,7 @@ esac
     const raw = JSON.stringify({
       state: "connected",
       paired: true,
-      url: "https://mate.getbb.app",
+      url: "https://studio.getbb.app",
       shares: [{ hostName: "studio", port: 5173, url: "" }],
     });
     const native = await readNativeState(

@@ -37,7 +37,7 @@ afterEach(async () => {
 async function createDiscoveredFixture() {
   const temporaryRoot = await fs.realpath(os.tmpdir());
   const parent = await fs.mkdtemp(
-    path.join(temporaryRoot, "bb-mate-source-transition-"),
+    path.join(temporaryRoot, "bb-plugin-studio-source-transition-"),
   );
   temporaryRoots.push(parent);
   const workspaceRoot = path.join(parent, "workspace");
@@ -173,7 +173,7 @@ describe("source discovery to development-target catalog", () => {
   test("rejects a discovered candidate whose directory is replaced before runtime admission", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-source-catalog-"),
+      path.join(temporaryRoot, "bb-plugin-studio-source-catalog-"),
     );
     temporaryRoots.push(parent);
     const workspaceRoot = path.join(parent, "workspace");
@@ -220,7 +220,7 @@ describe("source discovery to development-target catalog", () => {
   test("persists and reopens one passive source target without revealing or executing its root", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-source-catalog-"),
+      path.join(temporaryRoot, "bb-plugin-studio-source-catalog-"),
     );
     temporaryRoots.push(parent);
     const workspaceRoot = path.join(parent, "workspace");

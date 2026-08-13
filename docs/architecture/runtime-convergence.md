@@ -12,7 +12,7 @@ secondary runtime process by default.
 
 Primary-host development-source discovery, target reconciliation, persistence,
 frontend RPC, lifecycle, CLI, agent tools, and browser-facing plugin surfaces
-will move into `plugins/mate` and use only public bb plugin contracts. The
+will move into `plugins/studio` and use only public bb plugin contracts. The
 existing inspection kernel remains the source of discovery policy; it moves
 in-process rather than being rewritten.
 
@@ -41,19 +41,19 @@ without reducing the trust granted to the plugin.
 
 bb 0.36 already publishes the contracts needed for the primary-host path, and
 an exact published 0.37 probe confirms those contracts remain public. The
-pinned 0.36 declarations are in `plugins/mate/types/bb-plugin-sdk.d.ts`; current
+pinned 0.36 declarations are in `plugins/studio/types/bb-plugin-sdk.d.ts`; current
 upstream public sources live in `packages/plugin-sdk`, `packages/sdk`, and
 `apps/host-daemon` in the bb repository, but the moving checkout is reference
 material rather than 0.37 release evidence. The clean-room runtime evidence for
 0.36 is recorded in
-[`docs/plugin-workbench-capabilities.md`](../plugin-workbench-capabilities.md).
+[`docs/plugin-studio-capabilities.md`](../plugin-studio-capabilities.md).
 No implementation may import private bb application modules.
 
 The 2026-08-13 0.37 probe installed the immutable published `bb-app@0.37.0`
 artifact (npm integrity
 `sha512-7RD6YepT0FvnhY05KOgN85qfjXHPuPxWp5vsGTX1oUX1KpkTAI7oZ/RMAyWHc7BO/VklJgcflAVaqUl1ogH0pQ==`)
 into a temporary prefix and ran its `bb plugin types` against a disposable copy
-of the Mate manifest and entrypoints. The generated backend declaration SHA-256
+of the Studio manifest and entrypoints. The generated backend declaration SHA-256
 was `92ed82ff874280ab0c239e11669da3ed040b800aa1e8dd59cdf9c617dafcaccb`;
 the app declaration SHA-256 was
 `984e0539c6926d42ddaf666c6b6890a567d08f711d9ae73a9b986620230eed9a`.
@@ -66,12 +66,12 @@ not the nightly source checkout, is the 0.37 contract evidence for this ADR.
 ## Current topology and callers
 
 ```text
-bb plugin backend (`plugins/mate/src/backend/plugin.ts`)
+bb plugin backend (`plugins/studio/src/backend/plugin.ts`)
   -> project inventory (`project-adapter.ts` -> bb.sdk.system/projects)
   -> runtime supervisor
        -> packaged executable resolver + launcher
        -> supervisor pipe and one-time bearer token
-       -> child `bb-mate serve`
+       -> child `bb-plugin-studio serve`
             -> private loopback HTTP handler
             -> runtime identity + Bun SQLite catalog
             -> target admission/list endpoints
@@ -84,7 +84,7 @@ browser-only source workbench (development only)
   -> static schema-v2 session projection
 ```
 
-The shipped Mate flow calls only the target portion of the runtime:
+The shipped Studio flow calls only the target portion of the runtime:
 
 - `plugin.ts` loads bb project sources and asks the supervisor to admit a batch.
 - `runtime-supervisor.ts` resolves, starts, monitors, and stops the packaged
@@ -108,18 +108,18 @@ separate decision justify them.
 
 | Responsibility                                 | Current owner                                                                              | Target owner                                                                                                  | Disposition and public contract                                                                                                                                                                         |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project inventory and primary source selection | Mate `project-adapter.ts` through the child admission bridge                               | Mate backend                                                                                                  | Keep and simplify. `bb.sdk.system.config()` plus `bb.sdk.projects.list/get()` already provide the primary host and authorized `local_path` sources.                                                     |
-| Manifest-only discovery                        | `packages/inspection` executed by the child runtime or browser dev adapter                 | Mate backend using `packages/inspection`                                                                      | Move in-process under #99 after #97 closes the per-directory materialization gap. No plugin entrypoint or build tool is imported or executed.                                                           |
-| Enrolled remote-host discovery                 | No safe complete path                                                                      | bb host/SDK capability consumed by Mate                                                                       | Blocked on #102. Do not use server-local paths, hidden terminals, unrestricted commands, or `files.listPaths` as a fallback.                                                                            |
+| Project inventory and primary source selection | Studio `project-adapter.ts` through the child admission bridge                             | Studio backend                                                                                                | Keep and simplify. `bb.sdk.system.config()` plus `bb.sdk.projects.list/get()` already provide the primary host and authorized `local_path` sources.                                                     |
+| Manifest-only discovery                        | `packages/inspection` executed by the child runtime or browser dev adapter                 | Studio backend using `packages/inspection`                                                                    | Move in-process under #99 after #97 closes the per-directory materialization gap. No plugin entrypoint or build tool is imported or executed.                                                           |
+| Enrolled remote-host discovery                 | No safe complete path                                                                      | bb host/SDK capability consumed by Studio                                                                     | Blocked on #102. Do not use server-local paths, hidden terminals, unrestricted commands, or `files.listPaths` as a fallback.                                                                            |
 | Development-target catalog                     | Bun SQLite under the child data root                                                       | `bb.storage.database()` and `bb.storage.migrate()`                                                            | Migrate under #100, preserving durable identity and event semantics. bb owns the plugin database handle, WAL mode, busy timeout, and disposal.                                                          |
 | Generic objects and events                     | `runtime_objects`, `runtime_events`, `createWorkbenchService`                              | None by default                                                                                               | Remove as future-only. Import only the development-target rows and events proven necessary by the migration inventory. Reintroduce product objects behind native bb RPC/storage as their surfaces ship. |
-| Child supervision and handshake                | Mate supervisor, resolver, launcher, protocol, runtime identity                            | bb plugin loader and `bb.background.service` only where continuous work is real                               | Remove under #101. Refresh work is request-scoped; it does not require a permanently running service. Abort in-flight work from `bb.onDispose`.                                                         |
+| Child supervision and handshake                | Studio supervisor, resolver, launcher, protocol, runtime identity                          | bb plugin loader and `bb.background.service` only where continuous work is real                               | Remove under #101. Refresh work is request-scoped; it does not require a permanently running service. Abort in-flight work from `bb.onDispose`.                                                         |
 | Private HTTP and bearer auth                   | Child loopback handler plus supervisor principal/scopes                                    | `bb.rpc` for app calls; `bb.http` only for a real external HTTP use case                                      | Remove. bb's local RPC auth and output validation replace the private target routes. Do not publish an unauthenticated replacement.                                                                     |
 | Realtime progress                              | Not currently a live runtime capability                                                    | `bb.realtime.publish` if progress becomes necessary                                                           | Delegate to bb; do not add private streaming first.                                                                                                                                                     |
-| CLI                                            | Standalone `bb-mate` plus supervised private `serve`                                       | bb native `bb.cli.register` for installed-plugin operations; retain independently useful source commands only | Remove `serve` under #101. Preserve a standalone inspect/fixture command only if it remains useful without the child topology.                                                                          |
+| CLI                                            | Standalone `bb-plugin-studio` plus supervised private `serve`                              | bb native `bb.cli.register` for installed-plugin operations; retain independently useful source commands only | Remove `serve` under #101. Preserve a standalone inspect/fixture command only if it remains useful without the child topology.                                                                          |
 | Agent tools and skills                         | Capability probes and plugin manifest                                                      | `bb.agents.registerTool/configure` plus manifest skills                                                       | Delegate to bb. Do not add an MCP server to compensate for a native tool surface already available.                                                                                                     |
 | Browser bootstrap and app communication        | Future capability plus current `bb.rpc` status/refresh                                     | bb-hosted plugin app and `bb.rpc`; browser-only Fixture workbench stays independent                           | Remove the private bootstrap concept. Native bb is the Live visual authority; the ordinary browser remains a deterministic Fixture surface.                                                             |
-| Packaging                                      | Mate npm artifact embeds a Bun executable, manifest, stamp, and licenses                   | Plugin server/app/assets only                                                                                 | Remove runtime executable, checksum stamp, standalone supervision gates, and redistribution work under #101.                                                                                            |
+| Packaging                                      | Studio npm artifact embeds a Bun executable, manifest, stamp, and licenses                 | Plugin server/app/assets only                                                                                 | Remove runtime executable, checksum stamp, standalone supervision gates, and redistribution work under #101.                                                                                            |
 | Lifecycle cleanup                              | Parent PID polling, signals, listener drain, token zeroing, catalog close, plugin disposal | plugin-owned abort/dispose plus bb-owned database handles                                                     | Abort the shared scan controller from `bb.onDispose`; close only resources Plugin Studio itself owns.                                                                                                   |
 
 ## Public bb capabilities to reuse
@@ -130,7 +130,7 @@ must compile against the public plugin SDK, not the upstream checkout.
 
 | Need                              | Public bb capability                                                                                                      | Evidence and consequence                                                                                                                                                                         |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| App-to-backend status and refresh | `bb.rpc.register` with strict Standard Schema input/output                                                                | Already used by `plugins/mate/src/backend/plugin.ts`; it replaces `/v2/targets/*`.                                                                                                               |
+| App-to-backend status and refresh | `bb.rpc.register` with strict Standard Schema input/output                                                                | Already used by `plugins/studio/src/backend/plugin.ts`; it replaces `/v2/targets/*`.                                                                                                             |
 | Plugin persistence                | `bb.storage.kv`, `bb.storage.database()`, `bb.storage.migrate()`                                                          | The database is namespaced beneath the plugin data root, host-tracked, and closed on dispose. Use it for the target catalog and migration ledger.                                                |
 | Project context                   | `bb.sdk.system.config()` and `bb.sdk.projects.list/get()`                                                                 | Already used by `project-adapter.ts`; keep primary-host source authorization in bb.                                                                                                              |
 | Host file operations              | `bb.sdk.files.read/list/listPaths` with explicit `hostId` and abort signal                                                | Useful only where the operation's safety contract matches the task. `read` supports `rootPath`; current recursive listing does not provide the traversal bounds required by #102.                |
@@ -185,7 +185,7 @@ the manifest scanner.
 
 ## Legacy state that must be inventoried and preserved
 
-The legacy data root resolves to `<bb-data>/plugins/mate/runtime`; its database
+The legacy data root resolves to `<bb-data>/plugins/studio/runtime`; its database
 is `workbench.sqlite3`, and `runtime-identity.json` stores a generated principal
 and bb-context identity. #100 must make these files immutable import input at
 the cutover barrier and keep them unchanged through the rollback window.
@@ -383,7 +383,7 @@ removes the child runtime:
 
 1. **Public-contract proof:** minimum and current-stable generated declarations
    compile the direct backend adapter with no private bb imports.
-2. **Call-graph proof:** production imports show no path from Mate to the
+2. **Call-graph proof:** production imports show no path from Studio to the
    generic object service, private HTTP handler, or child supervision after
    removal.
 3. **Shadow parity:** deterministic corpus and a scrubbed real-state fixture

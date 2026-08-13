@@ -45,7 +45,7 @@ describe("native development-target reconciliation", () => {
   test("reconciles released managed inventory into one source target and reopens it", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-native-target-"),
+      path.join(temporaryRoot, "bb-plugin-studio-native-target-"),
     );
     temporaryRoots.push(parent);
     const workspaceRoot = path.join(parent, "workspace");

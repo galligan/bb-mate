@@ -171,7 +171,7 @@ async function freePort(): Promise<number> {
 }
 
 const temporaryRoot = await fs.mkdtemp(
-  path.join(os.tmpdir(), "bb-mate-package-"),
+  path.join(os.tmpdir(), "bb-plugin-studio-package-"),
 );
 let server: ReturnType<typeof Bun.spawn> | null = null;
 
@@ -413,7 +413,7 @@ try {
     )
   ).join("\n");
   assert(
-    labJavaScript.includes("bb-mate-surface-lab-v1"),
+    labJavaScript.includes("bb-plugin-studio-surface-lab-v1"),
     "Packaged Ladle must use the checkout-independent application ID.",
   );
 
@@ -433,7 +433,7 @@ try {
     ],
     { env: lifecycleEnv },
   );
-  const globalBin = path.join(globalInstallRoot, "bin", "bb-mate");
+  const globalBin = path.join(globalInstallRoot, "bin", "bb-plugin-studio");
   const globalPackage = path.join(
     globalInstallRoot,
     "lib",
@@ -449,7 +449,7 @@ try {
     env: lifecycleEnv,
   });
   assert(
-    globalHelp.stdout.includes("Usage: bb-mate"),
+    globalHelp.stdout.includes("Usage: bb-plugin-studio"),
     "Global installed bin help failed.",
   );
   await run(
@@ -492,14 +492,17 @@ try {
     installRoot,
     "node_modules",
     ".bin",
-    "bb-mate",
+    "bb-plugin-studio",
   );
   await fs.access(installedBin, constants.X_OK);
   const help = await run([installedBin, "--help"], {
     cwd: temporaryRoot,
     env: lifecycleEnv,
   });
-  assert(help.stdout.includes("Usage: bb-mate"), "Installed bin help failed.");
+  assert(
+    help.stdout.includes("Usage: bb-plugin-studio"),
+    "Installed bin help failed.",
+  );
 
   const workspaceRoot = path.join(temporaryRoot, "workspace");
   const pluginRoot = path.join(workspaceRoot, "plugins", "fixture");
@@ -645,7 +648,9 @@ try {
   );
   await fs.access(installedBin).then(
     () => {
-      throw new Error("npm uninstall left the installed bb-mate bin behind.");
+      throw new Error(
+        "npm uninstall left the installed bb-plugin-studio bin behind.",
+      );
     },
     () => undefined,
   );

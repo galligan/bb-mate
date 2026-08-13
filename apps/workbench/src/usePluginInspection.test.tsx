@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import type { PluginInspection } from "@bb-mate/inspection";
+import type { PluginInspection } from "@bb-plugin-studio/inspection";
 import { parsePluginSession } from "./plugin-session";
 import { pluginSessionUrl, usePluginInspection } from "./usePluginInspection";
 import { unavailableTargetMessage } from "./workbench-state";
@@ -19,7 +19,7 @@ function session(selectedTargetId: string) {
   return {
     schemaVersion: 2,
     workspace: {
-      label: "bb-mate",
+      label: "bb-plugin-studio",
       candidates: [
         {
           id: selectedTargetId,
@@ -150,10 +150,12 @@ describe("usePluginInspection", () => {
   test("encodes only an opaque target ID into the session request", () => {
     const targetId = "A_-".repeat(10) + "Ab";
     expect(pluginSessionUrl(targetId)).toBe(
-      `/bb-mate-session.json?target=${targetId}`,
+      `/bb-plugin-studio-session.json?target=${targetId}`,
     );
-    expect(pluginSessionUrl("../plugins/secret")).toBe("/bb-mate-session.json");
-    expect(pluginSessionUrl(null)).toBe("/bb-mate-session.json");
+    expect(pluginSessionUrl("../plugins/secret")).toBe(
+      "/bb-plugin-studio-session.json",
+    );
+    expect(pluginSessionUrl(null)).toBe("/bb-plugin-studio-session.json");
   });
 
   test("rejects a path-like target without sending or echoing it", async () => {

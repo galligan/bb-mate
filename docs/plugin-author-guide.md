@@ -30,7 +30,7 @@ From a fresh checkout:
 git clone https://github.com/galligan/bb-plugin-studio.git
 cd bb-plugin-studio
 bun install --frozen-lockfile
-bun --filter @bb-mate/workbench stories --host 127.0.0.1 --port 61000
+bun --filter @bb-plugin-studio/workbench stories --host 127.0.0.1 --port 61000
 ```
 
 Open
@@ -49,9 +49,9 @@ Run bb Plugin Studio from this repository and pass an explicit plugin directory:
 
 ```sh
 plugin="/absolute/path/to/plugin"
-bun run bb-mate --help
-bun run bb-mate inspect "$plugin"
-bun run bb-mate inspect "$plugin" --json
+bun run bb-plugin-studio --help
+bun run bb-plugin-studio inspect "$plugin"
+bun run bb-plugin-studio inspect "$plugin" --json
 ```
 
 Inspection reads `package.json`, native `dist/*.meta.json`, and passive native
@@ -63,13 +63,13 @@ available.
 For an interactive source-checkout workbench around that plugin:
 
 ```sh
-bun run bb-mate dev "$plugin" --host 127.0.0.1 --port 5173
+bun run bb-plugin-studio dev "$plugin" --host 127.0.0.1 --port 5173
 ```
 
 The bare form is equivalent:
 
 ```sh
-bun run bb-mate "$plugin"
+bun run bb-plugin-studio "$plugin"
 ```
 
 The server performs the same passive inspection before it starts. Keep the host
@@ -82,8 +82,8 @@ unexposes, or pairs Connect.
 These commands cross the passive boundary:
 
 ```sh
-bun run bb-mate check "$plugin"
-bun run bb-mate live "$plugin"
+bun run bb-plugin-studio check "$plugin"
+bun run bb-plugin-studio live "$plugin"
 ```
 
 `check` delegates exactly `bb plugin build .` in the selected plugin and then
@@ -101,7 +101,7 @@ Set `BB_CLI` to an exact executable when you need to override the `bb` found on
 `PATH`:
 
 ```sh
-BB_CLI=/absolute/path/to/bb bun run bb-mate inspect "$plugin"
+BB_CLI=/absolute/path/to/bb bun run bb-plugin-studio inspect "$plugin"
 ```
 
 ## Use the source preview
@@ -114,8 +114,8 @@ plugin="/absolute/path/to/plugin"
 git clone https://github.com/galligan/bb-plugin-studio.git
 cd bb-plugin-studio
 bun install --frozen-lockfile
-bun run bb-mate --help
-bun run bb-mate dev "$plugin"
+bun run bb-plugin-studio --help
+bun run bb-plugin-studio dev "$plugin"
 ```
 
 Open the printed loopback URL, then stop the foreground server with Control-C.

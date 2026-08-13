@@ -51,7 +51,7 @@ describe("native bb version probe", () => {
       });
       expect(candidates).toEqual([
         "bb",
-        path.resolve("plugins/mate/node_modules/.bin/bb"),
+        path.resolve("plugins/studio/node_modules/.bin/bb"),
       ]);
       expect(version).toBe("0.36.0");
     },

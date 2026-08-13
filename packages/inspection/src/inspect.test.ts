@@ -14,7 +14,9 @@ import type { PluginPackageJson } from "./manifest.ts";
 const temporaryRoots: string[] = [];
 
 async function createWorkspace(): Promise<string> {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-report-"));
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "bb-plugin-studio-report-"),
+  );
   temporaryRoots.push(root);
   await fs.mkdir(path.join(root, "plugins"), { recursive: true });
   return root;

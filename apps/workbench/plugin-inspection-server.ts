@@ -32,7 +32,7 @@ export async function inspectPluginSession(
 
 export function pluginInspectionPlugin(options: PluginSessionOptions): Plugin {
   return {
-    name: "bb-mate-plugin-inspection",
+    name: "bb-plugin-studio-plugin-inspection",
     configResolved: assertLoopbackConfig,
     async configureServer(server) {
       attachCatalogMiddleware(

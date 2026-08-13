@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [tailwindcss()],
   define: {
     "import.meta.env.VITE_LADLE_APP_ID": JSON.stringify(
-      "bb-mate-surface-lab-v1",
+      "bb-plugin-studio-surface-lab-v1",
     ),
   },
   resolve: {

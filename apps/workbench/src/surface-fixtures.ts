@@ -5,7 +5,10 @@ export const homepageFixtures = [
     id: "project-selected",
     name: "Project selected",
     description: "Homepage content with an active project.",
-    state: { projectId: "project-bb-mate", content: "project-overview" },
+    state: {
+      projectId: "project-bb-plugin-studio",
+      content: "project-overview",
+    },
     interactions: [{ id: "render", outcome: "plugin-section-visible" }],
   },
   {
@@ -210,7 +213,7 @@ export const threadHeaderFixtures = [
     description: "One compact plugin control for a visible thread header.",
     state: {
       threadId: "thread-release",
-      projectId: "project-bb-mate",
+      projectId: "project-bb-plugin-studio",
       isCompactViewport: false,
       controlState: "idle",
     },
@@ -222,7 +225,7 @@ export const threadHeaderFixtures = [
     description: "The same control contract at a compact viewport.",
     state: {
       threadId: "thread-release",
-      projectId: "project-bb-mate",
+      projectId: "project-bb-plugin-studio",
       isCompactViewport: true,
       controlState: "idle",
     },
@@ -249,7 +252,7 @@ export const fileOpenerFixtures = [
         kind: "workspace",
         threadId: "thread-release",
         environmentId: "environment-local",
-        projectId: "project-bb-mate",
+        projectId: "project-bb-plugin-studio",
       },
       mode: "preview",
     },
@@ -265,7 +268,7 @@ export const fileOpenerFixtures = [
         kind: "workspace",
         threadId: "thread-release",
         environmentId: "environment-local",
-        projectId: "project-bb-mate",
+        projectId: "project-bb-plugin-studio",
       },
       mode: "edit",
     },
@@ -297,7 +300,7 @@ export const messageDirectiveFixtures = [
         id: "message-report",
         threadId: "thread-release",
         turnId: "turn-report",
-        projectId: "project-bb-mate",
+        projectId: "project-bb-plugin-studio",
       },
       workspaceFileAvailable: true,
     },
@@ -320,7 +323,7 @@ export const messageDirectiveFixtures = [
         id: "message-report",
         threadId: "thread-release",
         turnId: "turn-report",
-        projectId: "project-bb-mate",
+        projectId: "project-bb-plugin-studio",
       },
       workspaceFileAvailable: false,
     },
@@ -410,7 +413,7 @@ export const composerFixtures = [
     description: "Composer view with menu and rich-text registrations.",
     state: {
       view: {
-        scope: { kind: "new-thread", projectId: "project-bb-mate" },
+        scope: { kind: "new-thread", projectId: "project-bb-plugin-studio" },
         layout: "expanded",
         draft: {
           text: "Summarize @release",
@@ -437,7 +440,7 @@ export const composerFixtures = [
     description: "Compact composer inputs while a run is active.",
     state: {
       view: {
-        scope: { kind: "new-thread", projectId: "project-bb-mate" },
+        scope: { kind: "new-thread", projectId: "project-bb-plugin-studio" },
         layout: "compact",
         draft: { text: "", isEmpty: true, attachmentCount: 0 },
         run: { isRunning: true, isSubmitting: false },

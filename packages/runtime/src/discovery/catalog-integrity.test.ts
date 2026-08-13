@@ -83,7 +83,7 @@ describe("development-target private-source integrity", () => {
   test("rejects a reconciliation event whose private host row is missing", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-private-host-integrity-"),
+      path.join(temporaryRoot, "bb-plugin-studio-private-host-integrity-"),
     );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
@@ -145,7 +145,7 @@ describe("development-target private-source integrity", () => {
     ] as const) {
       const temporaryRoot = await fs.realpath(os.tmpdir());
       const parent = await fs.mkdtemp(
-        path.join(temporaryRoot, "bb-mate-private-integrity-"),
+        path.join(temporaryRoot, "bb-plugin-studio-private-integrity-"),
       );
       temporaryRoots.push(parent);
       const pluginRoot = path.join(parent, "plugin");

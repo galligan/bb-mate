@@ -15,7 +15,9 @@ async function executable(
   name: string,
   body = "#!/bin/sh\nprintf '0.35.1\\n'\n",
 ) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-native-"));
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "bb-plugin-studio-native-"),
+  );
   temporaryRoots.push(root);
   const file = path.join(root, name);
   await fs.writeFile(file, body, { mode: 0o755 });
@@ -88,14 +90,14 @@ describe("native command boundary", () => {
   test("passes an explicit environment to captured native commands", async () => {
     const fixture = await executable(
       "env-probe",
-      '#!/bin/sh\nprintf \'%s|%s\' "${BB_CLI-unset}" "${BB_MATE_SENTINEL-unset}"\n',
+      '#!/bin/sh\nprintf \'%s|%s\' "${BB_CLI-unset}" "${BB_PLUGIN_STUDIO_SENTINEL-unset}"\n',
     );
 
     expect(
       await runCapturedCommand(fixture.file, [], fixture.root, {
         env: nativeCommandEnv({
           BB_CLI: fixture.file,
-          BB_MATE_SENTINEL: "preserved",
+          BB_PLUGIN_STUDIO_SENTINEL: "preserved",
         }),
       }),
     ).toEqual({
@@ -221,7 +223,7 @@ describe("native command boundary", () => {
     await fs.writeFile(
       child,
       [
-        "console.log(JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd(), env: process.env.BB_MATE_LITERAL }))",
+        "console.log(JSON.stringify({ argv: process.argv.slice(2), cwd: process.cwd(), env: process.env.BB_PLUGIN_STUDIO_LITERAL }))",
         'console.error("literal child stderr")',
         "process.exit(23)",
       ].join("\n"),
@@ -230,7 +232,7 @@ describe("native command boundary", () => {
       parent,
       [
         `import { runInheritedCommand } from ${JSON.stringify(path.join(import.meta.dir, "native.ts"))}`,
-        `const result = await runInheritedCommand(process.execPath, [${JSON.stringify(child)}, ${JSON.stringify(literal)}], { cwd: ${JSON.stringify(fixture.root)}, env: { ...process.env, BB_MATE_LITERAL: ${JSON.stringify("env ; $HOME")} } })`,
+        `const result = await runInheritedCommand(process.execPath, [${JSON.stringify(child)}, ${JSON.stringify(literal)}], { cwd: ${JSON.stringify(fixture.root)}, env: { ...process.env, BB_PLUGIN_STUDIO_LITERAL: ${JSON.stringify("env ; $HOME")} } })`,
         "console.log(`RESULT ${JSON.stringify(result)}`)",
       ].join("\n"),
     );

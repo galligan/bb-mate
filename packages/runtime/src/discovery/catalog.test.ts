@@ -102,7 +102,7 @@ describe("DevelopmentTargetCatalog capability boundary", () => {
   test("persists only derived facts from an exact inspection and runtime capability", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-catalog-capability-"),
+      path.join(temporaryRoot, "bb-plugin-studio-catalog-capability-"),
     );
     temporaryRoots.push(parent);
     const pluginRoot = path.join(parent, "plugin");
@@ -165,7 +165,7 @@ describe("DevelopmentTargetCatalog capability boundary", () => {
   test("rejects a new target beyond the transport limit without poisoning the persistent catalog", async () => {
     const temporaryRoot = await fs.realpath(os.tmpdir());
     const parent = await fs.mkdtemp(
-      path.join(temporaryRoot, "bb-mate-catalog-target-limit-"),
+      path.join(temporaryRoot, "bb-plugin-studio-catalog-target-limit-"),
     );
     temporaryRoots.push(parent);
     const dataRoot = path.join(parent, "data");

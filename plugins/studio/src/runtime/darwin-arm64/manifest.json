@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "artifact": "bb-plugin-studio-runtime",
+  "target": "bun-darwin-arm64",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "mode": "0755",
+  "size": 64882658,
+  "sha256": "f09b53720994a0f063a86db2ff51a14a0fbc77b2e5411aba7f9bd85103194879",
+  "bunVersion": "1.3.14",
+  "runtimeVersion": "0.1.0-alpha.3",
+  "storyCount": 13,
+  "assets": [
+    {
+      "route": "assets/composer-customization.stories-DA4qZ6X0.js",
+      "size": 334,
+      "sha256": "619d112cb3ff0480f1ecc757832f2220d53ddbde9820453fbf3ae1dcf09e1fcb"
+    },
+    {
+      "route": "assets/content-script.stories-CeVl-28T.js",
+      "size": 328,
+      "sha256": "eb46ed13a3f036a955c03b54c0a507d86b4c56b0c7a10be4595404655e9c3827"
+    },
+    {
+      "route": "assets/create-surface-story-BQCMfYGz.css",
+      "size": 8182,
+      "sha256": "1f06e2edaf143ba3291b9cf5c643d8212df4f801f4109c4acfee28d1372e32b0"
+    },
+    {
+      "route": "assets/create-surface-story-Cel-wOaq.js",
+      "size": 49195,
+      "sha256": "5c9ee2f86b392995c73afc45f831c97fc2f3f8214f7d07a86e247a9e2998eb5d"
+    },
+    {
+      "route": "assets/empty-module-BIHI7g3E.js",
+      "size": 33,
+      "sha256": "82507b0bb9ac4affaeb17c40968d830cbd6d14a2ffa04d8994faf1a78e58e1b5"
+    },
+    {
+      "route": "assets/favicon-gjFwcFbF.svg",
+      "size": 534,
+      "sha256": "f451203ee1f5a31a1db4156eec1cb6920d1a437eb068eec7dd1c27798f51537e"
+    },
+    {
+      "route": "assets/file-opener.stories-CcK3ih2C.js",
+      "size": 312,
+      "sha256": "24a4ac62eed8e2a2aad3f0c17ca85cfeb5bd857bea78e871efee6ef783c23cef"
+    },
+    {
+      "route": "assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2",
+      "size": 7420,
+      "sha256": "2317fa4bb293c9c0b110e18315d529235c47a0ddd3338cea3d8c7955e927899e"
+    },
+    {
+      "route": "assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2",
+      "size": 15084,
+      "sha256": "6894439694946a589d157ece003086960a6a4013d74a813dab7602efdb3d8c09"
+    },
+    {
+      "route": "assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2",
+      "size": 16512,
+      "sha256": "824f485b5d26e2f2da3c2b236132ece1bc8e4e43373452950bb0e40548b4313f"
+    },
+    {
+      "route": "assets/geist-latin-wght-normal-BgDaEnEv.woff2",
+      "size": 29400,
+      "sha256": "19f9c92546aa300c312235e3125af1b81394d8db9a4bc4a425cd5b641d2d54e1"
+    },
+    {
+      "route": "assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2",
+      "size": 8004,
+      "sha256": "8fa40e5d248247735eb97a0bd593b8852440430600d6ba01364c31fe0abc1fe1"
+    },
+    {
+      "route": "assets/homepage-section.stories-h4J-5lO6.js",
+      "size": 322,
+      "sha256": "e370bdc1389e441b2ab04d3a605ef40d39cdb6f962661c098157373654b4d7e4"
+    },
+    {
+      "route": "assets/index-CDuHMn1l.js",
+      "size": 444129,
+      "sha256": "cb0d4bfdd1674beff2da831bf226a33ca9b79dd4be6ee03056a9226034ab3337"
+    },
+    {
+      "route": "assets/index-DImY3LlT.css",
+      "size": 60212,
+      "sha256": "ca05083a19120e777cb53b27b8850affa8047fe616e06263a4ac3a8310bad647"
+    },
+    {
+      "route": "assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+      "size": 25960,
+      "sha256": "ca157063339ac4ad418f214f3abfed119b0798ab4d377386ce5c9e5a7a435ebd"
+    },
+    {
+      "route": "assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+      "size": 18748,
+      "sha256": "71d5ee93cc1e9f1d520a3a8b66456de18c7879d8df09d57fcd2eaff75fef0075"
+    },
+    {
+      "route": "assets/inter-greek-ext-wght-normal-DlzME5K_.woff2",
+      "size": 11232,
+      "sha256": "6e9e020a25f9b56d418f2c085b1d3c09725a4da23fe693a5b463064606732190"
+    },
+    {
+      "route": "assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+      "size": 18996,
+      "sha256": "1be3448e292fbf05ffe176fe1e43f135013d50b1e7d324ad1a558f623d3bb6f6"
+    },
+    {
+      "route": "assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+      "size": 85068,
+      "sha256": "34b9c504cab7a73e37b746343a449132e56cf7b5481af2cb81dc74dcff25c956"
+    },
+    {
+      "route": "assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+      "size": 48256,
+      "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62"
+    },
+    {
+      "route": "assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2",
+      "size": 10252,
+      "sha256": "5c66f9e07e90c6d4ac4922cc68d60de26c17b1858e677fb5e603fce3952b3ff2"
+    },
+    {
+      "route": "assets/manifest-B-VxemCC.webmanifest",
+      "size": 135,
+      "sha256": "6729802354ebfe1b4d197ee50907c625b84144519d9edba99aca0face9f229d4"
+    },
+    {
+      "route": "assets/message-action.stories-J9qUqk9Y.js",
+      "size": 318,
+      "sha256": "c1a358af47bcbd4f88ee5e0c5ca433492b0561e93ac8c9bd88bd5880f0296b49"
+    },
+    {
+      "route": "assets/message-directive.stories-CCSK1Vcv.js",
+      "size": 324,
+      "sha256": "ce71a2ec5c2bb6b0da6baba048ee910c03840f6dbddf7cabdc563f71f01bcd17"
+    },
+    {
+      "route": "assets/navigation-panel.stories-By-8dkWa.js",
+      "size": 322,
+      "sha256": "42e4c86b66fd0043eda1f26752c5de8eb7171b5710036a27e091a65c83d88442"
+    },
+    {
+      "route": "assets/pending-interaction.stories-Nbw-v_bX.js",
+      "size": 328,
+      "sha256": "4829afdb02786c8696d50a6cb0eb15ef833b781c566f9609f52f4bbc07a8c5e1"
+    },
+    {
+      "route": "assets/settings-section.stories-CAz9nGgF.js",
+      "size": 322,
+      "sha256": "db6af17f6acba5b31d43ba6b451c470f020139643223f832e2764eaa147d27e6"
+    },
+    {
+      "route": "assets/sidebar-footer-action.stories-Cs72_dmf.js",
+      "size": 332,
+      "sha256": "53e95afa7d26ecfa642df9cf4ba4ec059f2b8a19758659d1d942e23e7a9da2c5"
+    },
+    {
+      "route": "assets/thread-header-action.stories-BM1ajoo7.js",
+      "size": 330,
+      "sha256": "220998dc7ba6c1783a3e42b81f7d64a27074c96e645f20fcefe037ab6418bafa"
+    },
+    {
+      "route": "assets/thread-list.stories-DINzQWnj.js",
+      "size": 320,
+      "sha256": "136caccfca2c0a3c11f90fe36a24c03f313c139fd44e4c7692c62fdd5fa5a6ce"
+    },
+    {
+      "route": "assets/thread-panel-action.stories-B1QabXhr.js",
+      "size": 328,
+      "sha256": "6249fea139e54962f72bd8e3cdd781bb814e687cd67623bb68bf00f57dfb05a9"
+    },
+    {
+      "route": "assets/touch-icon-ByyUZD7t.png",
+      "size": 6691,
+      "sha256": "db08261d5c1ee198c59522b782a63d75e5588ac207290d8833476ca262cc7ea6"
+    },
+    {
+      "route": "index.html",
+      "size": 1206,
+      "sha256": "a3f3cb799836989a1f423b2ae5fe87257adbb59471dc7f8d65cab877c7700077"
+    },
+    {
+      "route": "meta.json",
+      "size": 4585,
+      "sha256": "a7aa779e9fb2a8ce7f74b931fddb9aec06a5b05d6a0a138fb3ee7f50ad8dee6c"
+    }
+  ]
+}

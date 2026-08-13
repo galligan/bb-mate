@@ -221,7 +221,7 @@ export const threadListFixtures = [
       threads: [
         {
           id: "worktree",
-          title: "bb-mate",
+          title: "bb-plugin-studio",
           detail: "2 branches · 4 changed files",
           environment: "GitButler workspace",
           branch: "os-633/ladle",
@@ -267,8 +267,10 @@ export const threadListFixtures = [
       activeProjectId: "project-personal",
       isCompactViewport: true,
       searchQuery: "",
-      project: "bb-mate",
-      projects: [{ id: "project-personal", name: "bb-mate", isPersonal: true }],
+      project: "bb-plugin-studio",
+      projects: [
+        { id: "project-personal", name: "bb-plugin-studio", isPersonal: true },
+      ],
       threads: [
         {
           id: "notes",

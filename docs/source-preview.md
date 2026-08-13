@@ -6,9 +6,9 @@ preview from this repository. It is suitable for exploring the deterministic
 workbench, inspecting a plugin source tree, and evaluating native bb handoffs.
 It is not a release installation or a production support commitment.
 
-The command name `bb-mate` predates the product rename. `bb-mate` is a
-compatibility identifier for the current CLI command, not the product name or
-the name of a new public package.
+This rename introduces `bb-plugin-studio` as the canonical package and command
+identity. The source preview creates a clean `studio` installation; the former
+Mate plugin has been removed rather than migrated in place.
 
 ## Prerequisites
 
@@ -28,7 +28,7 @@ checkout, credentials, or a plugin installation.
 git clone https://github.com/galligan/bb-plugin-studio.git
 cd bb-plugin-studio
 bun install --frozen-lockfile
-bun run bb-mate --help
+bun run bb-plugin-studio --help
 bun run dev
 ```
 
@@ -41,8 +41,8 @@ It does not read authenticated host state or run plugin code.
 Pass a plugin path explicitly so it is clear which workspace is in scope:
 
 ```sh
-bun run bb-mate inspect /absolute/path/to/plugin
-bun run bb-mate dev /absolute/path/to/plugin
+bun run bb-plugin-studio inspect /absolute/path/to/plugin
+bun run bb-plugin-studio dev /absolute/path/to/plugin
 ```
 
 `inspect` reads the selected plugin's manifest, generated native metadata, and
@@ -52,8 +52,8 @@ Fixture lab and does not install, build, reload, or run the selected plugin.
 The native handoff commands have a wider boundary:
 
 ```sh
-bun run bb-mate check /absolute/path/to/plugin
-bun run bb-mate live /absolute/path/to/plugin
+bun run bb-plugin-studio check /absolute/path/to/plugin
+bun run bb-plugin-studio live /absolute/path/to/plugin
 ```
 
 - `check` reports compatibility, delegates `bb plugin build` to the bb CLI,
@@ -81,8 +81,9 @@ bb Plugin Studio distinguishes three confidence levels:
 
 A successful Fixture preview does not prove that the plugin will look or behave
 identically in bb. The source preview also does not provide a signed standalone
-application, a stable installer, a published Plugin Studio package, or support
-for silently migrating an existing `mate` installation.
+application, a stable installer, or a published Plugin Studio package. It
+installs the new `studio` identity cleanly and does not import state from a
+former Mate installation.
 
 ## Verify the checkout
 

@@ -15,7 +15,7 @@ afterEach(async () => {
 describe("normal profile fingerprint", () => {
   test("is stable and detects byte, link, and tree mutation", async () => {
     const root = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-profile-proof-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-profile-proof-"),
     );
     roots.push(root);
     await fs.mkdir(path.join(root, "nested"));
@@ -33,7 +33,7 @@ describe("normal profile fingerprint", () => {
 
   test("rejects an unbounded profile tree", async () => {
     const root = await fs.mkdtemp(
-      path.join(os.tmpdir(), "bb-mate-profile-proof-"),
+      path.join(os.tmpdir(), "bb-plugin-studio-profile-proof-"),
     );
     roots.push(root);
     await fs.writeFile(path.join(root, "one"), "1");

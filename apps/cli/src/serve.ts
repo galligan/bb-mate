@@ -6,7 +6,7 @@ import {
   createRuntimeHttpHandler,
   type OpaqueId,
   type RuntimeIdentity,
-} from "@bb-mate/runtime";
+} from "@bb-plugin-studio/runtime";
 import {
   parseSupervisorFrame,
   RUNTIME_API_VERSION,
@@ -14,7 +14,7 @@ import {
   serializeRuntimeLaunchDescriptor,
   SUPERVISOR_FRAME_MAX_BYTES,
   type SupervisorFrame,
-} from "@bb-mate/runtime/supervision";
+} from "@bb-plugin-studio/runtime/supervision";
 import type { ProcessExit } from "./commands.ts";
 import {
   readSupervisorChannel,
@@ -220,7 +220,7 @@ export async function runSupervisedServe(
     platform.stdout(
       serializeRuntimeLaunchDescriptor({
         schemaVersion: 2,
-        protocol: "bb-mate-runtime",
+        protocol: "bb-plugin-studio-runtime",
         runtimeVersion: runtime.runtimeVersion,
         apiVersion: RUNTIME_API_VERSION,
         pid: platform.pid,

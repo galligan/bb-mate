@@ -27,7 +27,9 @@ describe("trusted source roots", () => {
   });
 
   test("admits a configured directory without exposing its canonical path", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const configured = path.join(parent, "example-plugin");
     await fs.mkdir(configured);
@@ -48,7 +50,9 @@ describe("trusted source roots", () => {
   });
 
   test("rejects a configured root whose leaf is a symlink", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const realRoot = path.join(parent, "real-plugin");
     const linkedRoot = path.join(parent, "linked-plugin");
@@ -71,7 +75,9 @@ describe("trusted source roots", () => {
   });
 
   test("reports invalid roots without hiding a safe sibling", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const safeRoot = path.join(parent, "safe");
     const fileRoot = path.join(parent, "file.txt");
@@ -97,7 +103,9 @@ describe("trusted source roots", () => {
   });
 
   test("aliases duplicate canonical directories to one admitted root", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const rootPath = path.join(parent, "plugin");
     await fs.mkdir(rootPath);
@@ -119,7 +127,9 @@ describe("trusted source roots", () => {
   });
 
   test("bounds configured roots at 128", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const inputs = await Promise.all(
       Array.from({ length: 129 }, async (_, index) => {
@@ -148,7 +158,9 @@ describe("trusted source roots", () => {
   });
 
   test("counts only admitted roots toward the configured-root limit", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const safeRoot = path.join(parent, "safe");
     await fs.mkdir(safeRoot);
@@ -173,7 +185,9 @@ describe("trusted source roots", () => {
   });
 
   test("rejects a non-opaque root key without echoing it", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const rootPath = path.join(parent, "plugin");
     await fs.mkdir(rootPath);
@@ -190,7 +204,9 @@ describe("trusted source roots", () => {
   });
 
   test("issues a server-private capability that cannot be serialized", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const rootPath = path.join(parent, "plugin");
     await fs.mkdir(rootPath);
@@ -205,7 +221,9 @@ describe("trusted source roots", () => {
   });
 
   test("rejects reusing one opaque root key for two directories", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const first = path.join(parent, "first");
     const second = path.join(parent, "second");
@@ -225,7 +243,9 @@ describe("trusted source roots", () => {
   });
 
   test("rejects a path-shaped display label without disclosing it", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const rootPath = path.join(parent, "plugin");
     await fs.mkdir(rootPath);
@@ -250,7 +270,9 @@ describe("trusted source roots", () => {
   });
 
   test("rejects a root kind outside the admitted server sources", async () => {
-    const parent = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-roots-"));
+    const parent = await fs.mkdtemp(
+      path.join(os.tmpdir(), "bb-plugin-studio-roots-"),
+    );
     temporaryRoots.push(parent);
     const rootPath = path.join(parent, "plugin");
     await fs.mkdir(rootPath);

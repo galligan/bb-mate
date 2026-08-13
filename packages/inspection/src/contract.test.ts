@@ -11,7 +11,9 @@ import {
 const temporaryRoots: string[] = [];
 
 async function createWorkspace(): Promise<string> {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "bb-mate-contract-"));
+  const root = await fs.mkdtemp(
+    path.join(os.tmpdir(), "bb-plugin-studio-contract-"),
+  );
   temporaryRoots.push(root);
   await fs.mkdir(path.join(root, "plugins"), { recursive: true });
   return root;

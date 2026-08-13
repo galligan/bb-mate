@@ -55,14 +55,14 @@ bb plugin dev .
 bb Plugin Studio can sit beside that loop, but it never becomes the runtime:
 
 ```sh
-bun run bb-mate inspect .
-bun run bb-mate dev .
-bun run bb-mate check .
-bun run bb-mate live .
+bun run bb-plugin-studio inspect .
+bun run bb-plugin-studio dev .
+bun run bb-plugin-studio check .
+bun run bb-plugin-studio live .
 ```
 
-`bb-mate` is the current compatibility command. It is not the current product
-name or a promise that a renamed public package is available.
+`bb-plugin-studio` is the canonical package and command identity introduced by
+the Studio rename.
 
 - `inspect` is passive and does not execute plugin code.
 - `dev` opens the Fixture lab.
@@ -93,7 +93,7 @@ Clone and start the deterministic workbench:
 git clone https://github.com/galligan/bb-plugin-studio.git
 cd bb-plugin-studio
 bun install --frozen-lockfile
-bun run bb-mate --help
+bun run bb-plugin-studio --help
 bun run dev
 ```
 
@@ -101,15 +101,15 @@ The browser workbench runs with fixtures and does not require a bb server. To
 inspect an existing plugin source tree explicitly:
 
 ```sh
-bun run bb-mate inspect /absolute/path/to/plugin
-bun run bb-mate dev /absolute/path/to/plugin
+bun run bb-plugin-studio inspect /absolute/path/to/plugin
+bun run bb-plugin-studio dev /absolute/path/to/plugin
 ```
 
 bb Plugin Studio is not currently distributed as a public installable package.
 The supported first-contact path is this experimental source preview; commands,
-fixtures, and package contents may change. The older `bb-mate` npm artifact is
-not the current onboarding path. See the [Source preview guide](docs/source-preview.md)
-for exact boundaries, useful checks, and native handoff behavior.
+fixtures, and package contents may change. See the [Source preview
+guide](docs/source-preview.md) for exact boundaries, useful checks, and native
+handoff behavior.
 
 ## Develop and verify from source
 
@@ -130,8 +130,8 @@ query Connect or npm, import the plugin, or expose its canonical path. Pass an
 explicit external plugin path to the CLI when needed:
 
 ```sh
-bun run bb-mate inspect /absolute/path/to/plugin
-bun run bb-mate dev /absolute/path/to/plugin
+bun run bb-plugin-studio inspect /absolute/path/to/plugin
+bun run bb-plugin-studio dev /absolute/path/to/plugin
 ```
 
 No sibling bb checkout is required. Contributors may keep one nearby for
@@ -154,10 +154,10 @@ plugin looks or behaves exactly the same inside bb.
 ## Repository map
 
 ```text
-apps/cli/        The source CLI (current command: bb-mate)
+apps/cli/        The source CLI (current command: bb-plugin-studio)
 apps/workbench/  Browser-only fixture workbench
 packages/        Shared inspection and authoring contracts
-plugins/mate/    Studio-owned live integration plugin
+plugins/studio/    Studio-owned live integration plugin
 docs/            Architecture, authoring, trust, and compatibility guides
 ```
 
@@ -169,7 +169,7 @@ Start with:
 - [Product naming and compatibility](docs/product-naming.md)
 - [Trust and operation model](docs/trust-model.md)
 - [Compatibility target](docs/compatibility-target.md)
-- [Plugin Studio released capabilities](docs/plugin-workbench-capabilities.md)
+- [Plugin Studio released capabilities](docs/plugin-studio-capabilities.md)
 - [Contributing](CONTRIBUTING.md)
 - [Support](SUPPORT.md)
 - [Security policy](SECURITY.md)

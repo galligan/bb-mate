@@ -4,8 +4,8 @@ import {
   createOpaqueId,
   createRequestContext,
   createRuntimeHttpHandler,
-} from "@bb-mate/runtime";
-import { RUNTIME_CAPABILITIES } from "@bb-mate/runtime/supervision";
+} from "@bb-plugin-studio/runtime";
+import { RUNTIME_CAPABILITIES } from "@bb-plugin-studio/runtime/supervision";
 import { listenRuntimeHttp } from "./runtime-http-listener.ts";
 
 const LISTENER_CAPABILITIES = Object.freeze({

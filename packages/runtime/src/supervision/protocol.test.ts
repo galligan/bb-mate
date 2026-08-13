@@ -63,7 +63,7 @@ describe("supervised runtime protocol", () => {
   test("serializes and parses one canonical bounded launch descriptor line", () => {
     const descriptor = {
       schemaVersion: 2,
-      protocol: "bb-mate-runtime",
+      protocol: "bb-plugin-studio-runtime",
       runtimeVersion: "0.1.0-beta.1+build.2",
       apiVersion: 2,
       pid: 42,
@@ -85,7 +85,7 @@ describe("supervised runtime protocol", () => {
         capabilities: RUNTIME_CAPABILITIES,
         instanceId,
         pid: 42,
-        protocol: "bb-mate-runtime",
+        protocol: "bb-plugin-studio-runtime",
         runtimeVersion: "0.1.0-beta.1+build.2",
         schemaVersion: 2,
       })}\n`,
@@ -95,7 +95,7 @@ describe("supervised runtime protocol", () => {
   test("rejects descriptor drift, secrets, non-loopback URLs, and overflow", () => {
     const descriptor = {
       schemaVersion: 2,
-      protocol: "bb-mate-runtime",
+      protocol: "bb-plugin-studio-runtime",
       runtimeVersion: "0.1.0",
       apiVersion: 2,
       pid: 42,

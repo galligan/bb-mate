@@ -63,7 +63,7 @@ const stagedManifest = Object.fromEntries(
     "bin",
     "files",
     "engines",
-    "bbMate",
+    "bbStudio",
     "publishConfig",
   ].map((key) => [key, sourceManifest[key]]),
 );
