@@ -1,5 +1,8 @@
 # Split distributable plugins into bb-plugins
 
+Date: 2026-08-12
+Status: Complete; PR #88 merged and issue #87 closed
+
 ## Outcome
 
 Create a public `galligan/bb-plugins` repository that owns independently
@@ -43,3 +46,8 @@ focused on its workbench, inspection tooling, and the Studio-owned Mate plugin.
 - The full local Studio test command also reported unrelated macOS filesystem
   mode and process-timing failures in untouched tests. The pull request CI is
   the clean Linux verification gate for those suites.
+- PR #88 merged as `170e7d8c`; #87 was reconciled and closed on 2026-08-13.
+- No active Linear installation required a source retarget during the move, so
+  no reinstall or settings/secret migration was performed.
+- Publication and any future installed-source migration now live in
+  [galligan/bb-plugins#2](https://github.com/galligan/bb-plugins/issues/2).

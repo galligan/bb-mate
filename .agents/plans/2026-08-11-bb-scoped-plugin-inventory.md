@@ -1,9 +1,8 @@
 # bb-scoped Plugin Studio inventory
 
 Date: 2026-08-11
-Status: Ready-PR reconciliation; exact head `7bdcfc3b` has green hosted CI,
-two clean round-4 review lanes, and a resolved final review thread.
-Issue: [#82](https://github.com/galligan/bb-mate/issues/82)
+Status: Complete and merged; follow-up platform work tracked separately
+Issue: [#82](https://github.com/galligan/bb-plugin-studio/issues/82)
 Goal: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/`
 
 ## Outcome
@@ -22,7 +21,7 @@ project toward the top, but an idle eligible project remains visible.
 ```text
 Open Plugin Studio
   → read eligible projects from bb
-  → start/confirm one supervised Mate runtime
+  → start/confirm the then-current supervised runtime
   → revalidate every private source record
   → perform one globally bounded multi-root scan
   → return grouped path-free project/plugin states
@@ -212,9 +211,24 @@ process/environment facts, unknown keys, and impossible runtime/project states.
        lifecycle after the latest executable and shipped-skill changes.
 8. [x] Rebuild/reload the path plugin with state preserved and verify current
        Plugin Studio status/refresh behavior in released bb.
-9. [x] Obtain exact-head hosted CI and two clean review lanes, then reconcile
-       tracker/PR truth before moving PR #84 from draft to ready. No merge is
-       authorized.
+9. [x] Obtain exact-head hosted CI and two clean review lanes, reconcile
+       tracker/PR truth, and complete the reviewed merge sequence.
+
+## Post-completion reconciliation
+
+- PR #83 merged as `ff9289d1`; PR #84 merged as `13d892cd`.
+- Scanner simplification/hardening landed through PRs #89-#91; current `main`
+  at reconciliation is `84e80f5c`. PR #90's `verify` check was red at merge,
+  while the successor #91/main matrix is green; PR #92 separately tracks the
+  deterministic force-kill fixture repair and is open/green.
+- #82 is closed. Technical identity migration is #86, compatibility policy is
+  #93, native-runtime convergence is #96, and deferred per-directory hardening
+  is #97.
+- The later repository move left the installed path registration pointing at
+  the removed checkout. #94 owns the preserve-state repair; do not treat the
+  historical successful reload below as current live health.
+- The exact ready-PR evidence that follows remains historical proof of the
+  reviewed implementation, not the current tracker/installation state.
 
 The exact implementation head is `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a`
 (`fix: preserve Plugin Studio refreshes`), stacked on PR #83 head `1c897d5`.

@@ -1,14 +1,24 @@
 # Execution Retro: bb-scoped Plugin Studio inventory
 
 Date started: 2026-08-11
-Date finalized: Pending
-Status: Executing
+Date finalized: 2026-08-12
+Status: Complete; post-completion reconciliation added 2026-08-13
 Spec: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/SPEC.md`
 Goal: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/GOAL.md`
 Prompt: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/PROMPT.md`
 Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
 
 ## Summary
+
+> Post-completion truth: PR #83 merged as `ff9289d1`, PR #84 merged as
+> `13d892cd`, and scanner follow-ups #89-#91 landed on current `main`
+> (`84e80f5c`). #82 is closed. The later repository move left the installed
+> path registration targeting the removed checkout; #94 owns the supported
+> preserve-state repair. Technical identity migration (#86/#95), compatibility
+> policy (#93), native-runtime convergence (#96), and bounded directory
+> enumeration (#97) are separate active follow-ups. Ready-but-unmerged, old
+> artifact, and successful-live statements below are chronological evidence,
+> not current state.
 
 - Objective: automatically inventory every bb-registered local project and its
   source plugins using workspace-aware, path-private discovery.
@@ -20,12 +30,10 @@ Refs: `.agents/goals/2026-08-11-bb-scoped-plugin-inventory/REFS.md`
   `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a` (`fix: preserve Plugin Studio
 refreshes`, following the `6d58faad` evidence head) with green exact-head
   hosted CI, two clean round-4 review lanes, and all review threads resolved;
-  it proceeds from draft to ready once this reconciliation commit's hosted CI
-  is green. Neither PR is merged.
-- Tracker/PR/source-control state: #82 open beneath #21; #62 complete; #70/#77
-  open and out of scope; PR #73 preserved; PR #83 exact head is `1c897d5`; PR
-  #84's exact implementation head is
-  `7bdcfc3b8379ad08e0d4cd5ea36ad4eb6da60b7a`.
+  it subsequently proceeded through review and merge.
+- Historical tracker/PR/source-control state at the ready-PR horizon: #82 was
+  open beneath #21; #62 complete; #70/#77 out of scope; PR #73 preserved; PR
+  #83 exact head `1c897d5`; PR #84 implementation head `7bdcfc3b…`.
 - Verification: prompt/doctor, Mate 80/80 (378 assertions), plugin check/build,
   15 Chromium screenshot/axe cases including 420px, Prettier, and diff checks
   pass on the milestone-A implementation head. Milestone B's current local
@@ -61,8 +69,8 @@ refreshes`, following the `6d58faad` evidence head) with green exact-head
   gates are green.
 - Tracker blockers: none; #82 owns the slice and #21 lists it.
 - Authority blockers: merge and release intentionally excluded.
-- Next action: push this reconciliation commit, confirm hosted CI at the docs
-  successor head, then mark PR #84 ready without merging or releasing.
+- Next action at completion was the owner-controlled merge. Current follow-up
+  work is tracked in #86, #93, #94-#102.
 
 ## Goal Amendments
 
@@ -384,13 +392,13 @@ refreshes`, following the `6d58faad` evidence head) with green exact-head
 
 ## Tracker / PR Log
 
-| Item       | State | Notes                                                                                                            |
-| ---------- | ----- | ---------------------------------------------------------------------------------------------------------------- |
-| GitHub #21 | Open  | Parent roadmap; #82 added, #62 checked, #70/#77 open.                                                            |
-| GitHub #82 | Open  | Focused all-project bb-scoped inventory sub-issue.                                                               |
-| GitHub #73 | Open  | Unrelated Biner setup lane; preserve without mutation.                                                           |
-| PR #83     | Ready | Exact head `1c897d5`; milestone-A proof remains green.                                                           |
-| PR #84     | Draft | Exact pushed evidence head `6d58faa`; local, artifact, RPC, and Browser proof green; hosted and reviews pending. |
+| Item       | State  | Notes                                                                         |
+| ---------- | ------ | ----------------------------------------------------------------------------- |
+| GitHub #21 | Open   | Parent roadmap; #82 added, #62 checked, #70/#77 open.                         |
+| GitHub #82 | Closed | Focused all-project bb-scoped inventory completed through merged PRs #83/#84. |
+| GitHub #73 | Open   | Unrelated Biner setup lane; preserve without mutation.                        |
+| PR #83     | Merged | Merge commit `ff9289d1`; milestone-A proof remains historical.                |
+| PR #84     | Merged | Merge commit `13d892cd`; later scanner follow-ups landed through #91.         |
 
 ## Follow-Ups
 
@@ -414,9 +422,9 @@ refreshes`, following the `6d58faad` evidence head) with green exact-head
   tests with the package/assertion breakdown above, standalone runtime
   `95ab3719…`, manifest `027cde5e…`, package `0d2a37d3…`, preserve-state Live
   status/refresh proof at app hash `de3682…`, and current Browser proof.
-- Forbidden actions audit: no merge, queue, publication, release, upstream edit,
-  plugin removal/reinstall, or PR #73 mutation has occurred; confirm once more
-  before readiness.
+- Authority audit at the original horizon excluded merge. The PRs were later
+  merged through the owner-controlled GitHub sequence; no publication, release,
+  plugin removal/reinstall, or upstream edit is implied by this retro.
 - Remaining findings / risks: the bounded directory-enumeration observation is
   explicitly deferred hardening, resolved on the PR with measured evidence. An
   owner-approved simplification stack (pnpm YAML block validator removal,
