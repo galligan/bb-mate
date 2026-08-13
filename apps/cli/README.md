@@ -3,30 +3,42 @@
 bb Plugin Studio is an experimental, fixture-driven authoring companion for native
 [bb](https://github.com/get-bb/bb) plugins.
 
-The package contains the `bb-mate` CLI and a deterministic static plugin-surface
-lab. It does not contain bb, plugin packages, a copied plugin SDK, or
-authenticated host state.
+The CLI package contains the command and deterministic static plugin-surface lab.
+It does not bundle bb, third-party plugin packages, a copied plugin SDK, or
+authenticated host state. The repository also contains the separately packaged
+Studio-owned integration plugin used for native bb testing.
 
 > bb Plugin Studio is an independent community project. Native bb and
 > `@bb/plugin-sdk` remain authoritative for plugin contracts, scaffolding,
 > build/install/dev behavior, host rendering, and runtime state.
 
-## Install
+## Try the source preview
 
 ```sh
-npm install --global bb-mate@alpha
-bb-mate --help
+git clone https://github.com/galligan/bb-plugin-studio.git
+cd bb-plugin-studio
+bun install --frozen-lockfile
+bun run bb-mate --help
+bun run dev
 ```
 
-From an existing plugin directory:
+bb Plugin Studio is not currently distributed as a public installable package.
+The supported first-contact path is this experimental source preview. The older
+`bb-mate` npm artifact is not the current onboarding path.
+
+`bb-mate` is the current compatibility command. It predates the product rename
+and is not the product name or the name of a new public package.
+
+To inspect an existing plugin source tree explicitly:
 
 ```sh
-bb-mate inspect .
-bb-mate dev .
+bun run bb-mate inspect /absolute/path/to/plugin
+bun run bb-mate dev /absolute/path/to/plugin
 ```
 
-Use the `alpha` tag explicitly. This is a prerelease and its command surface
-may change.
+See the
+[source preview guide](https://github.com/galligan/bb-plugin-studio/blob/main/docs/source-preview.md)
+for native handoff side effects, confidence levels, and current limitations.
 
 ## Commands
 
@@ -44,9 +56,10 @@ bb-mate live <plugin>     Hand off an installed path plugin to bb plugin dev
 same real plugin path is installed; otherwise it prints the native installation
 command without running it.
 
-The installed `dev` command serves the bundled 13-story lab on loopback. It
-does not install, build, reload, or run the selected plugin, and it never serves
-inspection data over HTTP.
+The source `dev` command serves the 13-story lab on loopback. It does not
+install, build, reload, or run the selected plugin. The source development
+server exposes a bounded inspection session for the explicitly selected tree;
+the packaged static lab does not serve inspection data over HTTP.
 
 ## bb, the SDK, and bb Plugin Studio
 
@@ -70,7 +83,9 @@ Learn more in the
 
 - Bun 1.3.14 is the verified runtime; newer engine-compatible Bun versions are
   best-effort until added to CI.
-- npm is the installer, but Node is not a supported CLI runtime.
+- The clean-room packaging lane uses npm for artifact inspection, but no
+  current public package is the supported installation path. Node is not a
+  supported CLI runtime.
 - Native handoffs target a supported macOS bb host.
 - Fixture and package checks are also exercised in isolated Linux CI.
 
@@ -85,9 +100,8 @@ bun run standalone:test
 
 That executable embeds the exact deterministic lab and is verified after being
 moved away from the checkout with an empty `PATH` and no global Bun. It is an
-internal build artifact: the npm package still ships the Bun-based CLI, and the
-standalone executable is not published, signed, notarized, or installed by
-these commands.
+internal build artifact: it is not published, signed, notarized, or installed
+by these commands.
 
 ## Trust and security
 

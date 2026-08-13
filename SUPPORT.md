@@ -1,8 +1,8 @@
 # Support and compatibility
 
-bb Plugin Studio is an MIT-licensed public alpha. It does not yet have a stable API,
-long-term support line, response-time commitment, or compatibility promise
-across every bb release.
+bb Plugin Studio is an MIT-licensed experimental source preview. It does not
+yet have a stable API, long-term support line, response-time commitment, or
+compatibility promise across every bb release.
 
 ## Where to ask
 
@@ -40,7 +40,7 @@ local paths.
 The actively maintained surface is:
 
 - the current green `main` branch;
-- the current `bb-mate@alpha` npm package;
+- the source preview documented in [docs/source-preview.md](docs/source-preview.md);
 - the bb target recorded in `compatibility/bb-target.json`;
 - Bun 1.3.14 and newer engine-compatible versions on a best-effort basis;
 - macOS for native bb handoffs;
