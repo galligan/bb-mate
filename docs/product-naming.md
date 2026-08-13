@@ -9,15 +9,13 @@ The GitHub repository is `galligan/bb-plugin-studio`.
 
 ## Canonical identities
 
-Current source, package, runtime, and skill surfaces use one Studio identity:
+Current source, package, and skill surfaces use one Studio identity:
 
 | Identity                          | Stable value                            |
 | --------------------------------- | --------------------------------------- |
 | published plugin and CLI command  | `bb-plugin-studio`                      |
 | workspace package scope           | `@bb-plugin-studio/*`                   |
 | bb plugin ID and source directory | `studio`, `plugins/studio`              |
-| packaged runtime artifact         | `bb-plugin-studio-runtime`              |
-| plugin runtime data root          | `<bb-data>/plugins/studio/runtime`      |
 | panel route                       | `workbench`                             |
 | skill ID and path                 | `plugin-studio`, `skills/plugin-studio` |
 

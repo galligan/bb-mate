@@ -12,9 +12,7 @@ import {
   PrincipalIdSchema,
   TargetIdSchema,
 } from "../contracts/ids.ts";
-import { ObjectCodecRegistry } from "../contracts/objects.ts";
 import { openDevelopmentTargetCatalog } from "../discovery/open-catalog.ts";
-import { DevelopmentTargetCodec } from "../discovery/development-target.ts";
 import { inspectDevelopmentSourceIdentity } from "../discovery/source-identity.ts";
 import {
   TARGET_EVENT_MAX_EVENTS_PER_TARGET,
@@ -26,8 +24,6 @@ import {
 } from "../discovery/trusted-candidate.ts";
 import { RuntimeError } from "../errors.ts";
 import { createEventFeed } from "../events/feed.ts";
-import { openRuntimeStore } from "../persistence/store.ts";
-import { createWorkbenchService } from "./workbench-service.ts";
 import { createDevelopmentTargetService } from "./development-target-service.ts";
 
 const temporaryRoots: string[] = [];
@@ -1059,48 +1055,6 @@ describe("DevelopmentTargetService", () => {
       ).toEqual({ count: 0 });
     } finally {
       inspect.close();
-    }
-  });
-
-  test("leaves the generic object service target-bound", async () => {
-    const fixture = await makeFixture();
-    const store = await openRuntimeStore({
-      dataRoot: fixture.dataRoot,
-      codecs: new ObjectCodecRegistry([DevelopmentTargetCodec]),
-      id: () => objectId,
-      clock: () => 1_000,
-    });
-    try {
-      const targetBound = createRequestContext({
-        id: principalId,
-        kind: "plugin-adapter",
-        scopes: ["targets:read", "targets:write"],
-        revoked: false,
-        bbContextId,
-        targetId: TargetIdSchema.parse("z".repeat(32)),
-      });
-      expect(() =>
-        createWorkbenchService(store).createObject(targetBound, {
-          kind: "development-target",
-          payload: candidateInput(fixture.pluginRoot).target,
-        }),
-      ).toThrow(new RuntimeError("invalid_request"));
-      expect(() =>
-        createWorkbenchService(store).getObject(targetBound, {
-          id: objectId,
-          kind: "development-target",
-        }),
-      ).toThrow(new RuntimeError("invalid_request"));
-      expect(() =>
-        createWorkbenchService(store).updateObject(targetBound, {
-          id: objectId,
-          kind: "development-target",
-          expectedRevision: 1,
-          payload: candidateInput(fixture.pluginRoot).target,
-        }),
-      ).toThrow(new RuntimeError("invalid_request"));
-    } finally {
-      store.close();
     }
   });
 });

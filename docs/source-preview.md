@@ -8,7 +8,7 @@ It is not a release installation or a production support commitment.
 
 This rename introduces `bb-plugin-studio` as the canonical package and command
 identity. The source preview creates a clean `studio` installation; the former
-Mate plugin has been removed rather than migrated in place.
+legacy plugin has been removed rather than migrated in place.
 
 ## Prerequisites
 
@@ -80,10 +80,10 @@ bb Plugin Studio distinguishes three confidence levels:
   and integration authority.
 
 A successful Fixture preview does not prove that the plugin will look or behave
-identically in bb. The source preview also does not provide a signed standalone
+identically in bb. The source preview also does not provide a signed packaged
 application, a stable installer, or a published Plugin Studio package. It
 installs the new `studio` identity cleanly and does not import state from a
-former Mate installation.
+former legacy installation.
 
 ## Verify the checkout
 

@@ -36,11 +36,6 @@ export interface CliRuntime {
     options: { cwd: string; env: NodeJS.ProcessEnv },
   ): Promise<ProcessExit>;
   runFixture?(options: { host: string; port: number }): Promise<ProcessExit>;
-  runServe(options: {
-    port: 0;
-    parentPid: number;
-    supervisorFd: number;
-  }): Promise<ProcessExit>;
 }
 
 interface InspectionContext {
@@ -56,7 +51,6 @@ const help = `Usage: bb-plugin-studio [path]
        bb-plugin-studio inspect [path] [--json]
        bb-plugin-studio check [path]
        bb-plugin-studio live [path]
-       bb-plugin-studio serve --port 0 --json --parent-pid <pid> --supervisor-fd <fd>
 
 Fixture workbench, packaged surface lab, and passive inspection stay in bb Plugin Studio.
 Native bb owns build, install, dev/reload, and live runtime.`;
@@ -203,14 +197,6 @@ export async function runCli(
   if (args.help) {
     line(runtime.stdout, help);
     return success;
-  }
-
-  if (args.command === "serve") {
-    return runtime.runServe({
-      port: 0,
-      parentPid: args.parentPid as number,
-      supervisorFd: args.supervisorFd as number,
-    });
   }
 
   const context = await inspectSelection(runtime, args.targetPath);

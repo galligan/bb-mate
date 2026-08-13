@@ -43,8 +43,7 @@
     "test": "bun test src"
   },
   "dependencies": {
-    "@bb-plugin-studio/inspection": "workspace:*",
-    "@bb-plugin-studio/runtime": "workspace:*"
+    "@bb-plugin-studio/inspection": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.3.4",

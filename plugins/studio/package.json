@@ -42,15 +42,12 @@
     ]
   },
   "files": [
-    "BUN_LICENSE.md",
     "dist/server.js",
     "dist/server.meta.json",
     "dist/cli.js",
     "dist/app.js",
     "dist/app.css",
     "dist/app.meta.json",
-    "runtime/darwin-arm64/bb-plugin-studio-runtime",
-    "runtime/darwin-arm64/manifest.json",
     "skills/plugin-studio/SKILL.md",
     "README.md",
     "LICENSE",

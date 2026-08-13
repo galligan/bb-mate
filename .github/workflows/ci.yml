@@ -44,7 +44,7 @@ jobs:
             plugins/studio/dist/playwright/results
           if-no-files-found: ignore
 
-  standalone-darwin-arm64:
+  managed-package-darwin-arm64:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
@@ -53,5 +53,4 @@ jobs:
           bun-version: 1.3.14
       - run: test "$(uname -m)" = arm64
       - run: bun install --frozen-lockfile
-      - run: bun run standalone:test
       - run: bun run plugin-studio:package:test

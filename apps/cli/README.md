@@ -89,19 +89,9 @@ Learn more in the
 - Native handoffs target a supported macOS bb host.
 - Fixture and package checks are also exercised in isolated Linux CI.
 
-The repository also builds a separate, unsigned macOS arm64 executable for
-isolated Plugin Studio development:
-
-```sh
-bun run standalone:build
-bun run standalone:inspect
-bun run standalone:test
-```
-
-That executable embeds the exact deterministic lab and is verified after being
-moved away from the checkout with an empty `PATH` and no global Bun. It is an
-internal build artifact: it is not published, signed, notarized, or installed
-by these commands.
+The source CLI retains passive inspection, native command delegation, and the
+deterministic Fixture surface lab. Studio discovery itself runs in the bb
+plugin process; the package does not embed or supervise a second runtime.
 
 ## Trust and security
 

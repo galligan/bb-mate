@@ -303,7 +303,6 @@ export async function verifyManagedPluginStudioPackage(args: {
   env: NodeJS.ProcessEnv;
   bbExecutable: string;
   bbAppExecutable: string;
-  canonicalStandaloneRoot: string;
   bbPluginStudioSourceRoot: string;
   gridSourceRoot: string;
   targetMarker: string;
@@ -384,9 +383,16 @@ export async function verifyManagedPluginStudioPackage(args: {
       "node_modules",
       PLUGIN_STUDIO_PACKAGE_NAME,
     );
-    await inspectPluginStudioPackageDirectory(
-      installedPackageRoot,
-      args.canonicalStandaloneRoot,
+    await inspectPluginStudioPackageDirectory(installedPackageRoot);
+    const packagedFiles = await Array.fromAsync(
+      new Bun.Glob("**/*").scan({ cwd: installedPackageRoot, onlyFiles: true }),
+    );
+    assert(
+      packagedFiles.every(
+        (file) =>
+          !file.startsWith("runtime/") && !file.includes("runtime-artifact"),
+      ),
+      "Managed package still embeds a child runtime.",
     );
 
     const machineId = await waitFor(async () => {

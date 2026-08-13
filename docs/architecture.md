@@ -3,8 +3,8 @@
 The runtime direction is governed by
 [`docs/architecture/runtime-convergence.md`](architecture/runtime-convergence.md):
 Plugin Studio converges onto bb-owned plugin lifecycle and storage, retains the
-secondary runtime only as a temporary migration fallback, and requires a new
-bounded public bb capability before enrolled remote-host discovery is enabled.
+native in-process path for primary-host discovery, and requires a new bounded
+public bb capability before enrolled remote-host discovery is enabled.
 
 ## Repository boundary
 

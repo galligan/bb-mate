@@ -82,18 +82,6 @@ export type {
   ObjectEventType,
   PullEventsInput,
 } from "./events/feed.ts";
-export { createRuntimeHttpHandler } from "./http/handler.ts";
-export type {
-  RuntimeHttpAuthenticator,
-  RuntimeHttpHandler,
-  RuntimeHttpHandlerOptions,
-} from "./http/handler.ts";
-export type { RuntimeTargetController } from "./http/handler.ts";
-export { loadOrCreateRuntimeIdentity } from "./supervision/identity.ts";
-export type {
-  LoadOrCreateRuntimeIdentityOptions,
-  RuntimeIdentity,
-} from "./supervision/identity.ts";
 export {
   BatchProjectTargetAdmissionRequestSchema,
   BatchProjectTargetAdmissionResponseSchema,
@@ -105,13 +93,4 @@ export type {
   BatchProjectTargetAdmissionResponse,
   DevelopmentTargetListResponse,
 } from "./supervision/targets.ts";
-export { openRuntimeStore } from "./persistence/store.ts";
-export type {
-  CreateObjectInput,
-  GetObjectInput,
-  OpenRuntimeStoreOptions,
-  RuntimeStore,
-  UpdateObjectInput,
-} from "./persistence/store.ts";
-export { createWorkbenchService } from "./service/workbench-service.ts";
 export { createDevelopmentTargetService } from "./service/development-target-service.ts";

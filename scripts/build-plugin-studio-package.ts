@@ -5,15 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   assertPluginStudioPackagePaths,
-  assertPluginStudioRuntimeCopyMode,
-  createPluginStudioRuntimeStamp,
   createPluginStudioStagedManifest,
-  createPluginStudioThirdPartyNotices,
-  generatePluginStudioRuntimeStampModule,
-  pinnedBunLicenseBytes,
   stripPluginStudioBundleSourceNames,
 } from "./plugin-studio-package-artifact.ts";
-import { inspectStandalone } from "./inspect-standalone.ts";
 import { generateThirdPartyLicenses } from "./third-party-licenses.ts";
 
 interface PackResult {
@@ -25,12 +19,6 @@ interface PackResult {
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const pluginRoot = path.join(repositoryRoot, "plugins", "studio");
-const generatedStampPath = path.join(
-  pluginRoot,
-  "src",
-  "generated",
-  "runtime-artifact-stamp.ts",
-);
 const defaultArtifactRoot = path.join(
   repositoryRoot,
   "artifacts",
@@ -67,44 +55,22 @@ async function copyFile(source: string, destination: string): Promise<void> {
   await fs.copyFile(source, destination);
 }
 
-async function readOptional(file: string): Promise<string | undefined> {
-  try {
-    return await fs.readFile(file, "utf8");
-  } catch (error) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "ENOENT"
-    ) {
-      return undefined;
-    }
-    throw error;
-  }
-}
-
 export async function buildPluginStudioPackage(options: {
   artifactRoot?: string;
   env?: NodeJS.ProcessEnv;
   npmExecutable: string;
-  standaloneRoot?: string;
 }): Promise<{ artifactPath: string; result: PackResult }> {
   const env = options.env ?? process.env;
   const artifactRoot = path.resolve(
     options.artifactRoot ?? defaultArtifactRoot,
   );
-  const [standalone, sourceManifestText, originalStamp] = await Promise.all([
-    inspectStandalone(options.standaloneRoot),
-    fs.readFile(path.join(pluginRoot, "package.json"), "utf8"),
-    readOptional(generatedStampPath),
-  ]);
+  const sourceManifestText = await fs.readFile(
+    path.join(pluginRoot, "package.json"),
+    "utf8",
+  );
   const sourceManifest = JSON.parse(sourceManifestText) as Parameters<
     typeof createPluginStudioStagedManifest
   >[0];
-  const stamp = createPluginStudioRuntimeStamp(
-    standalone.manifest,
-    standalone.manifestBytes,
-  );
   const thirdPartyNotices = await fs.readFile(
     path.join(repositoryRoot, "apps", "cli", "THIRD_PARTY_NOTICES.md"),
     "utf8",
@@ -124,10 +90,6 @@ export async function buildPluginStudioPackage(options: {
       cwd: repositoryRoot,
       env,
     });
-    await fs.writeFile(
-      generatedStampPath,
-      generatePluginStudioRuntimeStampModule(stamp),
-    );
     await runCapture(bbExecutable, ["plugin", "build", "."], {
       cwd: pluginRoot,
       env,
@@ -147,20 +109,9 @@ export async function buildPluginStudioPackage(options: {
         path.join(pluginRoot, "LICENSE"),
         path.join(stagingRoot, "LICENSE"),
       ),
-      fs
-        .readFile(path.join(pluginRoot, "BUN_LICENSE.md"))
-        .then((license) =>
-          fs.writeFile(
-            path.join(stagingRoot, "BUN_LICENSE.md"),
-            pinnedBunLicenseBytes(license),
-          ),
-        ),
       fs.writeFile(
         path.join(stagingRoot, "THIRD_PARTY_NOTICES.md"),
-        createPluginStudioThirdPartyNotices(
-          thirdPartyNotices,
-          standalone.manifest.bunVersion,
-        ),
+        thirdPartyNotices,
       ),
       generateThirdPartyLicenses().then((licenses) =>
         fs.writeFile(
@@ -193,35 +144,8 @@ export async function buildPluginStudioPackage(options: {
         path.join(repositoryRoot, "apps", "cli", "dist", "cli.js"),
         path.join(stagingRoot, "dist", "cli.js"),
       ),
-      copyFile(
-        standalone.executablePath,
-        path.join(
-          stagingRoot,
-          "runtime",
-          "darwin-arm64",
-          "bb-plugin-studio-runtime",
-        ),
-      ),
-      copyFile(
-        path.join(standalone.artifactRoot, "manifest.json"),
-        path.join(stagingRoot, "runtime", "darwin-arm64", "manifest.json"),
-      ),
     ]);
-    const stagedExecutable = path.join(
-      stagingRoot,
-      "runtime",
-      "darwin-arm64",
-      "bb-plugin-studio-runtime",
-    );
-    const [sourceExecutableStat, stagedExecutableStat] = await Promise.all([
-      fs.stat(standalone.executablePath),
-      fs.stat(stagedExecutable),
-    ]);
-    const sourceMode = sourceExecutableStat.mode & 0o7777;
-    const stagedMode = stagedExecutableStat.mode & 0o7777;
-    assertPluginStudioRuntimeCopyMode(sourceMode, stagedMode);
     await fs.access(bbExecutable, constants.X_OK);
-    await fs.access(stagedExecutable, constants.X_OK);
     await fs.mkdir(artifactRoot, { recursive: true });
     const output = await runCapture(
       npmExecutable,
@@ -245,11 +169,6 @@ export async function buildPluginStudioPackage(options: {
     await fs.access(artifactPath, constants.R_OK);
     return { artifactPath, result };
   } finally {
-    if (originalStamp === undefined) {
-      await fs.unlink(generatedStampPath).catch(() => undefined);
-    } else {
-      await fs.writeFile(generatedStampPath, originalStamp);
-    }
     await fs.rm(temporaryRoot, { recursive: true, force: true });
   }
 }
