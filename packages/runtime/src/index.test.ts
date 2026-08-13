@@ -36,13 +36,9 @@ describe("@bb-plugin-studio/runtime public surface", () => {
       "createInspectionDevelopmentTargetCandidateBridge",
       "createOpaqueId",
       "createRequestContext",
-      "createRuntimeHttpHandler",
-      "createWorkbenchService",
       "defineObjectCodec",
       "isRequestContext",
-      "loadOrCreateRuntimeIdentity",
       "openDevelopmentTargetCatalog",
-      "openRuntimeStore",
     ]);
   });
 

@@ -13,12 +13,11 @@ or Bun workspace configuration, including supported bounded
 expanded, and each plugin row opens that target's detail view.
 
 Each refresh returns a finite, redacted point-in-time snapshot rather than a
-realtime monitor. Target identity and history are persisted through Plugin
-Studio's catalog on bb-owned storage; only bounded opaque projections leave the
-backend. Plugin Studio does not execute target code, package
+realtime monitor. The Studio catalog owns target identity and returns only bounded
+opaque projections. Plugin Studio does not execute target code, package
 scripts, native plugin lifecycle commands, or installed-plugin inventory.
 Source paths remain server-private, and the plugin never prints or exposes a
-runtime URL, credential, process ID, installed path, source paths, or host
+credential, process ID, installed path, source paths, or host
 topology. Preview remains unavailable under #70.
 
 ## Development
@@ -33,21 +32,12 @@ bun --filter bb-plugin-studio test
 bun run plugin-studio:package:test
 ```
 
-The macOS arm64 package gate stages the deterministic standalone executable,
-verifies its manifest and embedded backend stamp, runs released bb 0.36's
-plugin build, inspects the resulting npm tarball, and proves that managed
-schema-v4 discovery does not start the bundled runtime or a private listener.
-The publishable package manifest
+The macOS arm64 package gate runs released bb 0.36's plugin build, inspects the
+resulting npm tarball, and proves managed schema-v4 discovery without a child
+process or private listener. The publishable package manifest
 uses the canonical `bb-plugin-studio` package and command
 identity, but the tarball remains a local verification artifact until a
 separate release approval. Do not upload, publish, or redistribute it from this
 development workflow.
-The exact Bun 1.3.14 license is included as `BUN_LICENSE.md`; a separate
-tracked gate must resolve LGPL relink materials and complete third-party
-licensing before any distribution approval. The verification flow does not
-install into a normal bb profile or enable remote access.
-
-The package still contains the legacy bundled runtime artifact for compatibility
-and artifact inspection. It is dormant: the production plugin path neither
-starts nor calls it. Issue #101 removes that leftover package machinery once the
-in-process path has landed independently.
+The verification flow does not install into a normal bb profile or enable
+remote access.

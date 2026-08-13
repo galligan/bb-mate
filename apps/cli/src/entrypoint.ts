@@ -3,30 +3,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCli, type CliRuntime, type ProcessExit } from "./commands.ts";
 import {
-  createEmbeddedLabAssets,
-  type EmbeddedLabAssetMap,
-} from "./lab-assets.ts";
-import {
   nativeCommandEnv,
   resolveBbExecutable,
   runCapturedCommand,
   runInheritedCommand,
 } from "./native.ts";
-import { runSupervisedServe } from "./serve.ts";
 import { runSurfaceLab } from "./surface-lab-server.ts";
 
-export type BbStudioEntrypointOptions =
-  | {
-      mode: "source-or-package";
-      moduleUrl: string;
-      bunExecutable: string;
-      runtimeVersion: string;
-    }
-  | {
-      mode: "standalone";
-      assets: EmbeddedLabAssetMap;
-      runtimeVersion: string;
-    };
+export interface BbStudioEntrypointOptions {
+  mode: "source-or-package";
+  moduleUrl: string;
+  bunExecutable: string;
+}
 
 interface EntrypointEnvironment {
   argv?: readonly string[];
@@ -56,24 +44,7 @@ export async function createBbStudioCliRuntime(
   let fixture: Pick<CliRuntime, "fixtureName" | "runFixture"> = {};
   let source: Pick<CliRuntime, "bunExecutable" | "workspaceRoot"> = {};
 
-  if (options.mode === "standalone") {
-    if (!("/index.html" in options.assets)) {
-      throw new Error(
-        "Standalone surface lab assets must include /index.html.",
-      );
-    }
-    const assets = createEmbeddedLabAssets(options.assets);
-    fixture = {
-      fixtureName: "surface lab",
-      runFixture: (serverOptions) =>
-        runSurfaceLab({
-          assets,
-          ...serverOptions,
-          stdout: current.stdout,
-          stderr: current.stderr,
-        }),
-    };
-  } else {
+  {
     const moduleDirectory = path.dirname(fileURLToPath(options.moduleUrl));
     const packagedLabRoot = path.join(moduleDirectory, "lab");
     const packaged = await fs
@@ -113,10 +84,6 @@ export async function createBbStudioCliRuntime(
         env: nativeCommandEnv(current.env),
       }),
     runInherited: runInheritedCommand,
-    runServe: (serveOptions) =>
-      runSupervisedServe(serveOptions, {
-        runtimeVersion: options.runtimeVersion,
-      }),
   };
 }
 

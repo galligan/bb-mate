@@ -1,6 +1,6 @@
 # Canonical Plugin Studio and native-runtime execution
 
-Status: In progress
+Status: Ready-PR horizon complete; stack unmerged
 
 ## Outcome
 
@@ -34,7 +34,7 @@ start a secondary runtime server.
 - Source package: `plugins/studio`
 - Private workspace scope: `@bb-plugin-studio/*`
 - Skill: `plugin-studio`
-- Temporary legacy runtime artifact, until removed: `bb-plugin-studio-runtime`
+- Secondary runtime artifact: none after #101 / PR #114
 - Environment/session/temp names: `BB_PLUGIN_STUDIO_*` and Plugin Studio
   terminology
 
@@ -110,6 +110,23 @@ identity.
 - Disposable Live bb catalog/detail/task/Back proof
 - Normal-profile fingerprint before and after the final canonical install
 - Exact-head hosted CI and two independent zero-finding reviews before ready
+
+## Completion evidence
+
+- Ready stack: #108 canonical identity → #109 bounded enumeration → #110
+  bb-owned catalog → #113 in-process discovery → #114 runtime removal.
+- Every exact head is mergeable, hosted-green, and free of review threads; #113
+  and #114 each have clean 5/5 replacement reviews.
+- Final native package: 12 files, SHA-256
+  `67b24251e578b94212441ffc893d4929122cfa4b9c1d92c40895e5396ec5f725`.
+- Disposable exact bb 0.36 and 0.37 package/lifecycle proofs pass.
+- The live `studio` plugin is source-correct, enabled, running, schema-v4, and
+  exposes the canonical Plugin Studio target at revision 1 with no `mate`,
+  secondary process, or private listener.
+- Current root, target-detail, and Back navigation were verified. Preview
+  remains truthfully unavailable under #70.
+- No merge, npm publication, release, upstream bb change, or inspection of the
+  recoverably removed legacy data was performed.
 
 ## Stop conditions
 

@@ -71,10 +71,10 @@ describe("Plugin Studio package inspection", () => {
       ).bytes(),
     ]);
     expect(createHash("sha256").update(readme).digest("hex")).toBe(
-      "caae6d98194b7438169777332658e0ce66ed273f4faa1fdc8774c5b85e32377f",
+      "38f2a02b3ca081a563afa9078a93796afbd753707bfab4eb175d3744dcc9171e",
     );
     expect(createHash("sha256").update(skill).digest("hex")).toBe(
-      "5a558f60179973e6f6c5401f4d01a93ba8348114a28a5d499b506cb34898df03",
+      "7b226425296a472434423f29036589980843ef87ac3ce3f2cf068723a0fb4d1b",
     );
   });
 
@@ -103,15 +103,14 @@ describe("Plugin Studio package inspection", () => {
       const prose = document.replace(/\s+/gu, " ");
       expect(prose).toContain("schema-v4");
       expect(prose).toContain("read-only status");
-      expect(prose).toContain("in-process");
       expect(prose).toContain("all eligible bb-registered local projects");
       if (document === skill) {
         expect(prose).toContain(
           "On mount, Plugin Studio automatically performs",
         );
+        expect(prose).toContain("contains no secondary runtime artifact");
+        expect(prose).not.toContain("runtime artifact is dormant");
         expect(prose).not.toContain("On mount, Workbench automatically");
-        expect(prose).toContain("bb-owned storage");
-        expect(prose).toContain("bundled runtime artifact is dormant");
       }
       expect(prose).toContain("refresh icon");
       expect(prose).toContain("npm or Bun workspace configuration");
@@ -220,38 +219,29 @@ describe("Plugin Studio package inspection", () => {
     ).toThrow("manifest keys differ");
   });
 
-  test("rejects incomplete runtime redistribution notices", () => {
+  test("rejects incomplete dependency notices", () => {
     const notices =
-      "Radix Slot; Radix Tooltip; bundled Zod protocol implementation; compiled with and embeds the Bun 1.3.14 runtime; Bun itself is MIT-licensed; JavaScriptCore and WebKit under LGPL-2; local verification only; BUN_LICENSE.md";
+      "Radix Slot; Radix Tooltip; bundled Zod schema implementation";
     const licenses =
       "## @radix-ui/react-slot@1.3.3\n\n## @radix-ui/react-tooltip@1.2.16\n\n## zod@4.4.3\n";
     expect(() =>
-      assertPluginStudioThirdPartyCoverage(notices, licenses, "1.3.14"),
+      assertPluginStudioThirdPartyCoverage(notices, licenses),
     ).not.toThrow();
     expect(() =>
       assertPluginStudioThirdPartyCoverage(
         notices,
         licenses.replace("## @radix-ui/react-tooltip@1.2.16\n\n", ""),
-        "1.3.14",
       ),
     ).toThrow("do not cover");
     expect(() =>
       assertPluginStudioThirdPartyCoverage(
         notices.replace("Radix Tooltip; ", ""),
         licenses,
-        "1.3.14",
-      ),
-    ).toThrow("do not cover");
-    expect(() =>
-      assertPluginStudioThirdPartyCoverage(
-        notices.replace("compiled with and embeds", "built by"),
-        licenses,
-        "1.3.14",
       ),
     ).toThrow("do not cover");
   });
 
-  test("bounds non-runtime files and expanded gzip input", () => {
+  test("bounds package files and expanded gzip input", () => {
     expect(() =>
       assertPluginStudioPackageFileSize("dist/server.js", 17 * 1024 * 1024),
     ).toThrow("oversized");
@@ -324,7 +314,7 @@ describe("Plugin Studio package inspection", () => {
       })),
     );
     const valid = gzipSync(expanded);
-    expect(preflightPluginStudioTarBytes(valid)).toHaveLength(15);
+    expect(preflightPluginStudioTarBytes(valid)).toHaveLength(12);
     expect(() =>
       preflightPluginStudioTarBytes(
         Buffer.concat([valid, gzipSync("SECRET_SOURCE_PAYLOAD")]),

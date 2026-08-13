@@ -3,7 +3,7 @@ import type { BbPluginApi } from "@bb/plugin-sdk";
 import type {
   BatchProjectTargetAdmissionRequest,
   BatchProjectTargetAdmissionResponse,
-  CreateRuntimeTargetControllerOptions,
+  ProjectTargetControllerOptions,
   ProjectTargetController,
 } from "@bb-plugin-studio/runtime/catalog";
 
@@ -38,12 +38,12 @@ function hostFixture(options: {
   controller: (
     input: BatchProjectTargetAdmissionRequest,
     signal: AbortSignal | undefined,
-    beforeWrite: CreateRuntimeTargetControllerOptions["beforeCatalogMutation"],
+    beforeWrite: ProjectTargetControllerOptions["beforeCatalogMutation"],
   ) => ReturnType<ProjectTargetController["admit"]>;
 }) {
   let handlers: Record<string, () => Promise<unknown>> | undefined;
   let dispose: (() => void | Promise<void>) | undefined;
-  let controllerOptions: CreateRuntimeTargetControllerOptions | undefined;
+  let controllerOptions: ProjectTargetControllerOptions | undefined;
   let closed = 0;
   const projects = options.projects ?? [project()];
   const catalog = { close: () => (closed += 1) };
@@ -70,7 +70,7 @@ function hostFixture(options: {
   createStudioPlugin({
     createOpaqueKey: () => String(++key).padStart(32, "0"),
     openCatalog: (() => catalog) as never,
-    createController: ((input: CreateRuntimeTargetControllerOptions) => {
+    createController: ((input: ProjectTargetControllerOptions) => {
       controllerOptions = input;
       return {
         principalId: input.principalId,

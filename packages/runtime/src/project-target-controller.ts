@@ -26,7 +26,7 @@ import {
   type DevelopmentTargetListResponse,
 } from "./supervision/targets.ts";
 
-export interface CreateRuntimeTargetControllerOptions {
+export interface ProjectTargetControllerOptions {
   readonly catalog: DevelopmentTargetCatalog;
   readonly principalId: PrincipalId;
   readonly bbContextId: BbContextId;
@@ -66,7 +66,7 @@ export function createProjectTargetController({
   admitRoots = admitTrustedRoots,
   discoverCandidates = discoverWorkspaceSourceCandidates,
   beforeCatalogMutation,
-}: CreateRuntimeTargetControllerOptions): ProjectTargetController {
+}: ProjectTargetControllerOptions): ProjectTargetController {
   const targets = createDevelopmentTargetService(catalog);
   const bridge = createInspectionDevelopmentTargetCandidateBridge({
     consumeIssuedSourceCandidate,
@@ -391,9 +391,6 @@ export function createProjectTargetController({
     },
   };
 }
-
-/** @deprecated Child-runtime compatibility alias; remove with #101. */
-export const createRuntimeTargetController = createProjectTargetController;
 
 function rethrowCatalogAuthorizationFailure(error: unknown): void {
   if (error instanceof CatalogAuthorizationFailure) throw error.cause;

@@ -34,6 +34,6 @@ Slot and Tooltip runtime dependency closure, Ladle, classnames, Prism React
 Renderer and PrismJS, PropTypes and React Is, React and scheduler, the Focus
 Lock/React Remove Scroll family, Reach UI dialog, tslib, and the inspection
 parser dependency closure. This inventory and those notices cover third-party
-components, including the runtime protocol's bundled Zod schema implementation,
+components, including the catalog contract's bundled Zod schema implementation,
 only. bb Plugin Studio itself is distributed under the MIT License included as `LICENSE`
 in the package.

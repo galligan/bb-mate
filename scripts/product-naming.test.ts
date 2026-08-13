@@ -114,9 +114,7 @@ describe("bb Plugin Studio product naming", () => {
       "Build, inspect, and preview bb plugins.",
     );
     expect(manifest.bb.skills).toEqual(["./skills/plugin-studio"]);
-    expect(manifest.files).toContain(
-      "runtime/darwin-arm64/bb-plugin-studio-runtime",
-    );
+    expect(manifest.files.join("\n")).not.toContain("runtime/");
 
     const namingGuide = await Bun.file(
       `${repositoryRoot}/docs/product-naming.md`,

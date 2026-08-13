@@ -19,9 +19,9 @@ in-process rather than being rewritten.
 The in-process path is authoritative for primary-host discovery after
 [#99](https://github.com/galligan/bb-plugin-studio/issues/99) and
 [#100](https://github.com/galligan/bb-plugin-studio/issues/100). The child
-runtime source remains only as removal work for
-[#101](https://github.com/galligan/bb-plugin-studio/issues/101); production
-Plugin Studio does not start or call it. Enrolled remote-host discovery remains
+runtime source and package were removed under
+[#101](https://github.com/galligan/bb-plugin-studio/issues/101). Enrolled
+remote-host discovery remains
 explicitly unavailable until bb exposes the bounded, host-routed public
 capability tracked in
 [#102](https://github.com/galligan/bb-plugin-studio/issues/102). It does not
@@ -93,37 +93,33 @@ The shipped Studio flow calls the target domain directly:
 - RPC schema v4 exposes only browser availability and path-free project scan
   truth; runtime version/API/startup handshake fields are gone.
 
-Supervisor, launcher, resolver, private target client, HTTP `serve`, and
-packaged executable files remain temporarily so #101 can remove their package,
-CLI, and test graph coherently. They are not reachable from the production
-plugin entrypoint.
+Supervisor, launcher, resolver, private target client, HTTP `serve`, packaged
+executable files, and their test graph have been removed. The production plugin
+uses no secondary process or private listener.
 
-The generic object service is not in that product call graph. Sessions,
-surfaces, annotations, captures, comparisons, plugin briefs, and reviews exist
-as codecs, scopes, tables, services, and tests, but every corresponding runtime
-capability is currently `false` in `packages/runtime/src/supervision/protocol.ts`.
-Artifacts, browser bootstrap, events, and MCP are also advertised as `false`.
-Those future-only abstractions must not be migrated merely because they exist.
-They should be deleted with the child runtime unless a product caller and a
-separate decision justify them.
+The removed generic object service is not in that product call graph. Sessions,
+surfaces, annotations, captures, comparisons, plugin briefs, reviews, private
+bootstrap, and private MCP/HTTP capabilities were deleted with the child
+runtime. They must not return unless a product caller and a separate decision
+justify them through public bb contracts.
 
 ## Ownership decision
 
-| Responsibility                                 | Current owner                                                                              | Target owner                                                                                                  | Disposition and public contract                                                                                                                                                                         |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project inventory and primary source selection | Studio `project-adapter.ts` through the child admission bridge                             | Studio backend                                                                                                | Keep and simplify. `bb.sdk.system.config()` plus `bb.sdk.projects.list/get()` already provide the primary host and authorized `local_path` sources.                                                     |
-| Manifest-only discovery                        | `packages/inspection` executed by the child runtime or browser dev adapter                 | Studio backend using `packages/inspection`                                                                    | Move in-process under #99 after #97 closes the per-directory materialization gap. No plugin entrypoint or build tool is imported or executed.                                                           |
-| Enrolled remote-host discovery                 | No safe complete path                                                                      | bb host/SDK capability consumed by Studio                                                                     | Blocked on #102. Do not use server-local paths, hidden terminals, unrestricted commands, or `files.listPaths` as a fallback.                                                                            |
-| Development-target catalog                     | Bun SQLite under the child data root                                                       | `bb.storage.database()` and `bb.storage.migrate()`                                                            | Migrate under #100, preserving durable identity and event semantics. bb owns the plugin database handle, WAL mode, busy timeout, and disposal.                                                          |
-| Generic objects and events                     | `runtime_objects`, `runtime_events`, `createWorkbenchService`                              | None by default                                                                                               | Remove as future-only. Import only the development-target rows and events proven necessary by the migration inventory. Reintroduce product objects behind native bb RPC/storage as their surfaces ship. |
-| Child supervision and handshake                | Studio supervisor, resolver, launcher, protocol, runtime identity                          | bb plugin loader and `bb.background.service` only where continuous work is real                               | Remove under #101. Refresh work is request-scoped; it does not require a permanently running service. Abort in-flight work from `bb.onDispose`.                                                         |
-| Private HTTP and bearer auth                   | Child loopback handler plus supervisor principal/scopes                                    | `bb.rpc` for app calls; `bb.http` only for a real external HTTP use case                                      | Remove. bb's local RPC auth and output validation replace the private target routes. Do not publish an unauthenticated replacement.                                                                     |
-| Realtime progress                              | Not currently a live runtime capability                                                    | `bb.realtime.publish` if progress becomes necessary                                                           | Delegate to bb; do not add private streaming first.                                                                                                                                                     |
-| CLI                                            | Standalone `bb-plugin-studio` plus supervised private `serve`                              | bb native `bb.cli.register` for installed-plugin operations; retain independently useful source commands only | Remove `serve` under #101. Preserve a standalone inspect/fixture command only if it remains useful without the child topology.                                                                          |
-| Agent tools and skills                         | Capability probes and plugin manifest                                                      | `bb.agents.registerTool/configure` plus manifest skills                                                       | Delegate to bb. Do not add an MCP server to compensate for a native tool surface already available.                                                                                                     |
-| Browser bootstrap and app communication        | Future capability plus current `bb.rpc` status/refresh                                     | bb-hosted plugin app and `bb.rpc`; browser-only Fixture workbench stays independent                           | Remove the private bootstrap concept. Native bb is the Live visual authority; the ordinary browser remains a deterministic Fixture surface.                                                             |
-| Packaging                                      | Studio npm artifact embeds a Bun executable, manifest, stamp, and licenses                 | Plugin server/app/assets only                                                                                 | Remove runtime executable, checksum stamp, standalone supervision gates, and redistribution work under #101.                                                                                            |
-| Lifecycle cleanup                              | Parent PID polling, signals, listener drain, token zeroing, catalog close, plugin disposal | plugin-owned abort/dispose plus bb-owned database handles                                                     | Abort the shared scan controller from `bb.onDispose`; close only resources Plugin Studio itself owns.                                                                                                   |
+| Responsibility                                 | Current owner                                                           | Target owner                                                                                                  | Disposition and public contract                                                                                                                |
+| ---------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project inventory and primary source selection | Studio backend through `project-adapter.ts`                             | Studio backend                                                                                                | `bb.sdk.system.config()` plus `bb.sdk.projects.list/get()` provide the primary host and authorized `local_path` sources.                       |
+| Manifest-only discovery                        | Studio backend using bounded `packages/inspection`                      | Studio backend using `packages/inspection`                                                                    | Moved in-process under #99 after #97 closed the per-directory materialization gap. No plugin entrypoint or build tool is imported or executed. |
+| Enrolled remote-host discovery                 | No safe complete path                                                   | bb host/SDK capability consumed by Studio                                                                     | Blocked on #102. Do not use server-local paths, hidden terminals, unrestricted commands, or `files.listPaths` as a fallback.                   |
+| Development-target catalog                     | `bb.storage.database()` and `bb.storage.migrate()`                      | `bb.storage.database()` and `bb.storage.migrate()`                                                            | Migrated under #100 with durable identity and event semantics. bb owns the plugin database handle, WAL mode, busy timeout, and disposal.       |
+| Generic objects and events                     | None; development-target history lives in the native bb-owned catalog   | None by default                                                                                               | Removed as future-only. Reintroduce product objects behind native bb RPC/storage only as their surfaces ship.                                  |
+| Child supervision and handshake                | None                                                                    | bb plugin loader and `bb.background.service` only where continuous work is real                               | Removed under #101. Refresh work is request-scoped; abort in-flight work from `bb.onDispose`.                                                  |
+| Private HTTP and bearer auth                   | None                                                                    | `bb.rpc` for app calls; `bb.http` only for a real external HTTP use case                                      | Removed. bb's local RPC auth and output validation replace the private target routes. Do not publish an unauthenticated replacement.           |
+| Realtime progress                              | Not currently a live runtime capability                                 | `bb.realtime.publish` if progress becomes necessary                                                           | Delegate to bb; do not add private streaming first.                                                                                            |
+| CLI                                            | Source `bb-plugin-studio` inspection and Fixture commands               | bb native `bb.cli.register` for installed-plugin operations; retain independently useful source commands only | The private `serve` path was removed under #101; source inspection and Fixture commands remain.                                                |
+| Agent tools and skills                         | Capability probes and plugin manifest                                   | `bb.agents.registerTool/configure` plus manifest skills                                                       | Delegate to bb. Do not add an MCP server to compensate for a native tool surface already available.                                            |
+| Browser bootstrap and app communication        | Future capability plus current `bb.rpc` status/refresh                  | bb-hosted plugin app and `bb.rpc`; browser-only Fixture workbench stays independent                           | Remove the private bootstrap concept. Native bb is the Live visual authority; the ordinary browser remains a deterministic Fixture surface.    |
+| Packaging                                      | Studio npm artifact contains the plugin, source CLI, and Fixture assets | Plugin server/app/assets plus independently useful source commands                                            | The executable child runtime, checksum stamp, supervision gates, and associated redistribution work were removed under #101.                   |
+| Lifecycle cleanup                              | Plugin-owned refresh abort/dispose plus bb-owned database handles       | Plugin-owned refresh abort/dispose plus bb-owned database handles                                             | Abort the shared scan controller from `bb.onDispose`; close only resources Plugin Studio itself owns. No child supervision remains.            |
 
 ## Public bb capabilities to reuse
 
@@ -189,7 +185,7 @@ the manifest scanner.
 ## Historical legacy-state inventory
 
 This inventory records the migration risk that existed when the ADR was
-accepted. The owner subsequently removed Mate and chose a clean Studio install,
+accepted. The owner subsequently removed the legacy installation and chose a clean Studio install,
 so production Plugin Studio does not import this database. The bb-owned catalog
 starts clean and preserves the same identity, revision, scope, retirement, and
 event semantics going forward. The historical files, if retained outside the
@@ -317,7 +313,7 @@ bb responsiveness.
   or closing bb's handle.
 - Reload, stable identity/revision/history, failed migration, and tampered schema
   proofs run against the host-neutral catalog and real `better-sqlite3` adapter.
-- The removed Mate profile is not imported; there is no dual-writer or rollback
+- The removed legacy profile is not imported; there is no dual-writer or rollback
   database in the active Studio topology.
 
 ### Phase 3: remove dormant child machinery (#101)
@@ -341,7 +337,7 @@ bb responsiveness.
 ## Historical rollback design and current compatibility
 
 The dual-database rollback design below is retained as decision history, not an
-active Studio mechanism. Mate was removed before native cutover, and Studio
+active Studio mechanism. The legacy installation was removed before native cutover, and Studio
 starts with one clean bb-owned catalog. Current rollback must preserve that
 catalog; it must not reactivate or write a legacy child database.
 
@@ -404,7 +400,7 @@ removes the child runtime:
    remove while the normal profile remains byte-equivalent.
 9. **Repository gates:** compatibility lanes, typecheck, tests, build, visual
    tests, package inspection, and clean-room lifecycle are green with no
-   packaged runtime executable.
+   packaged child executable.
 10. **Rollback proof:** reload and compatible code rollback keep the bb-owned
     catalog authoritative and never reactivate a legacy child database.
 

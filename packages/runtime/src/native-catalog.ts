@@ -21,8 +21,7 @@ export {
 export { adaptPreparedSqliteDatabase } from "./persistence/sqlite.ts";
 export {
   createProjectTargetController,
-  createRuntimeTargetController,
-  type CreateRuntimeTargetControllerOptions,
+  type ProjectTargetControllerOptions,
   type ProjectTargetController,
 } from "./project-target-controller.ts";
 export { createRequestContext } from "./auth/context.ts";

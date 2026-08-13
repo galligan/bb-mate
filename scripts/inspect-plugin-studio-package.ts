@@ -6,14 +6,8 @@ import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import {
   assertPluginStudioPackagePaths,
-  assertPluginStudioRuntimeStampEmbedded,
-  createPluginStudioRuntimeStamp,
-  createPluginStudioThirdPartyNotices,
   PLUGIN_STUDIO_PACKAGE_ALLOWLIST,
-  pinnedBunLicenseBytes,
-  PINNED_BUN_LICENSE_SHA256,
 } from "./plugin-studio-package-artifact.ts";
-import { inspectStandalone } from "./inspect-standalone.ts";
 import { generateThirdPartyLicenses } from "./third-party-licenses.ts";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
@@ -190,23 +184,15 @@ export function assertPluginStudioPackageMetadata(
 export function assertPluginStudioThirdPartyCoverage(
   notices: string,
   licenses: string,
-  bunVersion: string,
 ): void {
   assert(
     notices.includes("Radix Slot") &&
       notices.includes("Radix Tooltip") &&
-      notices.includes("bundled Zod protocol implementation") &&
-      notices.includes(
-        `compiled with and embeds the Bun ${bunVersion} runtime`,
-      ) &&
-      notices.includes("Bun itself is MIT-licensed") &&
-      notices.includes("JavaScriptCore and WebKit under LGPL-2") &&
-      notices.includes("local verification only") &&
-      notices.includes("BUN_LICENSE.md") &&
+      notices.includes("bundled Zod schema implementation") &&
       /^## @radix-ui\/react-slot@/mu.test(licenses) &&
       /^## @radix-ui\/react-tooltip@/mu.test(licenses) &&
       /^## zod@/mu.test(licenses),
-    "Plugin Studio third-party notices do not cover the native component dependencies, bundled Zod, and the compiled runtime.",
+    "Plugin Studio third-party notices do not cover the native component dependencies and bundled Zod.",
   );
 }
 
@@ -242,42 +228,27 @@ export function assertPluginStudioPackageFileSize(
   relative: string,
   size: number,
 ): void {
-  if (relative !== "runtime/darwin-arm64/bb-plugin-studio-runtime") {
-    assert(
-      Number.isSafeInteger(size) &&
-        size >= 0 &&
-        size <= MAX_NON_RUNTIME_FILE_BYTES,
-      `Plugin Studio package file is oversized: ${relative}.`,
-    );
-  }
+  assert(
+    Number.isSafeInteger(size) &&
+      size >= 0 &&
+      size <= MAX_NON_RUNTIME_FILE_BYTES,
+    `Plugin Studio package file is oversized: ${relative}.`,
+  );
 }
 
 export interface PluginStudioPackageInspection {
-  runtimeSha256: string;
-  runtimeSize: number;
-  runtimeVersion: string;
   files: number;
 }
 
 export async function inspectPluginStudioPackageDirectory(
   packageRoot: string,
-  canonicalStandaloneRoot?: string,
   expectedBbVersion = expectedPluginStudioPackageBbVersion(),
 ): Promise<PluginStudioPackageInspection> {
   const resolvedRoot = path.resolve(packageRoot);
   const paths = await collectPackageFiles(resolvedRoot);
   assertPluginStudioPackagePaths(paths);
 
-  const runtimeRoot = path.join(resolvedRoot, "runtime", "darwin-arm64");
-  const [
-    packagedRuntime,
-    canonicalRuntime,
-    manifest,
-    serverMetadata,
-    appMetadata,
-  ] = await Promise.all([
-    inspectStandalone(runtimeRoot),
-    inspectStandalone(canonicalStandaloneRoot),
+  const [manifest, serverMetadata, appMetadata] = await Promise.all([
     fs
       .readFile(path.join(resolvedRoot, "package.json"), "utf8")
       .then((value) => JSON.parse(value) as PackagedManifest),
@@ -294,32 +265,9 @@ export async function inspectPluginStudioPackageDirectory(
     appMetadata,
     expectedBbVersion,
   );
-  assert(
-    JSON.stringify(packagedRuntime.manifest) ===
-      JSON.stringify(canonicalRuntime.manifest),
-    "Packaged runtime manifest differs from the canonical standalone manifest.",
-  );
-  const executableHeader = Buffer.alloc(16);
-  const executable = await fs.open(packagedRuntime.executablePath, "r");
-  try {
-    await executable.read(executableHeader, 0, executableHeader.length, 0);
-  } finally {
-    await executable.close();
-  }
-  assert(
-    executableHeader.readUInt32LE(12) === 2,
-    "Packaged runtime Mach-O is not an executable file.",
-  );
   const serverBundle = await fs.readFile(
     path.join(resolvedRoot, "dist", "server.js"),
     "utf8",
-  );
-  assertPluginStudioRuntimeStampEmbedded(
-    serverBundle,
-    createPluginStudioRuntimeStamp(
-      packagedRuntime.manifest,
-      packagedRuntime.manifestBytes,
-    ),
   );
   const appBundle = await fs.readFile(
     path.join(resolvedRoot, "dist", "app.js"),
@@ -342,11 +290,9 @@ export async function inspectPluginStudioPackageDirectory(
     sourceNotices,
     expectedLicenses,
     approvedLicense,
-    approvedBunLicense,
     approvedSkill,
     approvedReadme,
     packagedLicense,
-    packagedBunLicense,
     packagedSkill,
     packagedReadme,
   ] = await Promise.all([
@@ -359,9 +305,6 @@ export async function inspectPluginStudioPackageDirectory(
     generateThirdPartyLicenses(),
     fs.readFile(path.join(repositoryRoot, "plugins", "studio", "LICENSE")),
     fs.readFile(
-      path.join(repositoryRoot, "plugins", "studio", "BUN_LICENSE.md"),
-    ),
-    fs.readFile(
       path.join(
         repositoryRoot,
         "plugins",
@@ -373,26 +316,17 @@ export async function inspectPluginStudioPackageDirectory(
     ),
     fs.readFile(path.join(repositoryRoot, "plugins", "studio", "README.md")),
     fs.readFile(path.join(resolvedRoot, "LICENSE")),
-    fs.readFile(path.join(resolvedRoot, "BUN_LICENSE.md")),
     fs.readFile(path.join(resolvedRoot, "skills", "plugin-studio", "SKILL.md")),
     fs.readFile(path.join(resolvedRoot, "README.md")),
   ]);
-  assertPluginStudioThirdPartyCoverage(
-    notices,
-    licenses,
-    packagedRuntime.manifest.bunVersion,
-  );
+  assertPluginStudioThirdPartyCoverage(notices, licenses);
   assert(
-    notices ===
-      createPluginStudioThirdPartyNotices(
-        sourceNotices,
-        packagedRuntime.manifest.bunVersion,
-      ) && licenses === expectedLicenses,
+    notices === sourceNotices && licenses === expectedLicenses,
     "Plugin Studio third-party notice bytes differ from their generated sources.",
   );
   assert(
     createHash("sha256").update(packagedReadme).digest("hex") ===
-      "caae6d98194b7438169777332658e0ce66ed273f4faa1fdc8774c5b85e32377f" &&
+      "38f2a02b3ca081a563afa9078a93796afbd753707bfab4eb175d3744dcc9171e" &&
       Buffer.compare(packagedReadme, approvedReadme) === 0,
     "Plugin Studio packaged README differs from the approved usage document.",
   );
@@ -402,28 +336,17 @@ export async function inspectPluginStudioPackageDirectory(
       Buffer.compare(packagedLicense, approvedLicense) === 0,
     "Plugin Studio package LICENSE differs from the approved MIT license.",
   );
-  assert(
-    createHash("sha256").update(packagedBunLicense).digest("hex") ===
-      PINNED_BUN_LICENSE_SHA256 &&
-      Buffer.compare(
-        packagedBunLicense,
-        pinnedBunLicenseBytes(approvedBunLicense),
-      ) === 0,
-    "Plugin Studio package Bun license differs from the pinned Bun 1.3.14 license.",
-  );
   const skillText = packagedSkill.toString("utf8");
   assert(
     createHash("sha256").update(packagedSkill).digest("hex") ===
-      "5a558f60179973e6f6c5401f4d01a93ba8348114a28a5d499b506cb34898df03" &&
+      "7b226425296a472434423f29036589980843ef87ac3ce3f2cf068723a0fb4d1b" &&
       Buffer.compare(packagedSkill, approvedSkill) === 0 &&
       skillText.startsWith("---\nname: plugin-studio\ndescription:") &&
       skillText.includes("# Plugin Studio") &&
       skillText.includes("On mount, Plugin Studio automatically performs"),
     "Plugin Studio packaged skill identity differs from the approved plugin-studio skill.",
   );
-  for (const file of paths.filter(
-    (file) => !file.endsWith("/bb-plugin-studio-runtime"),
-  )) {
+  for (const file of paths) {
     const contents = await fs.readFile(path.join(resolvedRoot, file));
     assert(
       !contents.includes(Buffer.from(repositoryRoot)) &&
@@ -432,9 +355,6 @@ export async function inspectPluginStudioPackageDirectory(
     );
   }
   return {
-    runtimeSha256: packagedRuntime.manifest.sha256,
-    runtimeSize: packagedRuntime.manifest.size,
-    runtimeVersion: packagedRuntime.manifest.runtimeVersion,
     files: paths.length,
   };
 }
@@ -565,7 +485,6 @@ export function assertSafeStudioTarHeaders(
 export async function inspectPluginStudioPackageArchive(
   archivePath: string,
   tarExecutable: string,
-  canonicalStandaloneRoot?: string,
   expectedBbVersion = expectedPluginStudioPackageBbVersion(),
 ): Promise<PluginStudioPackageInspection> {
   assert(path.isAbsolute(tarExecutable), "tarExecutable must be absolute.");
@@ -601,7 +520,6 @@ export async function inspectPluginStudioPackageArchive(
     );
     return await inspectPluginStudioPackageDirectory(
       path.join(temporaryRoot, "package"),
-      canonicalStandaloneRoot,
       expectedBbVersion,
     );
   } finally {

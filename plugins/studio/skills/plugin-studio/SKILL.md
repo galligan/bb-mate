@@ -22,8 +22,8 @@ schema-v4 catalog.
   the backend. Target identity and history persist through Plugin Studio's
   catalog on bb-owned storage; the panel receives only bounded opaque
   projections.
-- The bundled runtime artifact is dormant and remains only for compatibility
-  inspection until #101 removes that package machinery.
+- The Plugin Studio package contains no secondary runtime artifact or private
+  server. Discovery and catalog access remain inside the bb plugin process.
 - Preview remains unavailable under #70. Do not invent a private URL, expose a
   loopback listener, or substitute installed inventory for source discovery.
 - Use native `bb plugin build`, `bb plugin dev`, and `bb plugin reload` for
