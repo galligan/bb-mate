@@ -1,5 +1,11 @@
 # Architecture
 
+The runtime direction is governed by
+[`docs/architecture/runtime-convergence.md`](architecture/runtime-convergence.md):
+Plugin Studio converges onto bb-owned plugin lifecycle and storage, retains the
+secondary runtime only as a temporary migration fallback, and requires a new
+bounded public bb capability before enrolled remote-host discovery is enabled.
+
 ## Repository boundary
 
 bb Plugin Studio is downstream of [bb](https://github.com/get-bb/bb). Public plugin SDK
