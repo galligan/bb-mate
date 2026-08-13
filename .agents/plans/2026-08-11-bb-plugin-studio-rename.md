@@ -1,7 +1,7 @@
 # bb Plugin Studio rename
 
 Date: 2026-08-11
-Status: Implementation complete — final governance runs through PR #84 and issue #86
+Status: Phase 1 complete; technical identity migration active under #86
 Issue: [#86](https://github.com/galligan/bb-plugin-studio/issues/86)
 Owning branch: `feat/plugin-workbench/bb-scoped-project-catalog` / PR #84
 
@@ -9,8 +9,10 @@ Owning branch: `feat/plugin-workbench/bb-scoped-project-catalog` / PR #84
 
 The product is named **bb Plugin Studio** in repository and explanatory copy,
 and **Plugin Studio** inside bb navigation and panel chrome. The rename explains
-the product's purpose—build, inspect, and preview bb plugins—without changing
-the technical identities that own existing plugin state.
+the product's purpose—build, inspect, and preview bb plugins. The original
+phase deliberately preserved technical identities that own existing plugin
+state; the 2026-08-13 direction supersedes that end state and migrates them
+safely under #94, #95, and #96.
 
 After the code, package, Live bb, review, and hosted gates pass, the GitHub
 repository becomes `galligan/bb-plugin-studio`. GitHub's documented repository
@@ -20,20 +22,20 @@ through its old path because action references do not redirect.
 
 ## Naming and compatibility matrix
 
-| Surface                        | Final value                               | Treatment                                                 |
-| ------------------------------ | ----------------------------------------- | --------------------------------------------------------- |
-| Full product name              | `bb Plugin Studio`                        | Rename now                                                |
-| bb navigation and panel        | `Plugin Studio`                           | Rename now                                                |
-| Product descriptor             | `Build, inspect, and preview bb plugins.` | Rename now                                                |
-| GitHub repository              | `galligan/bb-plugin-studio`               | Rename only after every gate                              |
-| npm CLI package and executable | `bb-mate`                                 | Preserve compatibility                                    |
-| Workspace packages             | `@bb-mate/*`                              | Preserve compatibility                                    |
-| bb plugin package and ID       | `bb-plugin-mate` / `mate`                 | Preserve installed state                                  |
-| Plugin source directory        | `plugins/mate`                            | Preserve build and path install                           |
-| Runtime executable/artifact    | `bb-mate`                                 | Preserve stamp and supervision                            |
-| Runtime data root              | `<bb-data>/plugins/mate/runtime`          | Preserve catalog identity                                 |
-| Panel route                    | `workbench`                               | Preserve deep links                                       |
-| Skill technical ID/path        | `plugin-workbench`                        | Preserve existing references; show Plugin Studio in prose |
+| Surface                        | Final value                               | Treatment                                         |
+| ------------------------------ | ----------------------------------------- | ------------------------------------------------- |
+| Full product name              | `bb Plugin Studio`                        | Rename now                                        |
+| bb navigation and panel        | `Plugin Studio`                           | Rename now                                        |
+| Product descriptor             | `Build, inspect, and preview bb plugins.` | Rename now                                        |
+| GitHub repository              | `galligan/bb-plugin-studio`               | Rename only after every gate                      |
+| npm CLI package and executable | `bb-plugin-studio`                        | Migrate with a bounded `bb-mate` bridge under #95 |
+| Workspace packages             | Studio-named private scope                | Rename under #95                                  |
+| bb plugin package and ID       | Studio-named canonical ID                 | Host-supported state migration under #94/#95      |
+| Plugin source directory        | Studio-named canonical directory          | Change with source/ID migration                   |
+| Runtime executable/artifact    | Remove if #96 succeeds                    | Do not perpetuate only for naming compatibility   |
+| Runtime data root              | bb-owned plugin storage                   | Transactional catalog import under #100           |
+| Panel route                    | Studio-named route                        | Preserve old deep links through an explicit alias |
+| Skill technical ID/path        | Studio-named skill                        | Preserve old references through an explicit alias |
 
 Changing a preserved identity requires a separate migration with compatibility
 aliases, rollback, and proof that settings, KV/database state, catalog IDs, and
@@ -81,12 +83,13 @@ inspection; root format/check/test/build/visual; standalone and managed package
 clean rooms; Live bb; exact-head local reviews and hosted CI; GitButler clean;
 PR #73 unchanged.
 
-Stop before changing `mate`, `bb-plugin-mate`, `bb-mate`, `@bb-mate/*`, the
-runtime/data-root identities, route, or skill ID; before plugin removal or
-reinstallation; before merge, publication, release, upstream bb edits, or
-reuse of the old repository name.
+Do not mechanically change `mate`, `bb-plugin-mate`, `bb-mate`, `@bb-mate/*`,
+runtime/data-root identities, routes, or skill IDs. Those changes are now
+authorized only through the compatibility, preserve-state, and rollback work
+in #94/#95/#96. Still stop before plugin removal/reinstallation, publication,
+release, unapproved upstream edits, or reuse of the old repository name.
 
-## Current evidence
+## Historical Phase 1 evidence
 
 - Focused naming, package-inspector, CLI, browser-workbench, and Mate suites are
   green. The complete 716-test workspace aggregate, check, build, format, and
